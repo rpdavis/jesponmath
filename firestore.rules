@@ -1,0 +1,104 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && getUserData().role == 'admin';
+    }
+    
+    function isTeacher() {
+      return isAuthenticated() && (getUserData().role == 'teacher' || getUserData().role == 'admin');
+    }
+    
+    function isStudent() {
+      return isAuthenticated() && getUserData().role == 'student';
+    }
+    
+    // Base users collection (authentication data)
+    match /users/{userId} {
+      // Users can read their own data
+      allow read: if isAuthenticated() && request.auth.uid == userId;
+      // Admins can read all user data
+      allow read: if isAdmin();
+      // Teachers can read basic user data for their students
+      allow read: if isTeacher();
+      
+      // Only admins can write user data (role changes, etc.)
+      allow write: if isAdmin();
+      // Users can update their own profile
+      allow write: if isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Teachers collection
+    match /teachers/{teacherId} {
+      // Teachers can read their own data
+      allow read: if isAuthenticated() && request.auth.uid == teacherId;
+      // Admins can read all teacher data
+      allow read: if isAdmin();
+      
+      // Only admins can write teacher data
+      allow write: if isAdmin();
+      // Teachers can update their own profile
+      allow write: if isAuthenticated() && request.auth.uid == teacherId;
+    }
+    
+    // Students collection
+    match /students/{studentId} {
+      // Students can read their own data
+      allow read: if isAuthenticated() && request.auth.uid == studentId;
+      // Teachers and admins can read student data
+      allow read: if isTeacher() || isAdmin();
+      
+      // Only teachers and admins can write student data
+      allow write: if isTeacher() || isAdmin();
+    }
+    
+    // Goals collection
+    match /goals/{goalId} {
+      // Teachers and admins can read/write goals
+      allow read, write: if isTeacher() || isAdmin();
+      // Students can read their own goals
+      allow read: if isStudent() && resource.data.studentUid == request.auth.uid;
+    }
+    
+    // Assessments collection
+    match /assessments/{assessmentId} {
+      // Teachers and admins can read/write assessments
+      allow read, write: if isTeacher() || isAdmin();
+      // Students can read assessments assigned to them
+      allow read: if isStudent() && resource.data.studentUid == request.auth.uid;
+    }
+    
+    // Assessment results
+    match /assessmentResults/{resultId} {
+      // Teachers and admins can read all results
+      allow read: if isTeacher() || isAdmin();
+      // Students can read their own results
+      allow read: if isStudent() && resource.data.studentUid == request.auth.uid;
+      
+      // Teachers and admins can write results
+      allow write: if isTeacher() || isAdmin();
+      // Students can write their own results (when taking assessments)
+      allow write: if isStudent() && request.resource.data.studentUid == request.auth.uid;
+    }
+    
+    // User profiles (legacy - for compatibility)
+    match /userProfiles/{document} {
+      allow read, write: if isAuthenticated();
+    }
+    
+    // For development/testing - allows open access
+    // TODO: Remove this in production
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}

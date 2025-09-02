@@ -1,0 +1,8 @@
+{
+  "projects": {
+    "default": "mathgamesmrd",
+    "jepsonmath": "jepsonmath"
+  },
+  "targets": {},
+  "etags": {}
+}
