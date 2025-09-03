@@ -159,33 +159,7 @@
       </div>
     </div>
 
-    <!-- Progress Tracking -->
-    <div class="progress-section">
-      <h2>🎯 IEP Goal Progress</h2>
-      <div class="progress-cards">
-        <div v-for="goal in iepGoals" :key="goal.id" class="progress-card">
-          <div class="progress-header">
-            <h4>{{ goal.title }}</h4>
-            <div class="progress-percentage">{{ goal.progress }}%</div>
-          </div>
-          
-          <div class="progress-bar">
-            <div 
-              class="progress-fill" 
-              :style="{ width: goal.progress + '%' }"
-              :class="getProgressClass(goal.progress)"
-            ></div>
-          </div>
-          
-          <div class="progress-details">
-            <span class="progress-label">{{ goal.standard }}</span>
-            <span class="progress-status" :class="getProgressClass(goal.progress)">
-              {{ getProgressStatus(goal.progress) }}
-            </span>
-          </div>
-        </div>
-      </div>
-    </div>
+
 
     <!-- No Assessments State -->
     <div v-if="pendingAssessments.length === 0 && recentResults.length === 0" class="no-assessments">
@@ -228,7 +202,6 @@ const studentStats = ref({
 
 const pendingAssessments = ref<any[]>([]);
 const recentResults = ref<any[]>([]);
-const iepGoals = ref<any[]>([]);
 
 // Computed properties
 const urgentAssessments = computed(() => {
@@ -256,22 +229,28 @@ const getScoreClass = (percentage: number) => {
   return 'needs-improvement';
 };
 
-const getProgressClass = (progress: number) => {
-  if (progress >= 80) return 'excellent';
-  if (progress >= 60) return 'good';
-  if (progress >= 40) return 'fair';
-  return 'needs-improvement';
-};
 
-const getProgressStatus = (progress: number) => {
-  if (progress >= 80) return 'On Track';
-  if (progress >= 60) return 'Good Progress';
-  if (progress >= 40) return 'Some Progress';
-  return 'Needs Support';
-};
 
-const formatDate = (date: Date) => {
-  return date.toLocaleDateString();
+const formatDate = (date: any) => {
+  if (!date) return 'N/A';
+  
+  // Handle Firestore Timestamp
+  if (date.seconds) {
+    return new Date(date.seconds * 1000).toLocaleDateString();
+  }
+  
+  // Handle regular Date object or string
+  if (date instanceof Date) {
+    return date.toLocaleDateString();
+  }
+  
+  // Try to parse as date string
+  try {
+    return new Date(date).toLocaleDateString();
+  } catch (error) {
+    console.warn('Unable to format date:', date);
+    return 'Invalid Date';
+  }
 };
 
 const refreshData = async () => {
@@ -672,106 +651,7 @@ onMounted(() => {
   background: #e5e7eb;
 }
 
-.progress-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 20px;
-}
 
-.progress-card {
-  background: white;
-  border-radius: 15px;
-  padding: 20px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-}
-
-.progress-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 15px;
-}
-
-.progress-header h4 {
-  color: #1f2937;
-  font-size: 1.1rem;
-  margin: 0;
-}
-
-.progress-percentage {
-  font-size: 1.2rem;
-  font-weight: bold;
-  color: #1f2937;
-}
-
-.progress-bar {
-  width: 100%;
-  height: 8px;
-  background: #f3f4f6;
-  border-radius: 4px;
-  overflow: hidden;
-  margin-bottom: 10px;
-}
-
-.progress-fill {
-  height: 100%;
-  border-radius: 4px;
-  transition: width 0.3s ease;
-}
-
-.progress-fill.excellent {
-  background: linear-gradient(90deg, #10b981, #059669);
-}
-
-.progress-fill.good {
-  background: linear-gradient(90deg, #3b82f6, #2563eb);
-}
-
-.progress-fill.fair {
-  background: linear-gradient(90deg, #f59e0b, #d97706);
-}
-
-.progress-fill.needs-improvement {
-  background: linear-gradient(90deg, #ef4444, #dc2626);
-}
-
-.progress-details {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.progress-label {
-  color: #6b7280;
-  font-size: 0.8rem;
-}
-
-.progress-status {
-  font-size: 0.8rem;
-  font-weight: 500;
-  padding: 2px 6px;
-  border-radius: 4px;
-}
-
-.progress-status.excellent {
-  background: #dcfce7;
-  color: #166534;
-}
-
-.progress-status.good {
-  background: #dbeafe;
-  color: #1e40af;
-}
-
-.progress-status.fair {
-  background: #fef3c7;
-  color: #92400e;
-}
-
-.progress-status.needs-improvement {
-  background: #fef2f2;
-  color: #dc2626;
-}
 
 .no-assessments {
   text-align: center;
@@ -865,9 +745,6 @@ onMounted(() => {
     flex-direction: column;
   }
   
-  .progress-cards {
-    grid-template-columns: 1fr;
-    gap: 15px;
-  }
+
 }
 </style>

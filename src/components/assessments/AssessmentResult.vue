@@ -126,7 +126,7 @@
             </div>
             
             <div class="question-content">
-              <p class="question-text">{{ getQuestionText(response.questionId) }}</p>
+              <p class="question-text" v-html="renderLatexInText(getQuestionText(response.questionId))"></p>
               <div class="answer-section">
                 <div class="student-answer">
                   <strong>Your Answer:</strong> {{ response.studentAnswer }}
@@ -204,6 +204,7 @@ import { getAssessment } from '@/firebase/iepServices';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/firebase/config';
 import type { Assessment, AssessmentResult, AssessmentResponse } from '@/types/iep';
+import { renderLatexInText } from '@/utils/latexUtils';
 
 const route = useRoute();
 const router = useRouter();
@@ -288,10 +289,18 @@ const getScoreClass = (percentage: number): string => {
 };
 
 const formatDate = (timestamp: any): string => {
+  if (!timestamp) return 'N/A';
+  
   if (timestamp?.seconds) {
     return new Date(timestamp.seconds * 1000).toLocaleDateString();
   }
-  return new Date(timestamp).toLocaleDateString();
+  
+  try {
+    return new Date(timestamp).toLocaleDateString();
+  } catch (error) {
+    console.warn('Unable to format date:', timestamp);
+    return 'Invalid Date';
+  }
 };
 
 const retakeAssessment = () => {

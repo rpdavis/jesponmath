@@ -1,0 +1,650 @@
+From: <Saved by Blink>
+Snapshot-Content-Location: file:///Users/rd/Downloads/Multiplication_Assessments_UI%20(1).html
+Subject: Multiplication Assessments (Stacked, 2-Column)
+Date: Mon, 1 Sep 2025 22:26:31 -0700
+MIME-Version: 1.0
+Content-Type: multipart/related;
+	type="text/html";
+	boundary="----MultipartBoundary--d6zT35LNsf895RMFs1zQ7ec1E9G5kZuBHRBKcMtSv3----"
+
+
+------MultipartBoundary--d6zT35LNsf895RMFs1zQ7ec1E9G5kZuBHRBKcMtSv3----
+Content-Type: text/html
+Content-ID: <frame-898EBC2803225345AA24EA215961AD94@mhtml.blink>
+Content-Transfer-Encoding: quoted-printable
+Content-Location: file:///Users/rd/Downloads/Multiplication_Assessments_UI%20(1).html
+
+<!DOCTYPE html><html lang=3D"en"><head><meta http-equiv=3D"Content-Type" co=
+ntent=3D"text/html; charset=3DUTF-8"><link rel=3D"stylesheet" type=3D"text/=
+css" href=3D"cid:css-f7c7edf2-cbec-411d-a8f6-eee104032a89@mhtml.blink" />
+
+<meta name=3D"viewport" content=3D"width=3Ddevice-width, initial-scale=3D1"=
+>
+<title>Multiplication Assessments (Stacked, 2-Column)</title>
+
+</head>
+<body style=3D"
+    margin: 1rem;
+">
+<header>
+  <div class=3D"title">Multiplication Assessments =E2=80=94 Whole Numbers (=
+up to 4 digits) =C3=97 Single Digit</div>
+  <div class=3D"meta">
+    <div class=3D"field name">Name:</div>
+    <div class=3D"field">Date:</div>
+    <div class=3D"field">Score:</div>
+  </div>
+</header>
+
+<section class=3D"assessment">
+  <h2>Assessment 1</h2>
+  <div class=3D"legend">Solve each problem in the box. Use strategies based=
+ on place value and the properties of multiplication (e.g., partial product=
+s, arrays, area models, or equations).</div>
+  <div class=3D"problems-grid">
+
+    <div class=3D"problem-box">
+      <div class=3D"problem-head">
+        <div class=3D"problem-num">#1</div>
+        <div class=3D"work-hint">Show your work</div>
+      </div>
+      <div class=3D"vertical-problem" aria-label=3D"2222 times 4">
+        <div class=3D"vp-line"><span class=3D"vp-lhs"></span><span class=3D=
+"vp-rhs">2222</span></div>
+        <div class=3D"vp-line"><span class=3D"vp-lhs">=C3=97</span><span cl=
+ass=3D"vp-rhs">4</span></div>
+        <div class=3D"hline"></div>
+      </div>
+      <div class=3D"work-lines" aria-hidden=3D"true"></div>
+      <div class=3D"answer">Answer: <span class=3D"blank"></span></div>
+    </div>
+
+    <div class=3D"problem-box">
+      <div class=3D"problem-head">
+        <div class=3D"problem-num">#2</div>
+        <div class=3D"work-hint">Show your work</div>
+      </div>
+      <div class=3D"vertical-problem" aria-label=3D"1406 times 3">
+        <div class=3D"vp-line"><span class=3D"vp-lhs"></span><span class=3D=
+"vp-rhs">1406</span></div>
+        <div class=3D"vp-line"><span class=3D"vp-lhs">=C3=97</span><span cl=
+ass=3D"vp-rhs">3</span></div>
+        <div class=3D"hline"></div>
+      </div>
+      <div class=3D"work-lines" aria-hidden=3D"true"></div>
+      <div class=3D"answer">Answer: <span class=3D"blank"></span></div>
+    </div>
+
+    <div class=3D"problem-box">
+      <div class=3D"problem-head">
+        <div class=3D"problem-num">#3</div>
+        <div class=3D"work-hint">Show your work</div>
+      </div>
+      <div class=3D"vertical-problem" aria-label=3D"3759 times 6">
+        <div class=3D"vp-line"><span class=3D"vp-lhs"></span><span class=3D=
+"vp-rhs">3759</span></div>
+        <div class=3D"vp-line"><span class=3D"vp-lhs">=C3=97</span><span cl=
+ass=3D"vp-rhs">6</span></div>
+        <div class=3D"hline"></div>
+      </div>
+      <div class=3D"work-lines" aria-hidden=3D"true"></div>
+      <div class=3D"answer">Answer: <span class=3D"blank"></span></div>
+    </div>
+
+    <div class=3D"problem-box">
+      <div class=3D"problem-head">
+        <div class=3D"problem-num">#4</div>
+        <div class=3D"work-hint">Show your work</div>
+      </div>
+      <div class=3D"vertical-problem" aria-label=3D"408 times 7">
+        <div class=3D"vp-line"><span class=3D"vp-lhs"></span><span class=3D=
+"vp-rhs">408</span></div>
+        <div class=3D"vp-line"><span class=3D"vp-lhs">=C3=97</span><span cl=
+ass=3D"vp-rhs">7</span></div>
+        <div class=3D"hline"></div>
+      </div>
+      <div class=3D"work-lines" aria-hidden=3D"true"></div>
+      <div class=3D"answer">Answer: </div>
+    </div>
+
+    <div class=3D"problem-box">
+      <div class=3D"problem-head">
+        <div class=3D"problem-num">#5</div>
+        <div class=3D"work-hint">Show your work</div>
+      </div>
+      <div class=3D"vertical-problem" aria-label=3D"951 times 8">
+        <div class=3D"vp-line"><span class=3D"vp-lhs"></span><span class=3D=
+"vp-rhs">951</span></div>
+        <div class=3D"vp-line"><span class=3D"vp-lhs">=C3=97</span><span cl=
+ass=3D"vp-rhs">8</span></div>
+        <div class=3D"hline"></div>
+      </div>
+      <div class=3D"work-lines" aria-hidden=3D"true"></div>
+      <div class=3D"answer">Answer: <span class=3D"blank"></span></div>
+    </div>
+
+    <div class=3D"problem-box">
+      <div class=3D"problem-head">
+        <div class=3D"problem-num">#6</div>
+        <div class=3D"work-hint">Show your work</div>
+      </div>
+      <div class=3D"vertical-problem" aria-label=3D"2734 times 5">
+        <div class=3D"vp-line"><span class=3D"vp-lhs"></span><span class=3D=
+"vp-rhs">2734</span></div>
+        <div class=3D"vp-line"><span class=3D"vp-lhs">=C3=97</span><span cl=
+ass=3D"vp-rhs">5</span></div>
+        <div class=3D"hline"></div>
+      </div>
+      <div class=3D"work-lines" aria-hidden=3D"true"></div>
+      <div class=3D"answer">Answer: <span class=3D"blank"></span></div>
+    </div>
+
+    <div class=3D"problem-box mg">
+      <div class=3D"problem-head">
+        <div class=3D"problem-num">#7</div>
+        <div class=3D"work-hint">Show your work</div>
+      </div>
+      <div class=3D"vertical-problem" aria-label=3D"619 times 9">
+        <div class=3D"vp-line"><span class=3D"vp-lhs"></span><span class=3D=
+"vp-rhs">619</span></div>
+        <div class=3D"vp-line"><span class=3D"vp-lhs">=C3=97</span><span cl=
+ass=3D"vp-rhs">9</span></div>
+        <div class=3D"hline"></div>
+      </div>
+      <div class=3D"work-lines" aria-hidden=3D"true"></div>
+      <div class=3D"answer">Answer: <span class=3D"blank"></span></div>
+    </div>
+
+    <div class=3D"problem-box mg">
+      <div class=3D"problem-head">
+        <div class=3D"problem-num">#8</div>
+        <div class=3D"work-hint">Show your work</div>
+      </div>
+      <div class=3D"vertical-problem" aria-label=3D"1204 times 6">
+        <div class=3D"vp-line"><span class=3D"vp-lhs"></span><span class=3D=
+"vp-rhs">1204</span></div>
+        <div class=3D"vp-line"><span class=3D"vp-lhs">=C3=97</span><span cl=
+ass=3D"vp-rhs">6</span></div>
+        <div class=3D"hline"></div>
+      </div>
+      <div class=3D"work-lines" aria-hidden=3D"true"></div>
+      <div class=3D"answer">Answer: <span class=3D"blank"></span></div>
+    </div>
+
+    <div class=3D"problem-box">
+      <div class=3D"problem-head">
+        <div class=3D"problem-num">#9</div>
+        <div class=3D"work-hint">Show your work</div>
+      </div>
+      <div class=3D"vertical-problem" aria-label=3D"3876 times 2">
+        <div class=3D"vp-line"><span class=3D"vp-lhs"></span><span class=3D=
+"vp-rhs">3876</span></div>
+        <div class=3D"vp-line"><span class=3D"vp-lhs">=C3=97</span><span cl=
+ass=3D"vp-rhs">2</span></div>
+        <div class=3D"hline"></div>
+      </div>
+      <div class=3D"work-lines" aria-hidden=3D"true"></div>
+      <div class=3D"answer">Answer: <span class=3D"blank"></span></div>
+    </div>
+
+    <div class=3D"problem-box">
+      <div class=3D"problem-head">
+        <div class=3D"problem-num">#10</div>
+        <div class=3D"work-hint">Show your work</div>
+      </div>
+      <div class=3D"vertical-problem" aria-label=3D"2603 times 7">
+        <div class=3D"vp-line"><span class=3D"vp-lhs"></span><span class=3D=
+"vp-rhs">2603</span></div>
+        <div class=3D"vp-line"><span class=3D"vp-lhs">=C3=97</span><span cl=
+ass=3D"vp-rhs">7</span></div>
+        <div class=3D"hline"></div>
+      </div>
+      <div class=3D"work-lines" aria-hidden=3D"true"></div>
+      <div class=3D"answer">Answer: <span class=3D"blank"></span></div>
+    </div>
+
+  </div>
+  <footer>Ryan Davis</footer>
+</section>
+
+<section class=3D"assessment"><header>
+  <div class=3D"title">Multiplication Assessments =E2=80=94 Whole Numbers (=
+up to 4 digits) =C3=97 Single Digit</div>
+  <div class=3D"meta">
+    <div class=3D"field name">Name:</div>
+    <div class=3D"field">Date:</div>
+    <div class=3D"field">Score:</div>
+  </div>
+</header>
+  <h2>Assessment 2</h2>
+  <div class=3D"legend">Solve each problem in the box. Use strategies based=
+ on place value and the properties of multiplication (e.g., partial product=
+s, arrays, area models, or equations).</div>
+  <div class=3D"problems-grid">
+
+    <div class=3D"problem-box">
+      <div class=3D"problem-head">
+        <div class=3D"problem-num">#1</div>
+        <div class=3D"work-hint">Show your work</div>
+      </div>
+      <div class=3D"vertical-problem" aria-label=3D"1307 times 2">
+        <div class=3D"vp-line"><span class=3D"vp-lhs"></span><span class=3D=
+"vp-rhs">1307</span></div>
+        <div class=3D"vp-line"><span class=3D"vp-lhs">=C3=97</span><span cl=
+ass=3D"vp-rhs">2</span></div>
+        <div class=3D"hline"></div>
+      </div>
+      <div class=3D"work-lines" aria-hidden=3D"true"></div>
+      <div class=3D"answer">Answer: <span class=3D"blank"></span></div>
+    </div>
+
+    <div class=3D"problem-box">
+      <div class=3D"problem-head">
+        <div class=3D"problem-num">#2</div>
+        <div class=3D"work-hint">Show your work</div>
+      </div>
+      <div class=3D"vertical-problem" aria-label=3D"946 times 8">
+        <div class=3D"vp-line"><span class=3D"vp-lhs"></span><span class=3D=
+"vp-rhs">946</span></div>
+        <div class=3D"vp-line"><span class=3D"vp-lhs">=C3=97</span><span cl=
+ass=3D"vp-rhs">8</span></div>
+        <div class=3D"hline"></div>
+      </div>
+      <div class=3D"work-lines" aria-hidden=3D"true"></div>
+      <div class=3D"answer">Answer: <span class=3D"blank"></span></div>
+    </div>
+
+    <div class=3D"problem-box">
+      <div class=3D"problem-head">
+        <div class=3D"problem-num">#3</div>
+        <div class=3D"work-hint">Show your work</div>
+      </div>
+      <div class=3D"vertical-problem" aria-label=3D"2418 times 3">
+        <div class=3D"vp-line"><span class=3D"vp-lhs"></span><span class=3D=
+"vp-rhs">2418</span></div>
+        <div class=3D"vp-line"><span class=3D"vp-lhs">=C3=97</span><span cl=
+ass=3D"vp-rhs">3</span></div>
+        <div class=3D"hline"></div>
+      </div>
+      <div class=3D"work-lines" aria-hidden=3D"true"></div>
+      <div class=3D"answer">Answer: <span class=3D"blank"></span></div>
+    </div>
+
+    <div class=3D"problem-box">
+      <div class=3D"problem-head">
+        <div class=3D"problem-num">#4</div>
+        <div class=3D"work-hint">Show your work</div>
+      </div>
+      <div class=3D"vertical-problem" aria-label=3D"3205 times 9">
+        <div class=3D"vp-line"><span class=3D"vp-lhs"></span><span class=3D=
+"vp-rhs">3205</span></div>
+        <div class=3D"vp-line"><span class=3D"vp-lhs">=C3=97</span><span cl=
+ass=3D"vp-rhs">9</span></div>
+        <div class=3D"hline"></div>
+      </div>
+      <div class=3D"work-lines" aria-hidden=3D"true"></div>
+      <div class=3D"answer">Answer: <span class=3D"blank"></span></div>
+    </div>
+
+    <div class=3D"problem-box">
+      <div class=3D"problem-head">
+        <div class=3D"problem-num">#5</div>
+        <div class=3D"work-hint">Show your work</div>
+      </div>
+      <div class=3D"vertical-problem" aria-label=3D"4083 times 4">
+        <div class=3D"vp-line"><span class=3D"vp-lhs"></span><span class=3D=
+"vp-rhs">4083</span></div>
+        <div class=3D"vp-line"><span class=3D"vp-lhs">=C3=97</span><span cl=
+ass=3D"vp-rhs">4</span></div>
+        <div class=3D"hline"></div>
+      </div>
+      <div class=3D"work-lines" aria-hidden=3D"true"></div>
+      <div class=3D"answer">Answer: <span class=3D"blank"></span></div>
+    </div>
+
+    <div class=3D"problem-box">
+      <div class=3D"problem-head">
+        <div class=3D"problem-num">#6</div>
+        <div class=3D"work-hint">Show your work</div>
+      </div>
+      <div class=3D"vertical-problem" aria-label=3D"521 times 7">
+        <div class=3D"vp-line"><span class=3D"vp-lhs"></span><span class=3D=
+"vp-rhs">521</span></div>
+        <div class=3D"vp-line"><span class=3D"vp-lhs">=C3=97</span><span cl=
+ass=3D"vp-rhs">7</span></div>
+        <div class=3D"hline"></div>
+      </div>
+      <div class=3D"work-lines" aria-hidden=3D"true"></div>
+      <div class=3D"answer">Answer: <span class=3D"blank"></span></div>
+    </div>
+
+    <div class=3D"problem-box mg">
+      <div class=3D"problem-head">
+        <div class=3D"problem-num">#7</div>
+        <div class=3D"work-hint">Show your work</div>
+      </div>
+      <div class=3D"vertical-problem" aria-label=3D"2699 times 5">
+        <div class=3D"vp-line"><span class=3D"vp-lhs"></span><span class=3D=
+"vp-rhs">2699</span></div>
+        <div class=3D"vp-line"><span class=3D"vp-lhs">=C3=97</span><span cl=
+ass=3D"vp-rhs">5</span></div>
+        <div class=3D"hline"></div>
+      </div>
+      <div class=3D"work-lines" aria-hidden=3D"true"></div>
+      <div class=3D"answer">Answer: <span class=3D"blank"></span></div>
+    </div>
+
+    <div class=3D"problem-box mg">
+      <div class=3D"problem-head">
+        <div class=3D"problem-num">#8</div>
+        <div class=3D"work-hint">Show your work</div>
+      </div>
+      <div class=3D"vertical-problem" aria-label=3D"1634 times 6">
+        <div class=3D"vp-line"><span class=3D"vp-lhs"></span><span class=3D=
+"vp-rhs">1634</span></div>
+        <div class=3D"vp-line"><span class=3D"vp-lhs">=C3=97</span><span cl=
+ass=3D"vp-rhs">6</span></div>
+        <div class=3D"hline"></div>
+      </div>
+      <div class=3D"work-lines" aria-hidden=3D"true"></div>
+      <div class=3D"answer">Answer: <span class=3D"blank"></span></div>
+    </div>
+
+    <div class=3D"problem-box">
+      <div class=3D"problem-head">
+        <div class=3D"problem-num">#9</div>
+        <div class=3D"work-hint">Show your work</div>
+      </div>
+      <div class=3D"vertical-problem" aria-label=3D"3702 times 3">
+        <div class=3D"vp-line"><span class=3D"vp-lhs"></span><span class=3D=
+"vp-rhs">3702</span></div>
+        <div class=3D"vp-line"><span class=3D"vp-lhs">=C3=97</span><span cl=
+ass=3D"vp-rhs">3</span></div>
+        <div class=3D"hline"></div>
+      </div>
+      <div class=3D"work-lines" aria-hidden=3D"true"></div>
+      <div class=3D"answer">Answer: <span class=3D"blank"></span></div>
+    </div>
+
+    <div class=3D"problem-box">
+      <div class=3D"problem-head">
+        <div class=3D"problem-num">#10</div>
+        <div class=3D"work-hint">Show your work</div>
+      </div>
+      <div class=3D"vertical-problem" aria-label=3D"1248 times 9">
+        <div class=3D"vp-line"><span class=3D"vp-lhs"></span><span class=3D=
+"vp-rhs">1248</span></div>
+        <div class=3D"vp-line"><span class=3D"vp-lhs">=C3=97</span><span cl=
+ass=3D"vp-rhs">9</span></div>
+        <div class=3D"hline"></div>
+      </div>
+      <div class=3D"work-lines" aria-hidden=3D"true"></div>
+      <div class=3D"answer">Answer: <span class=3D"blank"></span></div>
+    </div>
+
+  </div>
+  <footer>Ryan Davis</footer>
+</section>
+
+<section class=3D"assessment"><header>
+  <div class=3D"title">Multiplication Assessments =E2=80=94 Whole Numbers (=
+up to 4 digits) =C3=97 Single Digit</div>
+  <div class=3D"meta">
+    <div class=3D"field name">Name:</div>
+    <div class=3D"field">Date:</div>
+    <div class=3D"field">Score:</div>
+  </div>
+</header>
+  <h2>Assessment 3</h2>
+  <div class=3D"legend">Solve each problem in the box. Use strategies based=
+ on place value and the properties of multiplication (e.g., partial product=
+s, arrays, area models, or equations).</div>
+  <div class=3D"problems-grid">
+
+    <div class=3D"problem-box">
+      <div class=3D"problem-head">
+        <div class=3D"problem-num">#1</div>
+        <div class=3D"work-hint">Show your work</div>
+      </div>
+      <div class=3D"vertical-problem" aria-label=3D"2413 times 6">
+        <div class=3D"vp-line"><span class=3D"vp-lhs"></span><span class=3D=
+"vp-rhs">2413</span></div>
+        <div class=3D"vp-line"><span class=3D"vp-lhs">=C3=97</span><span cl=
+ass=3D"vp-rhs">6</span></div>
+        <div class=3D"hline"></div>
+      </div>
+      <div class=3D"work-lines" aria-hidden=3D"true"></div>
+      <div class=3D"answer">Answer: <span class=3D"blank"></span></div>
+    </div>
+
+    <div class=3D"problem-box">
+      <div class=3D"problem-head">
+        <div class=3D"problem-num">#2</div>
+        <div class=3D"work-hint">Show your work</div>
+      </div>
+      <div class=3D"vertical-problem" aria-label=3D"3101 times 5">
+        <div class=3D"vp-line"><span class=3D"vp-lhs"></span><span class=3D=
+"vp-rhs">3101</span></div>
+        <div class=3D"vp-line"><span class=3D"vp-lhs">=C3=97</span><span cl=
+ass=3D"vp-rhs">5</span></div>
+        <div class=3D"hline"></div>
+      </div>
+      <div class=3D"work-lines" aria-hidden=3D"true"></div>
+      <div class=3D"answer">Answer: <span class=3D"blank"></span></div>
+    </div>
+
+    <div class=3D"problem-box">
+      <div class=3D"problem-head">
+        <div class=3D"problem-num">#3</div>
+        <div class=3D"work-hint">Show your work</div>
+      </div>
+      <div class=3D"vertical-problem" aria-label=3D"4297 times 8">
+        <div class=3D"vp-line"><span class=3D"vp-lhs"></span><span class=3D=
+"vp-rhs">4297</span></div>
+        <div class=3D"vp-line"><span class=3D"vp-lhs">=C3=97</span><span cl=
+ass=3D"vp-rhs">8</span></div>
+        <div class=3D"hline"></div>
+      </div>
+      <div class=3D"work-lines" aria-hidden=3D"true"></div>
+      <div class=3D"answer">Answer: <span class=3D"blank"></span></div>
+    </div>
+
+    <div class=3D"problem-box">
+      <div class=3D"problem-head">
+        <div class=3D"problem-num">#4</div>
+        <div class=3D"work-hint">Show your work</div>
+      </div>
+      <div class=3D"vertical-problem" aria-label=3D"932 times 7">
+        <div class=3D"vp-line"><span class=3D"vp-lhs"></span><span class=3D=
+"vp-rhs">932</span></div>
+        <div class=3D"vp-line"><span class=3D"vp-lhs">=C3=97</span><span cl=
+ass=3D"vp-rhs">7</span></div>
+        <div class=3D"hline"></div>
+      </div>
+      <div class=3D"work-lines" aria-hidden=3D"true"></div>
+      <div class=3D"answer">Answer: <span class=3D"blank"></span></div>
+    </div>
+
+    <div class=3D"problem-box">
+      <div class=3D"problem-head">
+        <div class=3D"problem-num">#5</div>
+        <div class=3D"work-hint">Show your work</div>
+      </div>
+      <div class=3D"vertical-problem" aria-label=3D"1856 times 9">
+        <div class=3D"vp-line"><span class=3D"vp-lhs"></span><span class=3D=
+"vp-rhs">1856</span></div>
+        <div class=3D"vp-line"><span class=3D"vp-lhs">=C3=97</span><span cl=
+ass=3D"vp-rhs">9</span></div>
+        <div class=3D"hline"></div>
+      </div>
+      <div class=3D"work-lines" aria-hidden=3D"true"></div>
+      <div class=3D"answer">Answer: <span class=3D"blank"></span></div>
+    </div>
+
+    <div class=3D"problem-box">
+      <div class=3D"problem-head">
+        <div class=3D"problem-num">#6</div>
+        <div class=3D"work-hint">Show your work</div>
+      </div>
+      <div class=3D"vertical-problem" aria-label=3D"2740 times 4">
+        <div class=3D"vp-line"><span class=3D"vp-lhs"></span><span class=3D=
+"vp-rhs">2740</span></div>
+        <div class=3D"vp-line"><span class=3D"vp-lhs">=C3=97</span><span cl=
+ass=3D"vp-rhs">4</span></div>
+        <div class=3D"hline"></div>
+      </div>
+      <div class=3D"work-lines" aria-hidden=3D"true"></div>
+      <div class=3D"answer">Answer: <span class=3D"blank"></span></div>
+    </div>
+
+    <div class=3D"problem-box mg">
+      <div class=3D"problem-head">
+        <div class=3D"problem-num">#7</div>
+        <div class=3D"work-hint">Show your work</div>
+      </div>
+      <div class=3D"vertical-problem" aria-label=3D"3628 times 3">
+        <div class=3D"vp-line"><span class=3D"vp-lhs"></span><span class=3D=
+"vp-rhs">3628</span></div>
+        <div class=3D"vp-line"><span class=3D"vp-lhs">=C3=97</span><span cl=
+ass=3D"vp-rhs">3</span></div>
+        <div class=3D"hline"></div>
+      </div>
+      <div class=3D"work-lines" aria-hidden=3D"true"></div>
+      <div class=3D"answer">Answer: <span class=3D"blank"></span></div>
+    </div>
+
+    <div class=3D"problem-box mg">
+      <div class=3D"problem-head">
+        <div class=3D"problem-num">#8</div>
+        <div class=3D"work-hint">Show your work</div>
+      </div>
+      <div class=3D"vertical-problem" aria-label=3D"4021 times 2">
+        <div class=3D"vp-line"><span class=3D"vp-lhs"></span><span class=3D=
+"vp-rhs">4021</span></div>
+        <div class=3D"vp-line"><span class=3D"vp-lhs">=C3=97</span><span cl=
+ass=3D"vp-rhs">2</span></div>
+        <div class=3D"hline"></div>
+      </div>
+      <div class=3D"work-lines" aria-hidden=3D"true"></div>
+      <div class=3D"answer">Answer: <span class=3D"blank"></span></div>
+    </div>
+
+    <div class=3D"problem-box">
+      <div class=3D"problem-head">
+        <div class=3D"problem-num">#9</div>
+        <div class=3D"work-hint">Show your work</div>
+      </div>
+      <div class=3D"vertical-problem" aria-label=3D"1579 times 9">
+        <div class=3D"vp-line"><span class=3D"vp-lhs"></span><span class=3D=
+"vp-rhs">1579</span></div>
+        <div class=3D"vp-line"><span class=3D"vp-lhs">=C3=97</span><span cl=
+ass=3D"vp-rhs">9</span></div>
+        <div class=3D"hline"></div>
+      </div>
+      <div class=3D"work-lines" aria-hidden=3D"true"></div>
+      <div class=3D"answer">Answer: <span class=3D"blank"></span></div>
+    </div>
+
+    <div class=3D"problem-box">
+      <div class=3D"problem-head">
+        <div class=3D"problem-num">#10</div>
+        <div class=3D"work-hint">Show your work</div>
+      </div>
+      <div class=3D"vertical-problem" aria-label=3D"2065 times 6">
+        <div class=3D"vp-line"><span class=3D"vp-lhs"></span><span class=3D=
+"vp-rhs">2065</span></div>
+        <div class=3D"vp-line"><span class=3D"vp-lhs">=C3=97</span><span cl=
+ass=3D"vp-rhs">6</span></div>
+        <div class=3D"hline"></div>
+      </div>
+      <div class=3D"work-lines" aria-hidden=3D"true"></div>
+      <div class=3D"answer">Answer: <span class=3D"blank"></span></div>
+    </div>
+
+  </div>
+  <footer>Ryan Davis 2025-26</footer>
+</section>
+
+
+
+</body></html>
+------MultipartBoundary--d6zT35LNsf895RMFs1zQ7ec1E9G5kZuBHRBKcMtSv3----
+Content-Type: text/css
+Content-Transfer-Encoding: quoted-printable
+Content-Location: cid:css-f7c7edf2-cbec-411d-a8f6-eee104032a89@mhtml.blink
+
+@charset "utf-8";
+
+:root { --ink: #111; --muted: #555; --border: #000; --accent: #0b62a3; --li=
+ne: #bbb; }
+
+@page { size: letter; margin: 0.5in; }
+
+html, body { margin: 0px; padding: 0px; font-family: system-ui, -apple-syst=
+em, "Segoe UI", Roboto, Helvetica, Arial, "Noto Sans", "Liberation Sans", s=
+ans-serif; color: var(--ink); }
+
+header { padding: 0.25rem 0px; border-bottom: 3px solid var(--border); }
+
+.title { font-size: 1.25rem; font-weight: 800; letter-spacing: 0.3px; }
+
+.meta { display: flex; gap: 1rem; font-size: 0.95rem; margin-top: 4px; colo=
+r: var(--muted); }
+
+.meta .field { border: 1.5px solid rgb(0, 0, 0); padding: 6px 8px; border-r=
+adius: 8px; min-width: 180px; }
+
+section.assessment { break-before: page; }
+
+section.assessment:first-of-type { margin-top: 0.1rem; break-before: auto; =
+}
+
+h2 { margin: 10px 0px 0px; font-size: 1.1rem; font-weight: 800; }
+
+.problems-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; =
+align-items: start; }
+
+.problem-box { border: 2px solid var(--border); border-radius: 12px; paddin=
+g: 10px 12px; break-inside: avoid; min-height: 240px; display: flex; flex-d=
+irection: column; justify-content: flex-start; }
+
+.problem-head { display: flex; justify-content: space-between; align-items:=
+ center; margin-bottom: 6px; }
+
+.problem-num { font-weight: 800; font-size: 0.95rem; background: rgb(244, 2=
+44, 244); padding: 2px 8px; border-radius: 999px; border: 1px solid rgb(0, =
+0, 0); }
+
+.work-hint { font-size: 0.8rem; color: var(--muted); }
+
+.vertical-problem { font-family: "Courier New", ui-monospace, SFMono-Regula=
+r, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size: 23px; =
+line-height: 1.25; margin-top: 6px; margin-bottom: 10px; width: 10ch; margi=
+n-left: 3rem; }
+
+.vp-line { display: flex; }
+
+.vp-lhs { width: 2ch; }
+
+.vp-rhs { flex: 1 1 0%; text-align: right; }
+
+.hline { border-top: 2px solid rgb(0, 0, 0); margin: 6px 0px 8px; }
+
+.work-lines { flex: 1 1 0%; border-radius: 6px; }
+
+.answer { padding: 0.3rem; margin-top: 10px; height: 3rem; margin-left: 13r=
+em; font-size: 0.9rem; width: 25%; display: block; place-content: center fl=
+ex-start; flex-direction: row; }
+
+.answer .blank { display: none; border-bottom: 2px solid rgb(0, 0, 0); min-=
+width: 160px; }
+
+footer { margin-top: 8px; font-size: 0.8rem; color: var(--muted); }
+
+.legend { font-size: 0.9rem; }
+
+@media print {
+  header { border-bottom-width: 2.5px; }
+  .problem-box { min-height: 260px; }
+}
+------MultipartBoundary--d6zT35LNsf895RMFs1zQ7ec1E9G5kZuBHRBKcMtSv3------

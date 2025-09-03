@@ -550,3 +550,5 @@ const removeFraction = (index: number) => {
   text-align: center;
 }
 </style>
+
+

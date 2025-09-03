@@ -80,16 +80,28 @@
           </div>
           
           <div class="form-group">
-            <label for="timeLimit">Time Limit (minutes)</label>
-            <input 
-              id="timeLimit"
-              v-model.number="assessment.timeLimit" 
-              type="number" 
-              class="form-input"
-              min="1"
-              max="180"
-              placeholder="30"
-            >
+            <label for="timeLimit">Time Limit</label>
+            <div class="time-limit-controls">
+              <label class="checkbox-label">
+                <input 
+                  type="checkbox" 
+                  v-model="noTimeLimit"
+                  @change="toggleTimeLimit"
+                >
+                No time limit
+              </label>
+              <input 
+                v-if="!noTimeLimit"
+                id="timeLimit"
+                v-model.number="assessment.timeLimit" 
+                type="number" 
+                class="form-input"
+                min="1"
+                max="180"
+                placeholder="30"
+              >
+              <span v-if="!noTimeLimit" class="time-unit">minutes</span>
+            </div>
           </div>
         </div>
 
@@ -133,6 +145,61 @@
             <small class="form-help">Students must upload a file to complete the assessment</small>
           </div>
 
+          <!-- Multi-page photo options -->
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input 
+                type="checkbox" 
+                v-model="assessment.requireMultiplePages"
+                @change="onMultiplePageToggle"
+              >
+              Require multiple pages/photos
+            </label>
+            <small class="form-help">Students must capture multiple pages (great for multi-step work)</small>
+          </div>
+          
+          <div v-if="assessment.requireMultiplePages" class="multi-page-options">
+            <div class="form-group">
+              <label for="requiredPageCount">Number of Required Pages</label>
+              <select 
+                id="requiredPageCount"
+                v-model="assessment.requiredPageCount" 
+                class="form-select"
+              >
+                <option v-for="n in 10" :key="n" :value="n">{{ n }} page{{ n > 1 ? 's' : '' }}</option>
+              </select>
+              <small class="form-help">How many pages students must capture</small>
+            </div>
+            
+            <div class="form-group">
+              <label class="checkbox-label">
+                <input 
+                  type="checkbox" 
+                  v-model="assessment.allowExtraPages"
+                >
+                Allow students to add extra pages beyond required
+              </label>
+              <small class="form-help">Students can capture additional pages if needed</small>
+            </div>
+            
+            <div class="form-group">
+              <label>Page Labels (optional)</label>
+              <div class="page-labels">
+                <div v-for="(label, index) in pageLabelsArray" :key="index" class="page-label-input">
+                  <span class="page-number">Page {{ index + 1 }}:</span>
+                  <input 
+                    type="text" 
+                    v-model="pageLabelsArray[index]"
+                    @input="updatePageLabels"
+                    class="form-input"
+                    :placeholder="`Page ${index + 1}`"
+                  >
+                </div>
+              </div>
+              <small class="form-help">Custom labels for each page (e.g., "Problem 1", "Work Page", "Answer Sheet")</small>
+            </div>
+          </div>
+
           <div class="form-group">
             <label for="fileUploadInstructions">File Upload Instructions</label>
             <textarea 
@@ -140,7 +207,7 @@
               v-model="assessment.fileUploadInstructions" 
               class="form-textarea"
               rows="3"
-              placeholder="Instructions for students about what files to upload (e.g., 'Take a clear photo of your work showing all calculations')"
+              :placeholder="getFileUploadPlaceholder()"
             ></textarea>
           </div>
 
@@ -411,13 +478,11 @@
             <div class="question-content">
               <div class="form-group">
                 <label>Question Text *</label>
-                <textarea 
+                <LaTeXEditor 
                   v-model="question.questionText" 
-                  required 
-                  class="form-textarea"
-                  rows="2"
-                  placeholder="Enter the question..."
-                ></textarea>
+                  :rows="3"
+                  placeholder="Enter the question... Use $...$ for inline math or $$...$$ for display math (e.g., What is $x^2 + 5x - 6$?)"
+                />
               </div>
 
               <div class="form-group">
@@ -453,6 +518,9 @@
                     <option value="essay">Essay</option>
                     <option value="number">Number</option>
                     <option value="fraction">Fraction</option>
+                    <option value="matching">Matching</option>
+                    <option value="rank-order">Rank Order</option>
+                    <option value="checkbox">Multiple Select (Checkboxes)</option>
                   </select>
                 </div>
                 
@@ -478,13 +546,13 @@
                     :key="optionIndex"
                     class="option-item"
                   >
-                    <input 
+                    <LaTeXEditor 
                       v-model="question.options![optionIndex]"
-                      type="text"
-                      class="form-input"
-                      placeholder="Enter option..."
-                      required
-                    >
+                      :rows="2"
+                      :show-preview="false"
+                      placeholder="Enter option... Use $...$ for math (e.g., $\frac{1}{2}$)"
+                      class="option-latex-editor"
+                    />
                     <label class="correct-checkbox">
                       <input 
                         type="radio"
@@ -560,6 +628,180 @@
                     @click="addFractionAnswer(index)"
                     class="add-btn"
                   >+ Add Equivalent Answer</button>
+                </div>
+              </div>
+
+              <!-- Matching Configuration -->
+              <div v-if="question.questionType === 'matching'" class="matching-config">
+                <div class="form-group">
+                  <label>Matching Pairs *</label>
+                  <p class="help-text">Create pairs of items that students need to match</p>
+                  
+                  <div class="matching-pairs-list">
+                    <div 
+                      v-for="(pair, pairIndex) in question.matchingPairs || []" 
+                      :key="pairIndex"
+                      class="matching-pair-item"
+                    >
+                      <div class="pair-inputs">
+                        <LaTeXEditor 
+                          v-model="question.matchingPairs![pairIndex].left"
+                          :rows="2"
+                          :show-preview="false"
+                          placeholder="Left item (e.g., $\frac{1}{2}$)"
+                          class="pair-latex-editor"
+                        />
+                        <span class="pair-connector">↔</span>
+                        <LaTeXEditor 
+                          v-model="question.matchingPairs![pairIndex].right"
+                          :rows="2"
+                          :show-preview="false"
+                          placeholder="Right item (e.g., $0.5$)"
+                          class="pair-latex-editor"
+                        />
+                        <button 
+                          type="button"
+                          @click="removeMatchingPair(index, pairIndex)"
+                          class="remove-btn"
+                        >×</button>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <button 
+                    type="button"
+                    @click="addMatchingPair(index)"
+                    class="add-btn"
+                  >+ Add Matching Pair</button>
+                </div>
+              </div>
+
+              <!-- Rank Order Configuration -->
+              <div v-if="question.questionType === 'rank-order'" class="rank-order-config">
+                <div class="form-group">
+                  <label>Items to Rank *</label>
+                  <p class="help-text">Add items that students need to put in the correct order</p>
+                  
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label>Order Type</label>
+                      <select v-model="question.orderType" class="form-select">
+                        <option value="ascending">Ascending (smallest to largest)</option>
+                        <option value="descending">Descending (largest to smallest)</option>
+                        <option value="custom">Custom Order</option>
+                      </select>
+                    </div>
+                  </div>
+                  
+                  <div class="rank-items-list">
+                    <div 
+                      v-for="(item, itemIndex) in question.itemsToRank || []" 
+                      :key="itemIndex"
+                      class="rank-item"
+                    >
+                      <span class="item-number">{{ itemIndex + 1 }}.</span>
+                      <LaTeXEditor 
+                        v-model="question.itemsToRank![itemIndex]"
+                        :rows="2"
+                        :show-preview="false"
+                        placeholder="e.g., $\frac{3}{4}$, $0.75$, $\frac{2}{3}$"
+                        class="rank-latex-editor"
+                      />
+                      <button 
+                        type="button"
+                        @click="removeRankItem(index, itemIndex)"
+                        class="remove-btn"
+                      >×</button>
+                    </div>
+                  </div>
+                  
+                  <button 
+                    type="button"
+                    @click="addRankItem(index)"
+                    class="add-btn"
+                  >+ Add Item to Rank</button>
+                  
+                  <div class="form-group" style="margin-top: 20px;">
+                    <label>Correct Order *</label>
+                    <p class="help-text">
+                      {{ question.orderType === 'ascending' ? 'Items will be automatically sorted from smallest to largest' :
+                         question.orderType === 'descending' ? 'Items will be automatically sorted from largest to smallest' :
+                         'Drag items above to set the correct order, or enter the correct sequence manually' }}
+                    </p>
+                    <div v-if="question.orderType === 'custom'" class="correct-order-list">
+                      <div 
+                        v-for="(item, orderIndex) in question.correctOrder || []" 
+                        :key="orderIndex"
+                        class="correct-order-item"
+                      >
+                        <span class="order-number">{{ orderIndex + 1 }}.</span>
+                        <select v-model="question.correctOrder![orderIndex]" class="form-select">
+                          <option value="">Select item</option>
+                          <option 
+                            v-for="rankItem in question.itemsToRank || []" 
+                            :key="rankItem"
+                            :value="rankItem"
+                          >{{ rankItem }}</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Checkbox Configuration -->
+              <div v-if="question.questionType === 'checkbox'" class="checkbox-config">
+                <div class="form-group">
+                  <label>Answer Options *</label>
+                  <p class="help-text">Add options and check all that should be correct answers</p>
+                  
+                  <div class="checkbox-options-list">
+                    <div 
+                      v-for="(option, optionIndex) in question.options || []" 
+                      :key="optionIndex"
+                      class="checkbox-option-item"
+                    >
+                      <div class="option-row">
+                        <input 
+                          type="checkbox"
+                          :checked="isCorrectCheckboxAnswer(question, optionIndex)"
+                          @change="toggleCorrectCheckboxAnswer(index, optionIndex)"
+                          class="correct-checkbox"
+                        />
+                        <LaTeXEditor 
+                          v-model="question.options![optionIndex]"
+                          :rows="2"
+                          :show-preview="false"
+                          placeholder="Enter option... Use $...$ for math (e.g., $\frac{1}{2}$)"
+                          class="option-latex-editor"
+                        />
+                        <button 
+                          type="button"
+                          @click="removeOption(question, optionIndex)"
+                          class="remove-btn"
+                        >×</button>
+                      </div>
+                      <small class="option-help">
+                        ✓ Check if this option is correct
+                      </small>
+                    </div>
+                  </div>
+                  
+                  <button 
+                    type="button"
+                    @click="addOption(question)"
+                    class="add-btn"
+                  >+ Add Option</button>
+                  
+                  <div class="correct-answers-summary">
+                    <strong>Correct Answers Selected:</strong>
+                    <span v-if="getCorrectCheckboxAnswers(question).length === 0" class="no-correct">
+                      ⚠️ No correct answers selected
+                    </span>
+                    <span v-else class="correct-count">
+                      {{ getCorrectCheckboxAnswers(question).length }} option(s)
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -640,8 +882,8 @@
             <span class="summary-value">{{ totalPoints }}</span>
           </div>
           <div class="summary-item">
-            <span class="summary-label">Estimated Time:</span>
-            <span class="summary-value">{{ assessment.timeLimit || 'No limit' }} min</span>
+            <span class="summary-label">Time Limit:</span>
+            <span class="summary-value">{{ assessment.timeLimit ? `${assessment.timeLimit} min` : 'No limit' }}</span>
           </div>
           <div class="summary-item">
             <span class="summary-label">Accommodations:</span>
@@ -694,7 +936,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '@/stores/authStore';
 import { usePermissions } from '@/composables/usePermissions';
@@ -705,6 +947,7 @@ import type { Assessment, AssessmentQuestion } from '@/types/iep';
 import { parseStandards, formatStandardsForDisplay } from '@/utils/standardsUtils';
 import type { Student as FirebaseStudent } from '@/types/users';
 import AssessmentUpdateWarning from '@/components/AssessmentUpdateWarning.vue';
+import LaTeXEditor from '@/components/LaTeXEditor.vue';
 
 const router = useRouter();
 const route = useRoute();
@@ -772,12 +1015,29 @@ const assessment = ref<Omit<Assessment, 'id' | 'createdAt' | 'updatedAt'>>({
   maxFileSize: 10,
   allowedFileTypes: ['jpg,jpeg,png', 'pdf'],
   
+  // Multi-page photo settings
+  requireMultiplePages: false,
+  requiredPageCount: 2,
+  pageLabels: [],
+  allowExtraPages: true,
+  
   // Retake settings
   allowRetakes: false,
   maxRetakes: 1,
   retakeMode: 'separate',
   retakeInstructions: 'You may retake this assessment to improve your score.'
 });
+
+// Time limit controls
+const noTimeLimit = ref(false);
+
+const toggleTimeLimit = () => {
+  if (noTimeLimit.value) {
+    assessment.value.timeLimit = 0; // 0 means no time limit
+  } else {
+    assessment.value.timeLimit = 30; // Default to 30 minutes
+  }
+};
 
 // Computed properties
 const totalPoints = computed(() => {
@@ -819,6 +1079,17 @@ const addQuestion = () => {
     correctAnswer: '',
     acceptableAnswers: [],
     correctFractionAnswers: [],
+    // Initialize matching fields
+    matchingPairs: [],
+    leftItems: [],
+    rightItems: [],
+    correctMatches: {},
+    // Initialize rank-order fields
+    itemsToRank: [],
+    correctOrder: [],
+    orderType: 'ascending',
+    // Initialize checkbox fields
+    correctAnswers: [],
     points: 1,
     explanation: ''
   };
@@ -883,6 +1154,132 @@ const removeFractionAnswer = (questionIndex: number, answerIndex: number) => {
   if (question.correctFractionAnswers) {
     question.correctFractionAnswers.splice(answerIndex, 1);
   }
+};
+
+// Matching question methods
+const addMatchingPair = (questionIndex: number) => {
+  const question = assessment.value!.questions[questionIndex];
+  if (!question.matchingPairs) {
+    question.matchingPairs = [];
+  }
+  question.matchingPairs.push({ left: '', right: '' });
+  updateMatchingItems(question);
+};
+
+const removeMatchingPair = (questionIndex: number, pairIndex: number) => {
+  const question = assessment.value!.questions[questionIndex];
+  if (question.matchingPairs) {
+    question.matchingPairs.splice(pairIndex, 1);
+    updateMatchingItems(question);
+  }
+};
+
+const updateMatchingItems = (question: AssessmentQuestion) => {
+  if (question.matchingPairs) {
+    question.leftItems = question.matchingPairs.map(pair => pair.left).filter(item => item.trim());
+    question.rightItems = question.matchingPairs.map(pair => pair.right).filter(item => item.trim());
+    question.correctMatches = {};
+    question.matchingPairs.forEach(pair => {
+      if (pair.left.trim() && pair.right.trim()) {
+        question.correctMatches![pair.left] = pair.right;
+      }
+    });
+  }
+};
+
+// Rank order question methods
+const addRankItem = (questionIndex: number) => {
+  const question = assessment.value!.questions[questionIndex];
+  if (!question.itemsToRank) {
+    question.itemsToRank = [];
+  }
+  question.itemsToRank.push('');
+  updateCorrectOrder(question);
+};
+
+const removeRankItem = (questionIndex: number, itemIndex: number) => {
+  const question = assessment.value!.questions[questionIndex];
+  if (question.itemsToRank) {
+    const removedItem = question.itemsToRank[itemIndex];
+    question.itemsToRank.splice(itemIndex, 1);
+    
+    // Remove from correct order if it exists
+    if (question.correctOrder) {
+      const orderIndex = question.correctOrder.indexOf(removedItem);
+      if (orderIndex > -1) {
+        question.correctOrder.splice(orderIndex, 1);
+      }
+    }
+    updateCorrectOrder(question);
+  }
+};
+
+const updateCorrectOrder = (question: AssessmentQuestion) => {
+  if (!question.itemsToRank) return;
+  
+  if (question.orderType === 'ascending' || question.orderType === 'descending') {
+    // Auto-sort for ascending/descending
+    const sortedItems = [...question.itemsToRank].filter(item => item.trim());
+    
+    // Try to sort numerically if possible
+    sortedItems.sort((a, b) => {
+      const numA = parseFloat(a);
+      const numB = parseFloat(b);
+      
+      if (!isNaN(numA) && !isNaN(numB)) {
+        return question.orderType === 'ascending' ? numA - numB : numB - numA;
+      }
+      
+      // Fallback to string comparison
+      return question.orderType === 'ascending' ? a.localeCompare(b) : b.localeCompare(a);
+    });
+    
+    question.correctOrder = sortedItems;
+  } else if (question.orderType === 'custom') {
+    // Initialize correct order array for custom ordering
+    if (!question.correctOrder) {
+      question.correctOrder = [...question.itemsToRank].filter(item => item.trim());
+    } else {
+      // Ensure correct order has same length as items to rank
+      const filteredItems = question.itemsToRank.filter(item => item.trim());
+      question.correctOrder = question.correctOrder.filter(item => filteredItems.includes(item));
+      
+      // Add any new items that aren't in correct order yet
+      filteredItems.forEach(item => {
+        if (!question.correctOrder!.includes(item)) {
+          question.correctOrder!.push(item);
+        }
+      });
+    }
+  }
+};
+
+// Checkbox question methods
+const isCorrectCheckboxAnswer = (question: AssessmentQuestion, optionIndex: number): boolean => {
+  if (!question.correctAnswers) return false;
+  return question.correctAnswers.includes(optionIndex.toString());
+};
+
+const toggleCorrectCheckboxAnswer = (questionIndex: number, optionIndex: number) => {
+  const question = assessment.value!.questions[questionIndex];
+  if (!question.correctAnswers) {
+    question.correctAnswers = [];
+  }
+  
+  const optionIndexStr = optionIndex.toString();
+  const currentIndex = question.correctAnswers.indexOf(optionIndexStr);
+  
+  if (currentIndex > -1) {
+    // Remove from correct answers
+    question.correctAnswers.splice(currentIndex, 1);
+  } else {
+    // Add to correct answers
+    question.correctAnswers.push(optionIndexStr);
+  }
+};
+
+const getCorrectCheckboxAnswers = (question: AssessmentQuestion): string[] => {
+  return question.correctAnswers || [];
 };
 
 const updateQuestionStandards = (question: AssessmentQuestion) => {
@@ -959,8 +1356,51 @@ const onFileUploadToggle = () => {
   if (!assessment.value.allowFileUpload) {
     // If disabling file upload, also disable require
     assessment.value.requireFileUpload = false;
+    assessment.value.requireMultiplePages = false;
   }
 };
+
+// Multi-page photo management
+const pageLabelsArray = ref<string[]>([]);
+
+const onMultiplePageToggle = () => {
+  if (!assessment.value.requireMultiplePages) {
+    // If disabling multiple pages, clear settings
+    assessment.value.requiredPageCount = 2;
+    assessment.value.pageLabels = [];
+    assessment.value.allowExtraPages = true;
+    pageLabelsArray.value = [];
+  } else {
+    // Initialize page labels array
+    initializePageLabels();
+  }
+};
+
+const initializePageLabels = () => {
+  const count = assessment.value.requiredPageCount || 2;
+  pageLabelsArray.value = Array(count).fill('').map((_, index) => 
+    assessment.value.pageLabels?.[index] || ''
+  );
+};
+
+const updatePageLabels = () => {
+  assessment.value.pageLabels = pageLabelsArray.value.filter(label => label.trim() !== '');
+};
+
+const getFileUploadPlaceholder = () => {
+  if (assessment.value.requireMultiplePages) {
+    const count = assessment.value.requiredPageCount || 2;
+    return `Instructions for capturing ${count} pages (e.g., 'Take clear photos of each page of your work. Page 1: Problem setup, Page 2: Solution steps')`;
+  }
+  return 'Instructions for students about what files to upload (e.g., \'Take a clear photo of your work showing all calculations\')';
+};
+
+// Watch for page count changes
+watch(() => assessment.value.requiredPageCount, (newCount: number | undefined) => {
+  if (assessment.value.requireMultiplePages && newCount) {
+    initializePageLabels();
+  }
+});
 
 const loadAssessment = async () => {
   if (!isEditing.value) return;
@@ -1142,6 +1582,11 @@ const loadStudents = async () => {
   }
 };
 
+// Watch for assessment changes to initialize noTimeLimit
+watch(() => assessment.value.timeLimit, (newTimeLimit) => {
+  noTimeLimit.value = newTimeLimit === 0;
+}, { immediate: true });
+
 // Load assessment if editing and load students
 onMounted(() => {
   loadAssessment();
@@ -1300,6 +1745,35 @@ onMounted(() => {
   background: #f8fafc;
   border-radius: 10px;
   border-left: 4px solid #667eea;
+}
+
+.multi-page-options {
+  margin-left: 20px;
+  padding: 15px;
+  background: #f0f4ff;
+  border-radius: 8px;
+  border-left: 3px solid #10b981;
+  margin-top: 10px;
+}
+
+.page-labels {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.page-label-input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.page-number {
+  min-width: 70px;
+  font-weight: 500;
+  color: #374151;
+  font-size: 0.9rem;
 }
 
 .file-types-selection {
@@ -1902,7 +2376,7 @@ onMounted(() => {
   }
 }
 
-.fraction-config {
+.fraction-config, .matching-config, .rank-order-config, .checkbox-config {
   background: #f8fafc;
   padding: 20px;
   border-radius: 8px;
@@ -2002,5 +2476,207 @@ onMounted(() => {
   border-radius: 4px;
   font-size: 0.8rem;
   font-weight: 500;
+}
+
+/* Matching question styles */
+.matching-pairs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.matching-pair-item {
+  background: white;
+  padding: 15px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+
+.pair-inputs {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pair-input {
+  flex: 1;
+}
+
+.pair-connector {
+  font-size: 1.2rem;
+  color: #64748b;
+  font-weight: bold;
+}
+
+/* Rank order question styles */
+.rank-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rank-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: white;
+  padding: 12px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+
+.item-number {
+  background: #0ea5e9;
+  color: white;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.rank-input {
+  flex: 1;
+}
+
+.correct-order-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.correct-order-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.order-number {
+  background: #10b981;
+  color: white;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+/* Checkbox question styles */
+.checkbox-options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.checkbox-option-item {
+  background: white;
+  padding: 15px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+
+.option-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.correct-checkbox {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+}
+
+.option-input {
+  flex: 1;
+}
+
+.option-help {
+  color: #6b7280;
+  font-size: 0.85rem;
+  margin-top: 5px;
+  display: block;
+}
+
+.correct-answers-summary {
+  margin-top: 20px;
+  padding: 15px;
+  background: #f9fafb;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+}
+
+.correct-answers-summary strong {
+  color: #374151;
+  margin-right: 10px;
+}
+
+.no-correct {
+  color: #dc2626;
+  font-weight: 500;
+}
+
+.correct-count {
+  color: #059669;
+  font-weight: 500;
+}
+
+.time-limit-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.time-limit-controls .checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.time-limit-controls .form-input {
+  width: 100px;
+}
+
+.time-unit {
+  color: #6b7280;
+  font-size: 0.9rem;
+  margin-left: 8px;
+}
+
+/* LaTeX Editor Styles for Answer Options */
+.option-latex-editor {
+  flex: 1;
+  border-radius: 6px;
+}
+
+.pair-latex-editor {
+  flex: 1;
+  max-width: 300px;
+  border-radius: 6px;
+}
+
+.rank-latex-editor {
+  flex: 1;
+  border-radius: 6px;
+}
+
+/* Adjust option item layout for LaTeX editors */
+.option-item {
+  align-items: flex-start;
+  gap: 15px;
+}
+
+.pair-inputs {
+  align-items: flex-start;
 }
 </style>

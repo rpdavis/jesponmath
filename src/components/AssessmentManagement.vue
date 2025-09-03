@@ -656,7 +656,13 @@ const exportAssessments = () => {
 
 const formatDate = (timestamp: any) => {
   if (!timestamp) return '-';
-  return new Date(timestamp.seconds ? timestamp.seconds * 1000 : timestamp).toLocaleDateString();
+  
+  try {
+    return new Date(timestamp.seconds ? timestamp.seconds * 1000 : timestamp).toLocaleDateString();
+  } catch (error) {
+    console.warn('Unable to format date:', timestamp);
+    return 'Invalid Date';
+  }
 };
 
 // Load data on component mount

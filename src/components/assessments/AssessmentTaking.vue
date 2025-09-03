@@ -113,6 +113,112 @@
           </div>
         </div>
 
+        <!-- Final Screen -->
+        <div v-else-if="onFinalScreen" class="final-screen">
+          <div class="final-header">
+            <h2>📝 Review & Submit</h2>
+            <p>You've completed all questions. Review your work and submit when ready.</p>
+          </div>
+
+          <!-- Assessment Summary -->
+          <div class="assessment-summary">
+            <div class="summary-stats">
+              <div class="stat-item">
+                <span class="stat-label">Questions Answered:</span>
+                <span class="stat-value">{{ Object.keys(answers).length }}/{{ assessment.questions?.length }}</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">Time Spent:</span>
+                <span class="stat-value">{{ Math.round((Date.now() - (startTime?.getTime() || Date.now())) / 60000) }} minutes</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- File Upload Section (moved here) -->
+          <div v-if="assessment.allowFileUpload" class="file-upload-section">
+            <div class="upload-header">
+              <span class="upload-icon">📎</span>
+              <h4>{{ getUploadTitle() }}</h4>
+            </div>
+            <p>{{ assessment.fileUploadInstructions }}</p>
+            
+            <!-- Multi-page progress -->
+            <div v-if="assessment.requireMultiplePages" class="multi-page-progress">
+              <div class="page-progress">
+                <span class="progress-label">Pages captured:</span>
+                <span class="progress-count">{{ uploadedFiles.length }}/{{ assessment.requiredPageCount || 2 }}</span>
+              </div>
+              
+              <!-- Page labels -->
+              <div v-if="assessment.pageLabels?.length" class="page-labels-list">
+                <div v-for="(label, index) in assessment.pageLabels" :key="index" class="page-label">
+                  <span class="page-number">{{ index + 1 }}.</span>
+                  <span class="page-title">{{ label }}</span>
+                  <span v-if="uploadedFiles[index]" class="page-status">✅</span>
+                  <span v-else class="page-status">📷</span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="upload-area">
+              <input 
+                ref="fileInput"
+                type="file"
+                :accept="getAcceptedFileTypes()"
+                multiple
+                @change="handleFileUpload"
+                class="file-input"
+              />
+              
+              <div class="upload-buttons">
+                <button 
+                  type="button"
+                  @click="fileInput?.click()"
+                  class="upload-btn file-btn"
+                >
+                  📁 Choose Files
+                </button>
+                
+                <button 
+                  type="button"
+                  @click="showCamera = true"
+                  class="upload-btn camera-btn"
+                >
+                  📷 Take Photo
+                </button>
+              </div>
+              
+              <div v-if="uploadedFiles.length > 0" class="uploaded-files">
+                <h5>Uploaded Files:</h5>
+                <div v-for="(file, index) in uploadedFiles" :key="index" class="uploaded-file">
+                  <span class="file-name">{{ file.name }}</span>
+                  <span class="file-size">({{ formatFileSize(file.size) }})</span>
+                  <button @click="removeFile(file)" class="remove-file-btn">×</button>
+                </div>
+              </div>
+              
+              <div v-if="assessment.requireFileUpload && uploadedFiles.length === 0" class="upload-required">
+                ⚠️ File upload is required to submit this assessment
+              </div>
+            </div>
+          </div>
+
+          <!-- Final Actions -->
+          <div class="final-actions">
+            <button @click="previousQuestion" class="nav-button back-button">
+              ← Back to Questions
+            </button>
+            <button 
+              @click="submitAssessment" 
+              class="nav-button submit-button"
+              :disabled="assessment.requireFileUpload && uploadedFiles.length === 0"
+            >
+              🚀 Submit Assessment
+            </button>
+          </div>
+        </div>
+
+        <!-- Questions Container -->
         <div v-else class="questions-container">
           <!-- Timer -->
           <div v-if="assessment.timeLimit" class="timer">
@@ -121,9 +227,11 @@
           </div>
 
           <!-- Progress -->
-          <div class="progress-bar">
-            <div class="progress-fill" :style="{ width: progressPercentage + '%' }"></div>
-            <span class="progress-text">Question {{ currentQuestionIndex + 1 }} of {{ assessment.questions?.length }}</span>
+          <div class="progress-display">
+            <span class="progress-text">{{ currentQuestionIndex + 1 }}/{{ assessment.questions?.length }}</span>
+            <div class="progress-bar">
+              <div class="progress-fill" :style="{ width: progressPercentage + '%' }"></div>
+            </div>
           </div>
 
           <!-- Current Question -->
@@ -143,7 +251,7 @@
             </div>
             
             <div class="question-content">
-              <div class="question-text">{{ currentQuestion.questionText }}</div>
+              <div class="question-text" v-html="renderLatexInText(currentQuestion.questionText)"></div>
               
               <!-- Multiple Choice -->
               <div v-if="currentQuestion.questionType === 'multiple-choice'" class="answer-options">
@@ -158,7 +266,7 @@
                     :value="index.toString()"
                     v-model="answers[currentQuestion.id]"
                   >
-                  <span>{{ option }}</span>
+                  <span v-html="renderLatexInText(option)"></span>
                 </label>
               </div>
 
@@ -177,6 +285,7 @@
               <!-- Short Answer -->
               <div v-else-if="currentQuestion.questionType === 'short-answer'" class="answer-input">
                 <RichTextAnswerInput
+                  :key="currentQuestion.id"
                   v-model="answers[currentQuestion.id] as string"
                   placeholder="Enter your answer... Use 'Insert Fraction' button for vertical fractions like 2x/4 or complex expressions."
                 />
@@ -203,52 +312,97 @@
                   <span>False</span>
                 </label>
               </div>
-            </div>
-          </div>
 
-          <!-- File Upload Section -->
-          <div v-if="assessment.allowFileUpload" class="file-upload-section">
-            <div class="upload-header">
-              <span class="upload-icon">📎</span>
-              <h4>Upload Your Work {{ assessment.requireFileUpload ? '(Required)' : '(Optional)' }}</h4>
-            </div>
-            <p>{{ assessment.fileUploadInstructions }}</p>
-            
-            <div class="upload-area">
-              <input 
-                ref="fileInput"
-                type="file" 
-                multiple
-                :accept="getAcceptedFileTypes()"
-                @change="handleFileUpload"
-                class="file-input"
-                style="display: none;"
-              >
-              
-              <div class="upload-buttons">
-                <button @click="capturePhoto" class="photo-button">
-                  <span class="button-icon">📷</span>
-                  Take Photo
-                </button>
-                <button @click="selectFile" class="file-button">
-                  <span class="button-icon">📁</span>
-                  Choose File
-                </button>
-              </div>
-              
-              <!-- Uploaded Files -->
-              <div v-if="uploadedFiles.length > 0" class="uploaded-files">
-                <h5>Uploaded Files:</h5>
-                <div 
-                  v-for="file in uploadedFiles" 
-                  :key="file.name"
-                  class="file-item"
-                >
-                  <span class="file-icon">📄</span>
-                  <span class="file-name">{{ file.name }}</span>
-                  <span class="file-size">({{ formatFileSize(file.size) }})</span>
-                  <button @click="removeFile(file)" class="remove-file">×</button>
+              <!-- Matching Questions -->
+              <div v-else-if="currentQuestion.questionType === 'matching'" class="matching-question">
+                <p class="matching-instruction">Match each item on the left with the correct item on the right:</p>
+                <div class="matching-container">
+                  <div class="matching-left">
+                    <h4>Items to Match:</h4>
+                    <div 
+                      v-for="(leftItem, index) in currentQuestion.leftItems" 
+                      :key="index"
+                      class="matching-item left-item"
+                      :class="{ 'matched': getMatchForLeftItem(leftItem) }"
+                    >
+                      <span class="item-text" v-html="renderLatexInText(leftItem)"></span>
+                      <select 
+                        :value="getMatchForLeftItem(leftItem)"
+                        @change="updateMatch(leftItem, ($event.target as HTMLSelectElement)?.value || '')"
+                        class="match-select"
+                      >
+                        <option value="">Select match...</option>
+                        <option 
+                          v-for="rightItem in currentQuestion.rightItems" 
+                          :key="rightItem"
+                          :value="rightItem"
+                        v-html="renderLatexInText(rightItem)"></option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="matching-right">
+                    <h4>Available Matches:</h4>
+                    <div 
+                      v-for="rightItem in currentQuestion.rightItems" 
+                      :key="rightItem"
+                      class="matching-item right-item"
+                      :class="{ 'used': isRightItemUsed(rightItem) }"
+                    >
+                      <span v-html="renderLatexInText(rightItem)"></span>
+                    </div>
+                  </div>
                 </div>
+              </div>
+
+              <!-- Rank Order Questions -->
+              <div v-else-if="currentQuestion.questionType === 'rank-order'" class="rank-order-question">
+                <p class="rank-instruction">
+                  Drag the items below to put them in the correct order
+                  ({{ currentQuestion.orderType === 'ascending' ? 'smallest to largest' : 
+                      currentQuestion.orderType === 'descending' ? 'largest to smallest' : 
+                      'correct sequence' }}):
+                </p>
+                <div class="rank-container">
+                  <div 
+                    v-for="(item, index) in getRankOrderItems()" 
+                    :key="item"
+                    class="rank-item"
+                    draggable="true"
+                    @dragstart="startDrag(index, item)"
+                    @dragover.prevent
+                    @drop="dropItem(index)"
+                    @dragenter.prevent
+                  >
+                    <div class="rank-number">{{ index + 1 }}</div>
+                    <div class="rank-content" v-html="renderLatexInText(item)"></div>
+                    <div class="drag-handle">⋮⋮</div>
+                  </div>
+                </div>
+                <p class="rank-help">💡 Tip: Click and drag items to reorder them</p>
+              </div>
+
+              <!-- Checkbox Questions -->
+              <div v-else-if="currentQuestion.questionType === 'checkbox'" class="checkbox-question">
+                <p class="checkbox-instruction">Select all correct answers:</p>
+                <div class="checkbox-options">
+                  <label 
+                    v-for="(option, index) in currentQuestion.options" 
+                    :key="index"
+                    class="checkbox-label"
+                  >
+                    <input 
+                      type="checkbox" 
+                      :value="index.toString()"
+                      :checked="getCheckboxAnswers(currentQuestion.id).includes(index.toString())"
+                      @change="toggleCheckboxAnswer(currentQuestion.id, index.toString())"
+                      class="checkbox-input"
+                    >
+                    <span class="checkbox-text" v-html="renderLatexInText(option)"></span>
+                  </label>
+                </div>
+                <p class="checkbox-help">
+                  💡 Tip: You can select multiple answers. Make sure to choose all that are correct.
+                </p>
               </div>
             </div>
           </div>
@@ -277,7 +431,7 @@
             </div>
             
             <button 
-              v-if="currentQuestionIndex < (assessment.questions?.length || 0) - 1"
+              v-if="!isLastQuestion"
               @click="nextQuestion" 
               class="nav-button next-button"
             >
@@ -285,11 +439,10 @@
             </button>
             <button 
               v-else
-              @click="submitAssessment" 
-              class="nav-button submit-button"
-              :disabled="assessment.requireFileUpload && uploadedFiles.length === 0"
+              @click="nextQuestion" 
+              class="nav-button review-button"
             >
-              Submit Assessment
+              Review & Submit →
             </button>
           </div>
         </div>
@@ -301,6 +454,10 @@
       v-if="showCamera"
       @close="showCamera = false"
       @photoTaken="handlePhotoTaken"
+      :isMultiPage="assessment?.requireMultiplePages"
+      :currentPage="currentPageIndex + 1"
+      :totalPages="assessment?.requiredPageCount || 1"
+      :pageLabel="getCurrentPageLabel()"
     />
   </div>
 </template>
@@ -320,6 +477,7 @@ import type { Assessment, AssessmentQuestion, FractionAnswer } from '@/types/iep
 import { checkFractionAnswer, type Fraction } from '@/utils/fractionUtils';
 import { parseStandards, formatStandardsForDisplay } from '@/utils/standardsUtils';
 import { areAnswersEquivalent, convertHtmlAnswerToText, debugAnswerConversion } from '@/utils/answerUtils';
+import { renderLatexInText } from '@/utils/latexUtils';
 
 const router = useRouter();
 const route = useRoute();
@@ -332,9 +490,12 @@ const error = ref('');
 const started = ref(false);
 const currentQuestionIndex = ref(0);
 const answers = ref<Record<string, string | Fraction>>({});
+const showingInstructions = ref(true);
+const onFinalScreen = ref(false);
 const uploadedFiles = ref<File[]>([]);
 const startTime = ref<Date | null>(null);
 const timeRemaining = ref(0);
+const fileInput = ref<HTMLInputElement>();
 
 // Retake tracking
 const existingResults = ref<any[]>([]);
@@ -347,10 +508,14 @@ let timerInterval: number | null = null;
 
 // Computed
 const currentQuestion = computed(() => {
-  if (!assessment.value?.questions || currentQuestionIndex.value >= assessment.value.questions.length) {
+  if (!assessment.value?.questions || currentQuestionIndex.value >= assessment.value.questions.length || onFinalScreen.value) {
     return null;
   }
   return assessment.value.questions[currentQuestionIndex.value];
+});
+
+const isLastQuestion = computed(() => {
+  return currentQuestionIndex.value >= (assessment.value?.questions?.length || 0) - 1;
 });
 
 const progressPercentage = computed(() => {
@@ -423,6 +588,7 @@ const loadAssessment = async () => {
 
 const startAssessment = () => {
   started.value = true;
+  showingInstructions.value = false;
   startTime.value = new Date();
   
   // Start timer if time limit exists
@@ -438,14 +604,25 @@ const startAssessment = () => {
   console.log('🚀 Assessment started');
 };
 
+const hideInstructions = () => {
+  showingInstructions.value = false;
+};
+
 const nextQuestion = () => {
   if (currentQuestionIndex.value < (assessment.value?.questions?.length || 0) - 1) {
     currentQuestionIndex.value++;
+  } else {
+    // Go to final screen for file upload and submission
+    onFinalScreen.value = true;
   }
 };
 
 const previousQuestion = () => {
-  if (currentQuestionIndex.value > 0) {
+  if (onFinalScreen.value) {
+    onFinalScreen.value = false;
+    // Go back to last question
+    currentQuestionIndex.value = (assessment.value?.questions?.length || 0) - 1;
+  } else if (currentQuestionIndex.value > 0) {
     currentQuestionIndex.value--;
   }
 };
@@ -524,6 +701,54 @@ const submitAssessment = async () => {
           isCorrect = checkFractionAnswer(userAnswer as Fraction, question.correctFractionAnswers);
         } else if (question.correctFractionAnswers && typeof userAnswer === 'string') {
           isCorrect = checkFractionAnswer(userAnswer, question.correctFractionAnswers);
+        }
+      } else if (question.questionType === 'matching') {
+        // For matching questions, check if all pairs are correctly matched
+        if (question.correctMatches && typeof userAnswer === 'object' && !Array.isArray(userAnswer) && userAnswer !== null && !('numerator' in userAnswer)) {
+          const userMatches = userAnswer as { [key: string]: string };
+          const correctMatches = question.correctMatches;
+          
+          // Check if all correct matches are present and accurate
+          let allCorrect = true;
+          for (const [leftItem, correctRightItem] of Object.entries(correctMatches)) {
+            if (userMatches[leftItem] !== correctRightItem) {
+              allCorrect = false;
+              break;
+            }
+          }
+          
+          // Also check that no extra incorrect matches were made
+          if (allCorrect) {
+            for (const [leftItem, userRightItem] of Object.entries(userMatches)) {
+              if (correctMatches[leftItem] !== userRightItem) {
+                allCorrect = false;
+                break;
+              }
+            }
+          }
+          
+          isCorrect = allCorrect;
+        }
+      } else if (question.questionType === 'rank-order') {
+        // For rank-order questions, check if items are in correct order
+        if (question.correctOrder && Array.isArray(userAnswer)) {
+          const userOrder = userAnswer as string[];
+          const correctOrder = question.correctOrder;
+          
+          // Check if arrays are same length and in same order
+          isCorrect = userOrder.length === correctOrder.length &&
+                     userOrder.every((item, index) => item === correctOrder[index]);
+        }
+      } else if (question.questionType === 'checkbox') {
+        // For checkbox questions, check if selected answers match all correct answers
+        if (question.correctAnswers && Array.isArray(userAnswer)) {
+          const userAnswers = userAnswer as string[];
+          const correctAnswers = question.correctAnswers;
+          
+          // Check if arrays have same length and contain same elements
+          isCorrect = userAnswers.length === correctAnswers.length &&
+                     userAnswers.every(answer => correctAnswers.includes(answer)) &&
+                     correctAnswers.every(answer => userAnswers.includes(answer));
         }
       } else {
         // For other question types (short-answer, essay, etc.), use enhanced comparison
@@ -716,9 +941,13 @@ const handleFileUpload = (event: Event) => {
 };
 
 const showCamera = ref(false);
+const currentPageIndex = ref(0);
+const capturedPages = ref<File[]>([]);
 
 const capturePhoto = () => {
+  console.log('📷 Opening camera modal, showCamera was:', showCamera.value);
   showCamera.value = true;
+  console.log('📷 Camera modal opened, showCamera is now:', showCamera.value);
 };
 
 const selectFile = () => {
@@ -728,8 +957,52 @@ const selectFile = () => {
 
 const handlePhotoTaken = (file: File) => {
   console.log('📷 Photo received from camera:', file.name, file.size);
-  uploadedFiles.value.push(file);
+  
+  if (assessment.value?.requireMultiplePages) {
+    // Multi-page mode: add to specific page
+    capturedPages.value[currentPageIndex.value] = file;
+    
+    // Check if we need more pages
+    const requiredPages = assessment.value.requiredPageCount || 1;
+    if (currentPageIndex.value < requiredPages - 1) {
+      currentPageIndex.value++;
+      console.log(`📄 Moving to page ${currentPageIndex.value + 1}/${requiredPages}`);
+      // Keep camera open for next page
+      return;
+    } else {
+      // All required pages captured, add all to uploaded files
+      uploadedFiles.value.push(...capturedPages.value.filter(f => f));
+    }
+  } else {
+    // Single page mode: add directly
+    uploadedFiles.value.push(file);
+  }
+  
+  console.log('📷 Closing camera modal');
   showCamera.value = false;
+};
+
+const getCurrentPageLabel = () => {
+  if (!assessment.value?.requireMultiplePages) return undefined;
+  
+  const pageLabels = assessment.value.pageLabels || [];
+  return pageLabels[currentPageIndex.value] || `Page ${currentPageIndex.value + 1}`;
+};
+
+const getUploadTitle = () => {
+  const required = assessment.value?.requireFileUpload ? '(Required)' : '(Optional)';
+  
+  if (assessment.value?.requireMultiplePages) {
+    const count = assessment.value.requiredPageCount || 1;
+    return `Upload Your Work - ${count} Pages ${required}`;
+  }
+  
+  return `Upload Your Work ${required}`;
+};
+
+const getPageLabel = (index: number) => {
+  const pageLabels = assessment.value?.pageLabels || [];
+  return pageLabels[index] || `Page ${index + 1}`;
 };
 
 const removeFile = (fileToRemove: File) => {
@@ -748,11 +1021,29 @@ const getScoreClass = (percentage: number): string => {
 };
 
 const formatDate = (timestamp: any): string => {
+  if (!timestamp) return 'N/A';
+  
   if (timestamp?.seconds) {
     return new Date(timestamp.seconds * 1000).toLocaleDateString();
   }
-  return new Date(timestamp).toLocaleDateString();
+  
+  try {
+    return new Date(timestamp).toLocaleDateString();
+  } catch (error) {
+    console.warn('Unable to format date:', timestamp);
+    return 'Invalid Date';
+  }
 };
+
+const formatFileSize = (bytes: number): string => {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+};
+
+
 
 const getAcceptedFileTypes = () => {
   if (!assessment.value?.allowedFileTypes?.length) return '*';
@@ -764,16 +1055,125 @@ const getAcceptedFileTypes = () => {
     .join(',');
 };
 
-const formatFileSize = (bytes: number) => {
-  if (bytes < 1024) return bytes + ' B';
-  if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + ' KB';
-  return Math.round(bytes / 1024 / 1024) + ' MB';
-};
+
 
 const formatTime = (seconds: number) => {
   const minutes = Math.floor(seconds / 60);
   const remainingSeconds = seconds % 60;
   return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+};
+
+// Matching question methods
+const getMatchForLeftItem = (leftItem: string): string => {
+  if (!currentQuestion.value) return '';
+  const questionId = currentQuestion.value.id;
+  const matchingAnswer = answers.value[questionId] as any;
+  
+  if (matchingAnswer && typeof matchingAnswer === 'object') {
+    return matchingAnswer[leftItem] || '';
+  }
+  return '';
+};
+
+const updateMatch = (leftItem: string, rightItem: string) => {
+  if (!currentQuestion.value) return;
+  const questionId = currentQuestion.value.id;
+  
+  if (!answers.value[questionId]) {
+    answers.value[questionId] = {} as any;
+  }
+  
+  const matchingAnswer = answers.value[questionId] as any;
+  if (rightItem === '') {
+    delete matchingAnswer[leftItem];
+  } else {
+    matchingAnswer[leftItem] = rightItem;
+  }
+};
+
+const isRightItemUsed = (rightItem: string): boolean => {
+  if (!currentQuestion.value) return false;
+  const questionId = currentQuestion.value.id;
+  const matchingAnswer = answers.value[questionId] as any;
+  
+  if (matchingAnswer && typeof matchingAnswer === 'object') {
+    return Object.values(matchingAnswer).includes(rightItem);
+  }
+  return false;
+};
+
+// Rank order question methods
+const getRankOrderItems = (): string[] => {
+  if (!currentQuestion.value) return [];
+  const questionId = currentQuestion.value.id;
+  
+  // Get current order from answers, or use shuffled original items
+  let currentOrder = answers.value[questionId] as any;
+  
+  if (!currentOrder || !Array.isArray(currentOrder)) {
+    // Initialize with shuffled items if not already set
+    const items = [...(currentQuestion.value.itemsToRank || [])].filter(item => item.trim());
+    // Shuffle the items for initial display
+    for (let i = items.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [items[i], items[j]] = [items[j], items[i]];
+    }
+    answers.value[questionId] = items as any;
+    return items;
+  }
+  
+  return currentOrder;
+};
+
+let draggedItemIndex: number | null = null;
+
+const startDrag = (index: number, item: string) => {
+  draggedItemIndex = index;
+};
+
+const dropItem = (dropIndex: number) => {
+  if (draggedItemIndex === null || !currentQuestion.value) return;
+  
+  const questionId = currentQuestion.value.id;
+  const currentItems = getRankOrderItems();
+  
+  if (draggedItemIndex !== dropIndex) {
+    // Remove item from original position and insert at new position
+    const draggedItem = currentItems[draggedItemIndex];
+    const newOrder = [...currentItems];
+    newOrder.splice(draggedItemIndex, 1);
+    newOrder.splice(dropIndex, 0, draggedItem);
+    
+    answers.value[questionId] = newOrder as any;
+  }
+  
+  draggedItemIndex = null;
+};
+
+// Checkbox question methods
+const getCheckboxAnswers = (questionId: string): string[] => {
+  const answer = answers.value[questionId];
+  if (Array.isArray(answer)) {
+    return answer as string[];
+  }
+  // Initialize as empty array if not set
+  answers.value[questionId] = [] as any;
+  return [];
+};
+
+const toggleCheckboxAnswer = (questionId: string, value: string) => {
+  const currentAnswers = getCheckboxAnswers(questionId);
+  const index = currentAnswers.indexOf(value);
+  
+  if (index > -1) {
+    // Remove if already selected
+    currentAnswers.splice(index, 1);
+  } else {
+    // Add if not selected
+    currentAnswers.push(value);
+  }
+  
+  answers.value[questionId] = currentAnswers as any;
 };
 
 // Cleanup timer on unmount
@@ -1315,6 +1715,343 @@ onMounted(() => {
   font-weight: 500;
 }
 
+.final-screen {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 30px;
+}
+
+.final-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.final-header h2 {
+  color: #1f2937;
+  margin-bottom: 10px;
+}
+
+.final-header p {
+  color: #6b7280;
+  font-size: 1.1rem;
+}
+
+.assessment-summary {
+  background: #f0f9ff;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 30px;
+  border: 1px solid #bae6fd;
+}
+
+.summary-stats {
+  display: flex;
+  gap: 30px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.stat-item {
+  text-align: center;
+}
+
+.stat-label {
+  display: block;
+  font-size: 0.9rem;
+  color: #6b7280;
+  margin-bottom: 5px;
+}
+
+.stat-value {
+  display: block;
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.final-actions {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  margin-top: 30px;
+}
+
+.minimized-instructions {
+  background: #fffbeb;
+  border: 1px solid #fbbf24;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  overflow: hidden;
+}
+
+.instructions-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: #fef3c7;
+  border-bottom: 1px solid #fbbf24;
+}
+
+.instructions-header h4 {
+  margin: 0;
+  color: #92400e;
+  font-size: 1rem;
+}
+
+.hide-instructions-btn {
+  background: none;
+  border: none;
+  color: #92400e;
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.hide-instructions-btn:hover {
+  background: #fbbf24;
+  color: white;
+}
+
+.instructions-content {
+  padding: 16px;
+  color: #92400e;
+}
+
+.show-instructions-btn {
+  background: #fef3c7;
+  border: 1px solid #fbbf24;
+  color: #92400e;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-bottom: 20px;
+  font-size: 0.9rem;
+}
+
+.show-instructions-btn:hover {
+  background: #fbbf24;
+  color: white;
+}
+
+.progress-display {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.progress-text {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #374151;
+  min-width: 60px;
+}
+
+.review-button {
+  background: #10b981;
+  border-color: #10b981;
+}
+
+.review-button:hover {
+  background: #059669;
+  border-color: #059669;
+}
+
+.upload-buttons {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  margin: 20px 0;
+}
+
+.upload-btn {
+  padding: 12px 20px;
+  border: 2px solid;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.file-btn {
+  background: #3b82f6;
+  color: white;
+  border-color: #3b82f6;
+}
+
+.file-btn:hover {
+  background: #2563eb;
+  border-color: #2563eb;
+}
+
+.camera-btn {
+  background: #10b981;
+  color: white;
+  border-color: #10b981;
+}
+
+.camera-btn:hover {
+  background: #059669;
+  border-color: #059669;
+}
+
+.uploaded-files {
+  margin-top: 20px;
+}
+
+.uploaded-files h5 {
+  color: #374151;
+  margin-bottom: 10px;
+  font-size: 1rem;
+}
+
+.uploaded-file {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: #f9fafb;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.file-name {
+  flex: 1;
+  color: #374151;
+  font-weight: 500;
+}
+
+.file-size {
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.remove-file-btn {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+  border-radius: 4px;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.remove-file-btn:hover {
+  background: #fee2e2;
+}
+
+.file-upload-section {
+  background: #f0fdf4;
+  border-radius: 15px;
+  padding: 25px;
+  margin-bottom: 30px;
+  border: 2px dashed #bbf7d0;
+}
+
+.upload-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.upload-icon {
+  font-size: 1.5rem;
+}
+
+.upload-header h4 {
+  color: #065f46;
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.upload-area {
+  text-align: center;
+}
+
+.file-input {
+  display: none;
+}
+
+.upload-required {
+  background: #fef2f2;
+  color: #dc2626;
+  padding: 12px;
+  border-radius: 6px;
+  margin-top: 15px;
+  font-weight: 500;
+  border: 1px solid #fecaca;
+}
+
+.multi-page-progress {
+  background: white;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  border: 1px solid #d1fae5;
+}
+
+.page-progress {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.progress-label {
+  font-weight: 500;
+  color: #065f46;
+}
+
+.progress-count {
+  font-weight: 600;
+  color: #059669;
+  font-size: 1.1rem;
+}
+
+.page-labels-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.page-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #f0fdf4;
+  border-radius: 6px;
+  border: 1px solid #bbf7d0;
+}
+
+.page-number {
+  font-weight: 600;
+  color: #065f46;
+  min-width: 20px;
+}
+
+.page-title {
+  flex: 1;
+  color: #047857;
+  font-weight: 500;
+}
+
+.page-status {
+  font-size: 1.2rem;
+}
+
 .true-false-options {
   display: flex;
   gap: 20px;
@@ -1327,6 +2064,44 @@ onMounted(() => {
   padding: 25px;
   margin-bottom: 30px;
   border: 2px dashed #bbf7d0;
+}
+
+.multi-page-progress {
+  margin: 15px 0;
+  padding: 15px;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 10px;
+}
+
+.page-progress {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.page-indicator {
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  border: 2px solid #e5e7eb;
+  background: white;
+  color: #6b7280;
+}
+
+.page-indicator.captured {
+  background: #10b981;
+  color: white;
+  border-color: #10b981;
+}
+
+.page-indicator.current {
+  background: #667eea;
+  color: white;
+  border-color: #667eea;
+  animation: pulse 2s infinite;
 }
 
 .upload-buttons {
@@ -1476,6 +2251,270 @@ onMounted(() => {
   .navigation-section {
     flex-direction: column;
     gap: 20px;
+  }
+}
+
+/* Matching Question Styles */
+.matching-question {
+  background: #f8fafc;
+  padding: 25px;
+  border-radius: 12px;
+  border: 2px solid #e2e8f0;
+}
+
+.matching-instruction {
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.matching-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+  margin-top: 20px;
+}
+
+.matching-left h4,
+.matching-right h4 {
+  color: #1f2937;
+  font-size: 1rem;
+  margin-bottom: 15px;
+  text-align: center;
+  padding: 10px;
+  background: #e0f2fe;
+  border-radius: 6px;
+}
+
+.matching-item {
+  padding: 15px;
+  margin-bottom: 12px;
+  border-radius: 8px;
+  border: 2px solid #e5e7eb;
+  background: white;
+  transition: all 0.2s;
+}
+
+.left-item {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.left-item.matched {
+  border-color: #10b981;
+  background: #f0fdf4;
+}
+
+.right-item {
+  text-align: center;
+  font-weight: 500;
+  color: #374151;
+}
+
+.right-item.used {
+  background: #f3f4f6;
+  color: #6b7280;
+  border-color: #d1d5db;
+}
+
+.item-text {
+  font-weight: 500;
+  color: #1f2937;
+}
+
+.match-select {
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  background: white;
+  width: 100%;
+}
+
+.match-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Rank Order Question Styles */
+.rank-order-question {
+  background: #f8fafc;
+  padding: 25px;
+  border-radius: 12px;
+  border: 2px solid #e2e8f0;
+}
+
+.rank-instruction {
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.rank-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 20px 0;
+}
+
+.rank-item {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 15px;
+  background: white;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  cursor: grab;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.rank-item:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.1);
+}
+
+.rank-item:active {
+  cursor: grabbing;
+  transform: rotate(2deg);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.rank-number {
+  background: #3b82f6;
+  color: white;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.rank-content {
+  flex: 1;
+  font-weight: 500;
+  color: #1f2937;
+  font-size: 1rem;
+}
+
+.drag-handle {
+  color: #9ca3af;
+  font-size: 1.2rem;
+  cursor: grab;
+  padding: 5px;
+}
+
+.rank-help {
+  text-align: center;
+  color: #6b7280;
+  font-size: 0.9rem;
+  margin-top: 15px;
+  font-style: italic;
+}
+
+@media (max-width: 768px) {
+  .matching-container {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
+  .rank-item {
+    padding: 12px;
+  }
+  
+  .rank-content {
+    font-size: 0.9rem;
+  }
+}
+
+/* Checkbox Question Styles */
+.checkbox-question {
+  background: #f8fafc;
+  padding: 25px;
+  border-radius: 12px;
+  border: 2px solid #e2e8f0;
+}
+
+.checkbox-instruction {
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.checkbox-options {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin: 20px 0;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 15px;
+  background: white;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.checkbox-label:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.1);
+}
+
+.checkbox-label:has(.checkbox-input:checked) {
+  border-color: #10b981;
+  background: #f0fdf4;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.1);
+}
+
+.checkbox-input {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.checkbox-text {
+  flex: 1;
+  color: #1f2937;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.checkbox-help {
+  text-align: center;
+  color: #6b7280;
+  font-size: 0.9rem;
+  margin-top: 15px;
+  font-style: italic;
+}
+
+@media (max-width: 768px) {
+  .checkbox-label {
+    padding: 12px;
+  }
+  
+  .checkbox-text {
+    font-size: 0.9rem;
   }
 }
 </style>

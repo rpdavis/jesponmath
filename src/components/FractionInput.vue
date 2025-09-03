@@ -199,3 +199,5 @@ const simplifyFraction = () => {
   cursor: not-allowed;
 }
 </style>
+
+

@@ -51,6 +51,13 @@
           <div class="action-button">Create Assessment →</div>
         </div>
 
+        <div class="action-card featured" @click="router.push('/assessment/generate')">
+          <div class="action-icon">📄</div>
+          <h3>Generate Printable Assessment</h3>
+          <p>Create math worksheets that can be printed for students</p>
+          <div class="action-button">Generate Assessment →</div>
+        </div>
+
         <div class="action-card" @click="router.push('/students')">
           <div class="action-icon">🎓</div>
           <h3>My Students</h3>

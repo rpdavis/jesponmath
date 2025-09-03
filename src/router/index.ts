@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import AssessmentHome from '@/components/AssessmentHome.vue'
 import RoleBasedLogin from '@/components/auth/RoleBasedLogin.vue'
 import AssessmentEditor from '@/components/assessments/AssessmentEditor.vue'
+import AssessmentGenerator from '@/components/assessments/AssessmentGenerator.vue'
 import StudentAssessments from '@/components/assessments/StudentAssessments.vue'
 import AssessmentTaking from '@/components/assessments/AssessmentTaking.vue'
 import ProgressTracking from '@/components/ProgressTracking.vue'
@@ -42,6 +43,12 @@ const router = createRouter({
       path: '/assessment/edit/:id',
       name: 'edit-assessment',
       component: AssessmentEditor,
+      beforeEnter: [authGuard, teacherGuard]
+    },
+    {
+      path: '/assessment/generate',
+      name: 'generate-assessment',
+      component: AssessmentGenerator,
       beforeEnter: [authGuard, teacherGuard]
     },
     {

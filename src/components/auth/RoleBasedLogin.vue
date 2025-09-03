@@ -3,8 +3,8 @@
     <div class="login-container">
       <div class="login-card">
         <div class="login-header">
-          <h1>📊 JepsonMath Assessments</h1>
-          <p>IEP Math Assessment Tracking System</p>
+          <img src="@/assets/jepson-logo.png" alt="Jepson Math Logo" class="login-logo">
+          <h1>JepsonMath Assessments</h1>
         </div>
 
         <!-- Loading State -->
@@ -41,11 +41,6 @@
               <div class="signin-info">
                 <h3>Sign in with Google</h3>
                 <p>Use your Google account to access the assessment system</p>
-                <ul class="role-info">
-                  <li><span class="role-badge admin">👑 Admin</span> - Full system management</li>
-                  <li><span class="role-badge teacher">👨‍🏫 Teacher</span> - Create assessments, manage students</li>
-                  <li><span class="role-badge student">🎓 Student</span> - Take assessments, view progress</li>
-                </ul>
               </div>
               
               <button 
@@ -145,22 +140,7 @@
             </form>
           </div>
 
-          <!-- Demo Access -->
-          <div class="demo-section">
-            <hr class="divider">
-            <div class="demo-info">
-              <h4>Demo Access</h4>
-              <p>Try the system without creating an account</p>
-            </div>
-            <button 
-              @click="handleDemoLogin" 
-              class="demo-button"
-              :disabled="isLoading"
-            >
-              <span class="demo-icon">🚀</span>
-              Demo Access (Teacher View)
-            </button>
-          </div>
+
         </div>
 
         <!-- Messages -->
@@ -254,24 +234,7 @@ const handleEmailAuth = async () => {
   }
 };
 
-// Demo login handler
-const handleDemoLogin = async () => {
-  isLoading.value = true;
-  authStore.clearMessages();
-  
-  try {
-    const success = await authStore.loginDemo();
-    if (success) {
-      setTimeout(() => {
-        router.push('/');
-      }, 1500);
-    }
-  } catch (error) {
-    console.error('Demo login error:', error);
-  } finally {
-    isLoading.value = false;
-  }
-};
+
 
 // Clear messages when component unmounts
 onMounted(() => {
@@ -313,6 +276,14 @@ onUnmounted(() => {
 .login-header {
   text-align: center;
   margin-bottom: 40px;
+}
+
+.login-logo {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 20px;
+  display: block;
+  object-fit: contain;
 }
 
 .login-header h1 {
@@ -399,44 +370,7 @@ onUnmounted(() => {
   margin-bottom: 20px;
 }
 
-.role-info {
-  list-style: none;
-  padding: 0;
-  margin: 0 0 30px 0;
-  text-align: left;
-  display: inline-block;
-}
 
-.role-info li {
-  margin-bottom: 8px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.role-badge {
-  padding: 4px 8px;
-  border-radius: 6px;
-  font-size: 0.8rem;
-  font-weight: 500;
-  min-width: 80px;
-  text-align: center;
-}
-
-.role-badge.admin {
-  background: #fef2f2;
-  color: #dc2626;
-}
-
-.role-badge.teacher {
-  background: #f0fdf4;
-  color: #166534;
-}
-
-.role-badge.student {
-  background: #eff6ff;
-  color: #2563eb;
-}
 
 .google-signin-button {
   display: flex;
@@ -555,54 +489,7 @@ onUnmounted(() => {
   cursor: not-allowed;
 }
 
-.demo-section {
-  text-align: center;
-  margin-top: 30px;
-}
 
-.divider {
-  border: none;
-  border-top: 1px solid #e5e7eb;
-  margin: 30px 0 20px 0;
-}
-
-.demo-info h4 {
-  color: #1f2937;
-  font-size: 1.1rem;
-  margin-bottom: 5px;
-}
-
-.demo-info p {
-  color: #6b7280;
-  font-size: 0.9rem;
-  margin-bottom: 15px;
-}
-
-.demo-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  color: white;
-  border: none;
-  padding: 12px 24px;
-  border-radius: 10px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  margin: 0 auto;
-}
-
-.demo-button:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(16, 185, 129, 0.3);
-}
-
-.demo-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
 
 .error-message,
 .success-message {
@@ -636,6 +523,12 @@ onUnmounted(() => {
     padding: 30px 20px;
   }
   
+  .login-logo {
+    width: 60px;
+    height: 60px;
+    margin-bottom: 15px;
+  }
+  
   .login-header h1 {
     font-size: 1.8rem;
   }
@@ -645,8 +538,6 @@ onUnmounted(() => {
     gap: 2px;
   }
   
-  .role-info {
-    text-align: center;
-  }
+
 }
 </style>

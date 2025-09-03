@@ -177,7 +177,18 @@ const getScoreClass = (percentage: number) => {
 };
 
 const formatDate = (timestamp: any) => {
-  return new Date(timestamp.seconds * 1000).toLocaleDateString();
+  if (!timestamp) return 'N/A';
+  
+  if (timestamp?.seconds) {
+    return new Date(timestamp.seconds * 1000).toLocaleDateString();
+  }
+  
+  try {
+    return new Date(timestamp).toLocaleDateString();
+  } catch (error) {
+    console.warn('Unable to format date:', timestamp);
+    return 'Invalid Date';
+  }
 };
 
 // Load students from database

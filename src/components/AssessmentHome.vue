@@ -24,7 +24,8 @@
     <div v-else class="fallback-dashboard">
       <div class="hero-section">
         <div class="hero-content">
-          <h1>📊 JepsonMath Assessment Tracker</h1>
+          <img src="@/assets/jepson-logo.png" alt="Jepson Math Logo" class="hero-logo">
+          <h1>JepsonMath Assessment Tracker</h1>
           <p>Track and manage IEP goal assessments for math students</p>
         </div>
       </div>
@@ -127,6 +128,14 @@ watch(() => authStore.isLoading, (isLoading) => {
   border-radius: 20px;
   margin-bottom: 50px;
   color: white;
+}
+
+.hero-logo {
+  width: 100px;
+  height: 100px;
+  margin: 0 auto 30px;
+  display: block;
+  object-fit: contain;
 }
 
 .hero-content h1 {
@@ -283,6 +292,12 @@ watch(() => authStore.isLoading, (isLoading) => {
 }
 
 @media (max-width: 768px) {
+  .hero-logo {
+    width: 80px;
+    height: 80px;
+    margin-bottom: 20px;
+  }
+  
   .hero-content h1 {
     font-size: 2.2rem;
   }

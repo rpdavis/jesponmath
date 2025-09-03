@@ -884,7 +884,13 @@ const closeModal = () => {
 
 const formatDate = (dateString: string) => {
   if (!dateString) return '-';
-  return new Date(dateString).toLocaleDateString();
+  
+  try {
+    return new Date(dateString).toLocaleDateString();
+  } catch (error) {
+    console.warn('Unable to format date:', dateString);
+    return 'Invalid Date';
+  }
 };
 
 // Load students on component mount

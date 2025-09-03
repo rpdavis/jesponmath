@@ -566,7 +566,13 @@ const getRoleIcon = (role: UserRole) => {
 
 const formatDate = (date: any) => {
   if (!date) return '-';
-  return new Date(date).toLocaleDateString();
+  
+  try {
+    return new Date(date).toLocaleDateString();
+  } catch (error) {
+    console.warn('Unable to format date:', date);
+    return 'Invalid Date';
+  }
 };
 
 // Load users on component mount

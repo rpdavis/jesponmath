@@ -81,6 +81,12 @@ export interface Assessment {
   maxFileSize?: number; // Max file size in MB
   allowedFileTypes?: string[]; // Allowed file extensions
   
+  // Multi-page photo capture options
+  requireMultiplePages?: boolean; // Whether multiple pages are required
+  requiredPageCount?: number; // Number of pages required (1-10)
+  pageLabels?: string[]; // Custom labels for each page (e.g., ["Problem 1", "Problem 2"])
+  allowExtraPages?: boolean; // Whether students can add extra pages beyond required
+  
   // Retake options
   allowRetakes?: boolean; // Whether students can retake this assessment
   maxRetakes?: number; // Maximum number of retakes allowed (0 = unlimited)
@@ -100,13 +106,24 @@ export interface FractionAnswer {
 export interface AssessmentQuestion {
   id: string;
   questionText: string;
-  questionType: 'multiple-choice' | 'short-answer' | 'essay' | 'true-false' | 'fill-blank' | 'matching' | 'fraction';
+  questionType: 'multiple-choice' | 'short-answer' | 'essay' | 'true-false' | 'fill-blank' | 'matching' | 'fraction' | 'rank-order' | 'checkbox';
   standard?: string; // Standards for this specific question (can be multiple, separated by ';')
   standards?: string[]; // Array of individual standards (parsed from standard field)
   options?: string[]; // For multiple choice
   correctAnswer: string | string[];
   acceptableAnswers?: string[]; // Alternative acceptable answers for short-answer
   correctFractionAnswers?: (FractionAnswer | string)[]; // Support multiple equivalent fraction answers
+  // For matching questions
+  matchingPairs?: { left: string; right: string }[];
+  leftItems?: string[]; // Items to match from
+  rightItems?: string[]; // Items to match to
+  correctMatches?: { [key: string]: string }; // Maps left item to right item
+  // For rank-order questions
+  itemsToRank?: string[]; // Items that need to be put in order
+  correctOrder?: string[]; // The correct order of items
+  orderType?: 'ascending' | 'descending' | 'custom'; // Type of ordering
+  // For checkbox questions (multiple correct answers)
+  correctAnswers?: string[]; // Array of correct option indices or values
   points: number;
   explanation?: string;
   hints?: string[];
