@@ -244,29 +244,56 @@ export async function createStudent(studentData: CreateStudentData, password?: s
     let userCredential;
     let uid: string;
 
-    // Always create Firebase Auth user (required for OAuth to work)
+    // Try to create Firebase Auth user, but handle if email/password is disabled
     if (password) {
       // Manual creation with provided password
-      userCredential = await createUserWithEmailAndPassword(auth, studentData.email, password);
-      uid = userCredential.user.uid;
-      console.log('✅ Created Firebase Auth user with provided password');
+      try {
+        userCredential = await createUserWithEmailAndPassword(auth, studentData.email, password);
+        uid = userCredential.user.uid;
+        console.log('✅ Created Firebase Auth user with provided password');
+        
+        // Update Firebase Auth profile
+        await updateProfile(userCredential.user, {
+          displayName: studentData.displayName || `${studentData.firstName} ${studentData.lastName}`
+        });
+        
+        // Sign out immediately to prevent auto-login during import
+        await signOut(auth);
+        console.log('🔄 Signed out after creation to prevent auto-login');
+      } catch (authError: any) {
+        if (authError.code === 'auth/operation-not-allowed') {
+          throw new Error('Email/password authentication is disabled in Firebase. Please enable it in the Firebase Console under Authentication > Sign-in methods.');
+        }
+        throw authError;
+      }
     } else {
-      // Google Classroom import - create with temporary password
-      // Student can sign in with Google OAuth later
-      const tempPassword = Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-12);
-      userCredential = await createUserWithEmailAndPassword(auth, studentData.email, tempPassword);
-      uid = userCredential.user.uid;
-      console.log('✅ Created Firebase Auth user with temporary password for Google Classroom import');
+      // Google Classroom import - try to create auth user, but continue without if disabled
+      try {
+        const tempPassword = Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-12);
+        userCredential = await createUserWithEmailAndPassword(auth, studentData.email, tempPassword);
+        uid = userCredential.user.uid;
+        console.log('✅ Created Firebase Auth user with temporary password for Google Classroom import');
+        
+        // Update Firebase Auth profile
+        await updateProfile(userCredential.user, {
+          displayName: studentData.displayName || `${studentData.firstName} ${studentData.lastName}`
+        });
+        
+        // Sign out immediately to prevent auto-login during import
+        await signOut(auth);
+        console.log('🔄 Signed out after creation to prevent auto-login');
+      } catch (authError: any) {
+        if (authError.code === 'auth/operation-not-allowed') {
+          // Email/password auth is disabled - create student record without Auth user
+          // Generate a unique ID for the student record
+          uid = 'import_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+          console.log('⚠️ Email/password auth disabled - creating student record without Auth user. UID:', uid);
+          console.log('💡 Student will be able to sign in with Google OAuth when they first log in');
+        } else {
+          throw authError;
+        }
+      }
     }
-    
-    // Update Firebase Auth profile
-    await updateProfile(userCredential.user, {
-      displayName: studentData.displayName || `${studentData.firstName} ${studentData.lastName}`
-    });
-    
-    // Sign out immediately to prevent auto-login during import
-    await signOut(auth);
-    console.log('🔄 Signed out after creation to prevent auto-login');
 
     // Create base user record for users collection
     const baseUser: BaseUser = {

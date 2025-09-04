@@ -119,7 +119,12 @@
                       :class="getScoreClass(getStudentScore(student.uid, assessment.id)?.percentage || 0)"
                       @click="viewAssessmentResult(student.uid, assessment.id)"
                     >
-                      {{ getStudentScore(student.uid, assessment.id)?.percentage || 0 }}%
+                      <div class="score-fraction">
+                        {{ getStudentScore(student.uid, assessment.id)?.score || 0 }}/{{ getStudentScore(student.uid, assessment.id)?.totalPoints || assessment.totalPoints }}
+                      </div>
+                      <div class="score-percentage">
+                        {{ getStudentScore(student.uid, assessment.id)?.percentage || 0 }}%
+                      </div>
                     </span>
                     <span v-else class="no-score">-</span>
                   </div>
@@ -841,8 +846,8 @@ onMounted(() => {
 }
 
 .assessment-col {
-  min-width: 120px;
-  max-width: 150px;
+  min-width: 140px;
+  max-width: 170px;
 }
 
 .average-col {
@@ -924,14 +929,28 @@ onMounted(() => {
 }
 
 .score {
-  padding: 4px 8px;
+  padding: 6px 8px;
   border-radius: 4px;
   font-weight: 600;
   font-size: 0.8rem;
   cursor: pointer;
   transition: all 0.2s;
-  min-width: 45px;
+  min-width: 60px;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.1;
+}
+
+.score-fraction {
+  font-size: 0.75rem;
+  opacity: 0.9;
+}
+
+.score-percentage {
+  font-size: 0.8rem;
+  font-weight: 700;
 }
 
 .score:hover {

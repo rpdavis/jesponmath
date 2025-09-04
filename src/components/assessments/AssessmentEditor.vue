@@ -359,22 +359,74 @@
               <span>Loading students...</span>
             </div>
             
-            <!-- Students list -->
-            <div v-else-if="availableStudents.length > 0" class="student-checkboxes">
-              <label 
-                v-for="student in availableStudents" 
-                :key="student.uid"
-                class="student-checkbox"
-              >
-                <input 
-                  type="checkbox" 
-                  :value="student.uid"
-                  v-model="selectedStudents"
-                >
-                <span>{{ student.firstName }} {{ student.lastName }}</span>
-                <small v-if="student.googleId">(Google ID: {{ student.googleId }})</small>
-                <small v-else-if="student.email">({{ student.email }})</small>
-              </label>
+            <!-- Assignment Mode Selection -->
+            <div v-else-if="availableStudents.length > 0" class="assignment-modes">
+              <div class="assignment-mode-selector">
+                <label class="mode-option">
+                  <input type="radio" v-model="assignmentMode" value="template" name="assignmentMode">
+                  <span>📋 Create Template (No Students)</span>
+                </label>
+                <label class="mode-option">
+                  <input type="radio" v-model="assignmentMode" value="all" name="assignmentMode">
+                  <span>👥 Assign to All My Students</span>
+                </label>
+                <label class="mode-option">
+                  <input type="radio" v-model="assignmentMode" value="class" name="assignmentMode">
+                  <span>🏫 Assign by Class/Period</span>
+                </label>
+                <label class="mode-option">
+                  <input type="radio" v-model="assignmentMode" value="individual" name="assignmentMode">
+                  <span>👤 Select Individual Students</span>
+                </label>
+              </div>
+
+              <!-- Class Selection (when mode is 'class') -->
+              <div v-if="assignmentMode === 'class'" class="class-selection">
+                <h4>Select Classes/Periods</h4>
+                <div class="class-checkboxes">
+                  <label 
+                    v-for="classGroup in uniqueClasses" 
+                    :key="classGroup.key"
+                    class="class-checkbox"
+                  >
+                    <input 
+                      type="checkbox" 
+                      :value="classGroup.key"
+                      v-model="selectedClasses"
+                      @change="updateStudentsByClass"
+                    >
+                    <span>{{ classGroup.label }} ({{ classGroup.count }} students)</span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Individual Student Selection (when mode is 'individual') -->
+              <div v-if="assignmentMode === 'individual'" class="individual-selection">
+                <h4>Select Students</h4>
+                <div class="student-search">
+                  <input 
+                    v-model="studentSearchQuery" 
+                    type="text" 
+                    placeholder="Search students..." 
+                    class="form-input"
+                  >
+                </div>
+                <div class="student-checkboxes">
+                  <label 
+                    v-for="student in filteredStudents" 
+                    :key="student.uid"
+                    class="student-checkbox"
+                  >
+                    <input 
+                      type="checkbox" 
+                      :value="student.uid"
+                      v-model="selectedStudents"
+                    >
+                    <span>{{ student.firstName }} {{ student.lastName }}</span>
+                    <small>{{ student.courseName || student.className || 'No class' }} - {{ student.section || student.period || 'No period' }}</small>
+                  </label>
+                </div>
+              </div>
             </div>
             
             <!-- No students state -->
@@ -386,8 +438,8 @@
             </div>
             
             <div class="assignment-summary">
-              <strong>{{ selectedStudents.length }} student(s) selected</strong>
-              <small class="form-help">Leave none selected to create a template assessment</small>
+              <strong>{{ getSelectedStudentsCount() }} student(s) will receive this assessment</strong>
+              <small class="form-help">{{ getAssignmentSummaryText() }}</small>
             </div>
           </div>
         </div>
@@ -940,7 +992,8 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '@/stores/authStore';
 import { usePermissions } from '@/composables/usePermissions';
-import { createAssessment, getAssessment, getAssessmentByGoalId, updateAssessment } from '@/firebase/iepServices';
+import { createAssessment, getAssessment, getAssessmentByGoalId, updateAssessment, assignAssessmentToStudent, unassignAssessmentFromStudent, getCurrentlyAssignedStudents } from '@/firebase/iepServices';
+import { serverTimestamp } from 'firebase/firestore';
 import { getAllStudents, getStudentsByTeacher } from '@/firebase/userServices';
 import { hasExistingResults, migrateAssessmentResults, type MigrationResult } from '@/firebase/assessmentMigrationService';
 import type { Assessment, AssessmentQuestion } from '@/types/iep';
@@ -969,6 +1022,11 @@ const migrationInProgress = ref(false);
 const customAccommodation = ref('');
 const selectedStudents = ref<string[]>([]);
 const loadingStudents = ref(true);
+
+// Assignment mode and filtering
+const assignmentMode = ref('template');
+const selectedClasses = ref<string[]>([]);
+const studentSearchQuery = ref('');
 
 // Available options - load from database
 const availableStudents = ref<FirebaseStudent[]>([]);
@@ -1061,6 +1119,123 @@ const isValid = computed(() => {
 
 const canPreview = computed(() => {
   return assessment.value.questions.length > 0;
+});
+
+// Assignment-related computed properties
+const uniqueClasses = computed(() => {
+  const classGroups = new Map<string, { label: string; count: number; students: FirebaseStudent[] }>();
+  
+  availableStudents.value.forEach(student => {
+    const className = student.courseName || student.className || 'No Class';
+    const period = student.section || student.period || 'No Period';
+    const key = `${className}|${period}`;
+    const label = `${className} - ${period}`;
+    
+    if (!classGroups.has(key)) {
+      classGroups.set(key, { label, count: 0, students: [] });
+    }
+    
+    const group = classGroups.get(key)!;
+    group.count++;
+    group.students.push(student);
+  });
+  
+  return Array.from(classGroups.entries()).map(([key, group]) => ({
+    key,
+    label: group.label,
+    count: group.count,
+    students: group.students
+  }));
+});
+
+const filteredStudents = computed(() => {
+  if (!studentSearchQuery.value) return availableStudents.value;
+  
+  const query = studentSearchQuery.value.toLowerCase();
+  return availableStudents.value.filter(student => 
+    student.firstName.toLowerCase().includes(query) ||
+    student.lastName.toLowerCase().includes(query) ||
+    student.email.toLowerCase().includes(query) ||
+    (student.courseName || '').toLowerCase().includes(query)
+  );
+});
+
+// Methods
+const getSelectedStudentsCount = (): number => {
+  switch (assignmentMode.value) {
+    case 'template':
+      return 0;
+    case 'all':
+      return availableStudents.value.length;
+    case 'class':
+      return selectedClasses.value.reduce((count, classKey) => {
+        const classGroup = uniqueClasses.value.find(c => c.key === classKey);
+        return count + (classGroup?.count || 0);
+      }, 0);
+    case 'individual':
+      return selectedStudents.value.length;
+    default:
+      return 0;
+  }
+};
+
+const getAssignmentSummaryText = (): string => {
+  switch (assignmentMode.value) {
+    case 'template':
+      return 'Template assessment - no students assigned';
+    case 'all':
+      return 'All your students will receive this assessment';
+    case 'class':
+      return selectedClasses.value.length > 0 ? 
+        `Students in ${selectedClasses.value.length} selected class(es)` : 
+        'Select classes to assign to';
+    case 'individual':
+      return selectedStudents.value.length > 0 ? 
+        'Individually selected students' : 
+        'Search and select students';
+    default:
+      return '';
+  }
+};
+
+const updateStudentsByClass = () => {
+  // Update selectedStudents based on selected classes
+  const studentsInSelectedClasses: string[] = [];
+  
+  selectedClasses.value.forEach(classKey => {
+    const classGroup = uniqueClasses.value.find(c => c.key === classKey);
+    if (classGroup) {
+      classGroup.students.forEach(student => {
+        if (!studentsInSelectedClasses.includes(student.uid)) {
+          studentsInSelectedClasses.push(student.uid);
+        }
+      });
+    }
+  });
+  
+  selectedStudents.value = studentsInSelectedClasses;
+};
+
+// Watch assignment mode changes to update selected students
+watch(assignmentMode, (newMode) => {
+  switch (newMode) {
+    case 'template':
+      selectedStudents.value = [];
+      selectedClasses.value = [];
+      break;
+    case 'all':
+      selectedStudents.value = availableStudents.value.map(s => s.uid);
+      selectedClasses.value = [];
+      break;
+    case 'class':
+      selectedStudents.value = [];
+      selectedClasses.value = [];
+      break;
+    case 'individual':
+      selectedClasses.value = [];
+      // Keep existing individual selections
+      break;
+  }
 });
 
 // Methods
@@ -1419,13 +1594,26 @@ const loadAssessment = async () => {
       const { id, createdAt, updatedAt, ...assessmentData } = data;
       assessment.value = assessmentData;
       
-      // Set selected students based on the loaded assessment
-      if (assessmentData.studentSeisId) {
-        // Find student by SEIS ID and use their UID for selection
-        const student = availableStudents.value.find(s => s.seisId === assessmentData.studentSeisId);
-        if (student) {
-          selectedStudents.value = [student.uid];
+      // Set selected students based on current assignments (new approach)
+      try {
+        const currentlyAssigned = await getCurrentlyAssignedStudents(assessmentId);
+        const assignedUids = currentlyAssigned.map(s => s.uid);
+        selectedStudents.value = assignedUids;
+        
+        // Set assignment mode based on selection
+        if (assignedUids.length === 0) {
+          assignmentMode.value = 'template';
+        } else if (assignedUids.length === availableStudents.value.length) {
+          assignmentMode.value = 'all';
+        } else {
+          assignmentMode.value = 'individual';
         }
+        
+        console.log(`📝 Pre-selected ${assignedUids.length} students for editing assessment`);
+      } catch (error) {
+        console.error('Error loading assigned students:', error);
+        assignmentMode.value = 'template';
+        selectedStudents.value = [];
       }
       
       // Ensure all questions have the new fields for compatibility
@@ -1481,30 +1669,76 @@ const performSave = async () => {
     assessment.value.totalPoints = totalPoints.value;
     
     if (selectedStudents.value.length > 0) {
-      // Create/update assessment for each selected student
-      for (const studentUid of selectedStudents.value) {
-        // Find the student to get their SEIS ID for the assessment
-        const student = availableStudents.value.find(s => s.uid === studentUid);
+      // Debug logging
+      console.log('🔍 Save with students - isEditing:', isEditing.value, 'selectedStudents:', selectedStudents.value.length, 'assessmentId:', assessmentId);
+      
+      if (isEditing.value) {
+        // EDITING MODE: Update the assessment template and manage student assignments
+        console.log('✏️ EDITING MODE: Updating assessment template');
+        
+        // First, update the assessment template (without student-specific fields)
         const assessmentData = {
           ...assessment.value,
-          studentSeisId: student?.seisId || student?.googleId || studentUid, // Use SEIS ID or Google ID or UID
-          studentUid: studentUid, // Also store the UID for easier queries
-          createdBy: authStore.currentUser?.uid // Track who created the assessment
+          createdBy: authStore.currentUser?.uid,
+          updatedAt: serverTimestamp()
         };
         
-        if (isEditing.value && selectedStudents.value.length === 1) {
-          // Update existing assessment if only one student selected
-          await updateAssessment(assessmentId, assessmentData);
-        } else {
-          // Create new assessment for this student
-          await createAssessment(assessmentData);
+        // Remove any student-specific fields from template
+        delete (assessmentData as any).studentSeisId;
+        delete (assessmentData as any).studentUid;
+        
+        await updateAssessment(assessmentId, assessmentData);
+        
+        // Then, manage student assignments
+        // Get currently assigned students for this assessment
+        const currentlyAssigned = await getCurrentlyAssignedStudents(assessmentId);
+        const currentlyAssignedUids = currentlyAssigned.map(s => s.uid);
+        
+        // Students to add (in selectedStudents but not currently assigned)
+        const studentsToAdd = selectedStudents.value.filter(uid => !currentlyAssignedUids.includes(uid));
+        
+        // Students to remove (currently assigned but not in selectedStudents)
+        const studentsToRemove = currentlyAssignedUids.filter(uid => !selectedStudents.value.includes(uid));
+        
+        // Add new assignments
+        for (const studentUid of studentsToAdd) {
+          await assignAssessmentToStudent(assessmentId, studentUid);
         }
-      }
-      
-      if (selectedStudents.value.length === 1) {
-        success.value = isEditing.value ? 'Assessment updated successfully!' : 'Assessment created and assigned successfully!';
+        
+        // Remove old assignments
+        for (const studentUid of studentsToRemove) {
+          await unassignAssessmentFromStudent(assessmentId, studentUid);
+        }
+        
+        success.value = `Assessment updated and assigned to ${selectedStudents.value.length} students!`;
       } else {
-        success.value = `Assessment created and assigned to ${selectedStudents.value.length} students!`;
+        // CREATION MODE: Create one assessment template and assign to students
+        console.log('➕ CREATION MODE: Creating assessment template');
+        
+        // Create the assessment template (without student-specific fields)
+        const assessmentData = {
+          ...assessment.value,
+          createdBy: authStore.currentUser?.uid
+        };
+        
+        // Ensure no student-specific fields in template
+        delete (assessmentData as any).studentSeisId;
+        delete (assessmentData as any).studentUid;
+        
+        const newAssessmentId = await createAssessment(assessmentData);
+        console.log('✅ Created assessment template:', newAssessmentId);
+        
+        // Assign to selected students
+        for (const studentUid of selectedStudents.value) {
+          await assignAssessmentToStudent(newAssessmentId, studentUid);
+          console.log('✅ Assigned to student:', studentUid);
+        }
+        
+        if (selectedStudents.value.length === 1) {
+          success.value = 'Assessment created and assigned successfully!';
+        } else {
+          success.value = `Assessment created and assigned to ${selectedStudents.value.length} students!`;
+        }
       }
     } else {
       // Create template assessment (no student assigned)
@@ -2678,5 +2912,149 @@ onMounted(() => {
 
 .pair-inputs {
   align-items: flex-start;
+}
+
+/* Assignment Mode Styles */
+.assignment-modes {
+  background: #f9fafb;
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.assignment-mode-selector {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.mode-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  background: white;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.mode-option:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
+}
+
+.mode-option:has(input:checked) {
+  border-color: #10b981;
+  background: #f0fdf4;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.1);
+}
+
+.mode-option input[type="radio"] {
+  width: 18px;
+  height: 18px;
+}
+
+.mode-option span {
+  font-weight: 500;
+  color: #374151;
+}
+
+.class-selection, .individual-selection {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  margin-top: 15px;
+}
+
+.class-selection h4, .individual-selection h4 {
+  color: #1f2937;
+  margin-bottom: 15px;
+  font-size: 1rem;
+}
+
+.class-checkboxes {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.class-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  background: #f9fafb;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.class-checkbox:hover {
+  background: #f3f4f6;
+}
+
+.class-checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+}
+
+.student-search {
+  margin-bottom: 15px;
+}
+
+.student-search .form-input {
+  width: 100%;
+}
+
+.student-checkboxes {
+  max-height: 300px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.student-checkbox {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px;
+  background: #f9fafb;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.student-checkbox:hover {
+  background: #f3f4f6;
+}
+
+.student-checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin-right: 10px;
+}
+
+.assignment-summary {
+  background: #e0f2fe;
+  padding: 15px;
+  border-radius: 6px;
+  margin-top: 15px;
+  border: 1px solid #0891b2;
+}
+
+.assignment-summary strong {
+  color: #0c4a6e;
+  display: block;
+  margin-bottom: 5px;
+}
+
+.assignment-summary .form-help {
+  color: #0369a1;
+  margin: 0;
 }
 </style>

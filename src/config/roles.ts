@@ -181,8 +181,7 @@ export const NAVIGATION_ITEMS: Record<UserRole, Array<{
   [ROLES.STUDENT]: [
     { path: '/', label: 'Dashboard', icon: '🏠' },
     { path: '/assessments', label: 'My Assessments', icon: '📝', permission: PERMISSIONS.TAKE_ASSESSMENTS },
-    { path: '/my-results', label: 'My Results', icon: '📊', permission: PERMISSIONS.VIEW_OWN_RESULTS },
-    { path: '/my-progress', label: 'My Progress', icon: '📈', permission: PERMISSIONS.VIEW_OWN_PROGRESS }
+    { path: '/my-results', label: 'My Results', icon: '📊', permission: PERMISSIONS.VIEW_OWN_RESULTS }
   ]
 };
 

@@ -9,7 +9,9 @@ import {
   query, 
   where,
   orderBy,
-  serverTimestamp 
+  serverTimestamp,
+  arrayUnion,
+  arrayRemove
 } from 'firebase/firestore';
 import { db } from './config';
 import type { 
@@ -228,6 +230,37 @@ export const updateAssessment = async (assessmentId: string, assessmentData: Par
   }
 };
 
+export const duplicateAssessment = async (originalAssessment: Assessment, newTitle?: string): Promise<string> => {
+  try {
+    console.log('📋 Duplicating assessment:', originalAssessment.title);
+    
+    // Simple duplication - just copy the assessment and change the title and IDs
+    const duplicatedData = {
+      ...originalAssessment,
+      title: newTitle || `${originalAssessment.title} (Copy)`,
+      studentSeisId: '', // Make it unassigned
+      studentUid: '', // Make it unassigned
+      questions: originalAssessment.questions.map(question => ({
+        ...question,
+        id: 'q_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
+      })),
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    };
+    
+    // Remove the original ID to let Firestore generate a new one
+    delete (duplicatedData as any).id;
+    
+    const docRef = await addDoc(collection(db, 'assessments'), duplicatedData);
+    console.log('✅ Assessment duplicated successfully with ID:', docRef.id);
+    
+    return docRef.id;
+  } catch (error) {
+    console.error('❌ Error duplicating assessment:', error);
+    throw error;
+  }
+};
+
 export const getAssessmentsByGoal = async (goalId: string) => {
   try {
     const q = query(
@@ -266,35 +299,42 @@ export const getAssessmentsByCategory = async (category: Assessment['category'])
 
 export const getAssessmentsByStudent = async (studentId: string) => {
   try {
-    // Try to find assessments by studentUid first (new method), then by studentSeisId (legacy)
     console.log('🔍 Looking for assessments for student:', studentId);
     
-    const queries = [
-      query(
-        collection(db, 'assessments'),
-        where('studentUid', '==', studentId)
-      ),
-      query(
-        collection(db, 'assessments'),
-        where('studentSeisId', '==', studentId)
-      )
-    ];
+    // New approach: Get student document and read their assignedAssessments array
+    const studentDoc = await getDoc(doc(db, 'students', studentId));
+    if (!studentDoc.exists()) {
+      console.log('Student not found:', studentId);
+      return [];
+    }
     
-    const results = await Promise.all(queries.map(q => getDocs(q)));
-    const allDocs = results.flatMap(snapshot => snapshot.docs);
+    const studentData = studentDoc.data();
+    const assignedAssessmentIds = studentData.assignedAssessments || [];
     
-    // Remove duplicates by ID
-    const uniqueAssessments = new Map();
-    allDocs.forEach(doc => {
-      if (!uniqueAssessments.has(doc.id)) {
-        uniqueAssessments.set(doc.id, {
-          id: doc.id,
-          ...doc.data()
-        });
+    console.log(`📋 Student has ${assignedAssessmentIds.length} assigned assessments:`, assignedAssessmentIds);
+    
+    if (assignedAssessmentIds.length === 0) {
+      console.log('No assessments assigned to student:', studentId);
+      return [];
+    }
+    
+    // Fetch the actual assessment documents
+    const assessments: Assessment[] = [];
+    for (const assessmentId of assignedAssessmentIds) {
+      try {
+        const assessmentDoc = await getDoc(doc(db, 'assessments', assessmentId));
+        if (assessmentDoc.exists()) {
+          assessments.push({
+            id: assessmentDoc.id,
+            ...assessmentDoc.data()
+          } as Assessment);
+        } else {
+          console.warn('Assessment not found:', assessmentId);
+        }
+      } catch (error) {
+        console.error('Error fetching assessment:', assessmentId, error);
       }
-    });
-    
-    const assessments = Array.from(uniqueAssessments.values()) as Assessment[];
+    }
     
     // Sort by creation date
     assessments.sort((a, b) => 
@@ -403,26 +443,51 @@ export async function getAssessmentsByTeacher(teacherUid: string): Promise<Asses
 
 export async function assignAssessmentToStudent(assessmentId: string, studentUid: string): Promise<void> {
   try {
-    // Create a copy of the assessment assigned to the specific student
-    const assessmentDoc = await getDoc(doc(db, 'assessments', assessmentId));
-    if (!assessmentDoc.exists()) {
-      throw new Error('Assessment not found');
-    }
+    // Add assessment ID to student's assignedAssessments array
+    const studentDoc = doc(db, 'students', studentUid);
+    await updateDoc(studentDoc, {
+      assignedAssessments: arrayUnion(assessmentId),
+      updatedAt: serverTimestamp()
+    });
     
-    const assessmentData = assessmentDoc.data() as Assessment;
-    
-    // Create new assessment document for this student
-    const newAssessmentData = {
-      ...assessmentData,
-      studentUid,
-      studentSeisId: studentUid, // For compatibility
-      assignedAt: serverTimestamp()
-    };
-    
-    await addDoc(collection(db, 'assessments'), newAssessmentData);
     console.log('✅ Assessment assigned to student:', assessmentId, '→', studentUid);
   } catch (error) {
     console.error('Error assigning assessment to student:', error);
+    throw error;
+  }
+}
+
+export async function unassignAssessmentFromStudent(assessmentId: string, studentUid: string): Promise<void> {
+  try {
+    // Remove assessment ID from student's assignedAssessments array
+    const studentDoc = doc(db, 'students', studentUid);
+    await updateDoc(studentDoc, {
+      assignedAssessments: arrayRemove(assessmentId),
+      updatedAt: serverTimestamp()
+    });
+    
+    console.log('✅ Assessment unassigned from student:', assessmentId, '→', studentUid);
+  } catch (error) {
+    console.error('Error unassigning assessment from student:', error);
+    throw error;
+  }
+}
+
+export async function getCurrentlyAssignedStudents(assessmentId: string): Promise<any[]> {
+  try {
+    // Query students who have this assessment in their assignedAssessments array
+    const q = query(
+      collection(db, 'students'),
+      where('assignedAssessments', 'array-contains', assessmentId)
+    );
+    const snapshot = await getDocs(q);
+    
+    return snapshot.docs.map(doc => ({
+      uid: doc.id,
+      ...doc.data()
+    }));
+  } catch (error) {
+    console.error('Error getting currently assigned students:', error);
     throw error;
   }
 }

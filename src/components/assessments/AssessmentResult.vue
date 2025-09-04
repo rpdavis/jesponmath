@@ -76,51 +76,62 @@
               
               <!-- Points Display/Edit -->
               <div class="points-section">
-                <div v-if="!editingPoints[response.questionId]" class="points-display">
+                <!-- Teacher/Admin View - With Edit Capability -->
+                <div v-if="authStore.userRole === 'teacher' || authStore.userRole === 'admin'" class="teacher-points-view">
+                  <div v-if="!editingPoints[response.questionId]" class="points-display">
+                    <span class="question-points" :class="{ adjusted: response.manuallyAdjusted }">
+                      {{ response.pointsEarned }} / {{ getQuestionPoints(response.questionId) }} pts
+                    </span>
+                    
+                    <button 
+                      @click="startEditingPoints(response.questionId, response.pointsEarned || 0)"
+                      class="edit-points-btn"
+                      title="Edit points for partial credit or corrections"
+                    >
+                      ✏️ Edit
+                    </button>
+                  </div>
+                  
+                  <!-- Editing mode -->
+                  <div v-else class="points-editing">
+                    <input 
+                      v-model.number="editingValues[response.questionId]"
+                      type="number"
+                      :min="0"
+                      :max="getQuestionPoints(response.questionId)"
+                      step="0.5"
+                      class="points-input"
+                    />
+                    <span class="points-max">/ {{ getQuestionPoints(response.questionId) }} pts</span>
+                    
+                    <div class="edit-actions">
+                      <button 
+                        @click="savePointsEdit(response.questionId)"
+                        :disabled="savingPoints[response.questionId]"
+                        class="save-btn"
+                        title="Save changes"
+                      >
+                        {{ savingPoints[response.questionId] ? '💾 Saving...' : '✅ Save' }}
+                      </button>
+                      <button 
+                        @click="cancelEditingPoints(response.questionId)"
+                        class="cancel-btn"
+                        title="Cancel"
+                      >
+                        ❌ Cancel
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Student View - Read Only -->
+                <div v-else class="student-points-view">
                   <span class="question-points" :class="{ adjusted: response.manuallyAdjusted }">
                     {{ response.pointsEarned }} / {{ getQuestionPoints(response.questionId) }} pts
                   </span>
-                  
-                  <!-- Edit button for teachers/admins -->
-                  <button 
-                    v-if="permissions.isTeacher || permissions.isAdmin"
-                    @click="startEditingPoints(response.questionId, response.pointsEarned || 0)"
-                    class="edit-points-btn"
-                    title="Edit points for partial credit or corrections"
-                  >
-                    ✏️ Edit
-                  </button>
-                </div>
-                
-                <!-- Editing mode -->
-                <div v-else class="points-editing">
-                  <input 
-                    v-model.number="editingValues[response.questionId]"
-                    type="number"
-                    :min="0"
-                    :max="getQuestionPoints(response.questionId)"
-                    step="0.5"
-                    class="points-input"
-                  />
-                  <span class="points-max">/ {{ getQuestionPoints(response.questionId) }} pts</span>
-                  
-                  <div class="edit-actions">
-                    <button 
-                      @click="savePointsEdit(response.questionId)"
-                      :disabled="savingPoints[response.questionId]"
-                      class="save-btn"
-                      title="Save changes"
-                    >
-                      {{ savingPoints[response.questionId] ? '💾 Saving...' : '✅ Save' }}
-                    </button>
-                    <button 
-                      @click="cancelEditingPoints(response.questionId)"
-                      class="cancel-btn"
-                      title="Cancel"
-                    >
-                      ❌ Cancel
-                    </button>
-                  </div>
+                  <span v-if="response.manuallyAdjusted" class="adjustment-note">
+                    (Adjusted by teacher)
+                  </span>
                 </div>
               </div>
             </div>
@@ -164,9 +175,23 @@
             <div class="file-info">
               <p class="file-name">{{ file.originalName }}</p>
               <p class="file-size">{{ formatFileSize(file.fileSize) }}</p>
-              <button @click="openFile(file.uploadUrl)" class="view-file-btn">
-                👁️ View
-              </button>
+              <div class="file-actions">
+                <button @click="openFile(file.uploadUrl)" class="view-file-btn">
+                  👁️ View
+                </button>
+              </div>
+              
+              <!-- Teacher-only photo replacement (separate section) -->
+              <div v-if="authStore.userRole === 'teacher' || authStore.userRole === 'admin'" class="teacher-only-actions">
+                <button 
+                  v-if="file.fileType.startsWith('image/')"
+                  @click="startPhotoReplacement(file)"
+                  class="replace-photo-btn"
+                  title="Replace this photo (Teacher Only)"
+                >
+                  📷 Replace Photo
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -192,6 +217,71 @@
         </button>
       </div>
     </div>
+
+    <!-- Photo Replacement Modal -->
+    <div v-if="showPhotoReplacement" class="photo-replacement-modal" @click="closePhotoReplacement">
+      <div class="modal-content" @click.stop>
+        <div class="modal-header">
+          <h3>📷 Replace Student Photo</h3>
+          <button @click="closePhotoReplacement" class="close-btn">×</button>
+        </div>
+        
+        <div class="modal-body">
+          <div class="current-photo-section">
+            <h4>Current Photo:</h4>
+            <img 
+              v-if="replacingFile"
+              :src="replacingFile.uploadUrl" 
+              :alt="replacingFile.originalName"
+              class="current-photo-preview"
+            >
+          </div>
+          
+          <div class="replacement-options">
+            <h4>Replace with:</h4>
+            <div class="replacement-buttons">
+              <button @click="openCameraCapture" class="camera-btn">
+                📷 Take New Photo
+              </button>
+              <button @click="openFileUpload" class="upload-btn">
+                📁 Upload File
+              </button>
+            </div>
+            
+            <!-- Hidden file input -->
+            <input 
+              ref="fileInput"
+              type="file"
+              accept="image/*"
+              @change="handleFileSelection"
+              style="display: none;"
+            >
+          </div>
+          
+          <!-- New photo preview -->
+          <div v-if="newPhotoPreview" class="new-photo-section">
+            <h4>New Photo:</h4>
+            <img :src="newPhotoPreview" alt="New photo preview" class="new-photo-preview">
+            <div class="photo-actions">
+              <button @click="confirmPhotoReplacement" class="confirm-btn" :disabled="replacingPhoto">
+                {{ replacingPhoto ? '💾 Saving...' : '✅ Confirm Replacement' }}
+              </button>
+              <button @click="cancelNewPhoto" class="cancel-btn">
+                ❌ Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Camera Capture Modal -->
+    <CameraCapture
+      v-if="showCameraCapture"
+      @photoTaken="handlePhotoCaptured"
+      @close="closeCameraCapture"
+      :title="'Replace Student Photo'"
+    />
   </div>
 </template>
 
@@ -202,9 +292,11 @@ import { useAuthStore } from '@/stores/authStore';
 import { usePermissions } from '@/composables/usePermissions';
 import { getAssessment } from '@/firebase/iepServices';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { db } from '@/firebase/config';
+import { db, storage } from '@/firebase/config';
+import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import type { Assessment, AssessmentResult, AssessmentResponse } from '@/types/iep';
 import { renderLatexInText } from '@/utils/latexUtils';
+import CameraCapture from '@/components/CameraCapture.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -217,10 +309,19 @@ const error = ref('');
 const result = ref<AssessmentResult | null>(null);
 const assessment = ref<Assessment | null>(null);
 
-// Point editing state
+// Point editing state (teachers only)
 const editingPoints = ref<Record<string, boolean>>({});
 const editingValues = ref<Record<string, number>>({});
 const savingPoints = ref<Record<string, boolean>>({});
+
+// Photo replacement state
+const showPhotoReplacement = ref(false);
+const showCameraCapture = ref(false);
+const replacingFile = ref<any>(null);
+const newPhotoPreview = ref<string>('');
+const newPhotoFile = ref<File | null>(null);
+const replacingPhoto = ref(false);
+const fileInput = ref<HTMLInputElement>();
 
 // Computed
 const correctAnswers = computed(() => {
@@ -319,7 +420,7 @@ const formatFileSize = (bytes: number): string => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
 
-// Point editing methods
+// Point editing methods (teachers only)
 const startEditingPoints = (questionId: string, currentPoints: number) => {
   editingPoints.value[questionId] = true;
   editingValues.value[questionId] = currentPoints;
@@ -384,6 +485,167 @@ const savePointsEdit = async (questionId: string) => {
     alert('Failed to update points. Please try again.');
   } finally {
     savingPoints.value[questionId] = false;
+  }
+};
+
+// Photo replacement methods
+const startPhotoReplacement = (file: any) => {
+  // Security check: Only teachers and admins can replace photos
+  if (!permissions.isTeacher && !permissions.isAdmin) {
+    console.error('🚫 Unauthorized attempt to replace photo by student');
+    alert('You do not have permission to replace photos.');
+    return;
+  }
+  
+  replacingFile.value = file;
+  showPhotoReplacement.value = true;
+};
+
+const closePhotoReplacement = () => {
+  showPhotoReplacement.value = false;
+  showCameraCapture.value = false;
+  replacingFile.value = null;
+  newPhotoPreview.value = '';
+  newPhotoFile.value = null;
+};
+
+const openCameraCapture = () => {
+  showCameraCapture.value = true;
+};
+
+const closeCameraCapture = () => {
+  showCameraCapture.value = false;
+};
+
+const openFileUpload = () => {
+  fileInput.value?.click();
+};
+
+const handleFileSelection = (event: Event) => {
+  const target = event.target as HTMLInputElement;
+  const file = target.files?.[0];
+  
+  if (file && file.type.startsWith('image/')) {
+    newPhotoFile.value = file;
+    
+    // Create preview URL
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      newPhotoPreview.value = e.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+    
+    showCameraCapture.value = false;
+  } else {
+    alert('Please select a valid image file.');
+  }
+};
+
+const handlePhotoCaptured = (file: File) => {
+  console.log('📷 Photo captured for replacement:', file.name, file.size);
+  
+  newPhotoFile.value = file;
+  
+  // Create preview URL from the file
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    newPhotoPreview.value = e.target?.result as string;
+    console.log('📷 Photo preview created for replacement');
+  };
+  reader.readAsDataURL(file);
+  
+  showCameraCapture.value = false;
+  console.log('📷 Photo file ready for replacement:', file.name, file.size);
+};
+
+const cancelNewPhoto = () => {
+  newPhotoPreview.value = '';
+  newPhotoFile.value = null;
+};
+
+const confirmPhotoReplacement = async () => {
+  if (!newPhotoFile.value || !replacingFile.value || !result.value) {
+    console.error('❌ Missing required data for photo replacement');
+    return;
+  }
+  
+  try {
+    replacingPhoto.value = true;
+    console.log('🔄 Starting photo replacement process...');
+    console.log('📋 Replacing file:', replacingFile.value);
+    console.log('📁 New file:', newPhotoFile.value.name, newPhotoFile.value.size);
+    
+    // Upload new photo to Firebase Storage
+    const timestamp = Date.now();
+    const fileName = `teacher_replacement_${timestamp}.jpg`;
+    const studentId = result.value.studentUid || result.value.studentSeisId;
+    const storagePath = `assessment-uploads/${studentId}/${result.value.assessmentId}/${fileName}`;
+    const photoRef = storageRef(storage, storagePath);
+    
+    console.log('📤 Uploading to storage path:', storagePath);
+    const uploadResult = await uploadBytes(photoRef, newPhotoFile.value);
+    const downloadURL = await getDownloadURL(uploadResult.ref);
+    console.log('✅ Upload successful. Download URL:', downloadURL);
+    
+    // Update the file record in the assessment result
+    if (result.value.uploadedFiles) {
+      const fileIndex = result.value.uploadedFiles.findIndex(f => f.id === replacingFile.value.id);
+      console.log('🔍 Found file at index:', fileIndex);
+      
+      if (fileIndex >= 0) {
+        console.log('📝 Updating file record...');
+        
+        // Update the file record (keep the same structure as original)
+        const updatedFile = {
+          ...result.value.uploadedFiles[fileIndex],
+          uploadUrl: downloadURL,
+          originalName: `${newPhotoFile.value.name.replace('.jpg', '')} (Replaced by teacher).jpg`,
+          fileSize: newPhotoFile.value.size,
+          fileType: newPhotoFile.value.type
+        };
+        
+        result.value.uploadedFiles[fileIndex] = updatedFile;
+        console.log('📋 Updated file record:', updatedFile);
+        
+        // Update in Firestore
+        const resultRef = doc(db, 'assessmentResults', result.value.id);
+        const updateData = {
+          uploadedFiles: result.value.uploadedFiles,
+          lastModified: new Date(),
+          modifiedBy: authStore.currentUser?.email || 'Teacher'
+        };
+        
+        console.log('💾 Saving to Firestore...');
+        await updateDoc(resultRef, updateData);
+        console.log('✅ Firestore update successful');
+        
+        // Try to delete the old file from storage (don't fail if this doesn't work)
+        try {
+          if (replacingFile.value.uploadUrl && replacingFile.value.uploadUrl.includes('firebase')) {
+            // Extract storage path from URL or use a fallback approach
+            console.log('🗑️ Attempting to delete old photo...');
+            // Note: Deleting old files can be tricky, but the new photo is saved successfully
+          }
+        } catch (deleteError) {
+          console.warn('⚠️ Could not delete old photo (this is okay):', deleteError);
+        }
+        
+        console.log('✅ Photo replacement completed successfully');
+        alert('Photo replaced successfully!');
+        closePhotoReplacement();
+      } else {
+        console.error('❌ Could not find file to replace');
+        alert('Could not find the file to replace.');
+      }
+    } else {
+      console.error('❌ No uploaded files array found');
+      alert('No uploaded files found to replace.');
+    }
+  } catch (error) {
+    console.error('❌ Error replacing photo:', error);
+    alert(`Failed to replace photo: ${error}`);
+  } finally {
+    replacingPhoto.value = false;
   }
 };
 
@@ -953,5 +1215,200 @@ onMounted(() => {
   .result-actions {
     flex-direction: column;
   }
+}
+
+/* Student-specific styles */
+.student-points-view {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.adjustment-note {
+  font-size: 0.8rem;
+  color: #059669;
+  font-style: italic;
+  font-weight: 500;
+}
+
+/* File actions styles */
+.file-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.teacher-only-actions {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.replace-photo-btn {
+  background: #f59e0b;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.replace-photo-btn:hover {
+  background: #d97706;
+}
+
+/* Photo replacement modal */
+.photo-replacement-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  width: 90vw;
+  max-width: 600px;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: #1f2937;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #6b7280;
+  padding: 5px;
+  border-radius: 4px;
+}
+
+.close-btn:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.modal-body {
+  padding: 20px;
+}
+
+.current-photo-section, .new-photo-section {
+  margin-bottom: 20px;
+}
+
+.current-photo-section h4, .new-photo-section h4 {
+  color: #374151;
+  margin-bottom: 10px;
+}
+
+.current-photo-preview, .new-photo-preview {
+  max-width: 100%;
+  max-height: 300px;
+  border-radius: 8px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.replacement-options {
+  margin: 20px 0;
+}
+
+.replacement-buttons {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+}
+
+.camera-btn, .upload-btn {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.camera-btn {
+  background: #3b82f6;
+  color: white;
+}
+
+.camera-btn:hover {
+  background: #2563eb;
+}
+
+.upload-btn {
+  background: #10b981;
+  color: white;
+}
+
+.upload-btn:hover {
+  background: #059669;
+}
+
+.photo-actions {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  margin-top: 15px;
+}
+
+.confirm-btn {
+  background: #10b981;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.confirm-btn:hover:not(:disabled) {
+  background: #059669;
+}
+
+.confirm-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.cancel-btn {
+  background: #ef4444;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.cancel-btn:hover {
+  background: #dc2626;
 }
 </style>

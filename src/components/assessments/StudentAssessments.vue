@@ -22,10 +22,10 @@ th<template>
         </div>
       </div>
       <div class="stat-card">
-        <div class="stat-icon">⏰</div>
+        <div class="stat-icon">📝</div>
         <div class="stat-content">
           <div class="stat-number">{{ pendingAssessments.length }}</div>
-          <div class="stat-label">Pending</div>
+          <div class="stat-label">To Do</div>
         </div>
       </div>
       <div class="stat-card">
@@ -39,7 +39,7 @@ th<template>
 
     <!-- Pending Assessments -->
     <div v-if="pendingAssessments.length > 0" class="section">
-      <h2>🔔 Pending Assessments</h2>
+      <h2>📝 To Do</h2>
       <div class="assessments-grid">
         <div 
           v-for="assessment in pendingAssessments" 

@@ -4,6 +4,7 @@ import RoleBasedLogin from '@/components/auth/RoleBasedLogin.vue'
 import AssessmentEditor from '@/components/assessments/AssessmentEditor.vue'
 import AssessmentGenerator from '@/components/assessments/AssessmentGenerator.vue'
 import StudentAssessments from '@/components/assessments/StudentAssessments.vue'
+import StudentResults from '@/components/StudentResults.vue'
 import AssessmentTaking from '@/components/assessments/AssessmentTaking.vue'
 import ProgressTracking from '@/components/ProgressTracking.vue'
 import StudentManagement from '@/components/StudentManagement.vue'
@@ -93,6 +94,12 @@ const router = createRouter({
       path: '/assessments',
       name: 'student-assessments',
       component: StudentAssessments,
+      beforeEnter: authGuard
+    },
+    {
+      path: '/my-results',
+      name: 'student-results',
+      component: StudentResults,
       beforeEnter: authGuard
     },
     

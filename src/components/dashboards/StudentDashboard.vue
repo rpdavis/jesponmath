@@ -24,10 +24,10 @@
           </div>
         </div>
         <div class="stat-card">
-          <div class="stat-icon">⏰</div>
+          <div class="stat-icon">📝</div>
           <div class="stat-content">
             <div class="stat-number">{{ studentStats.pendingAssessments }}</div>
-            <div class="stat-label">Pending</div>
+            <div class="stat-label">To Do</div>
           </div>
         </div>
         <div class="stat-card">
@@ -43,7 +43,7 @@
     <!-- Pending Assessments - Priority Section -->
     <div v-if="pendingAssessments.length > 0" class="pending-section">
       <div class="section-header">
-        <h2>🔔 Assessments to Complete</h2>
+        <h2>📝 To Do</h2>
         <span class="urgency-badge" v-if="urgentAssessments > 0">
           {{ urgentAssessments }} urgent
         </span>
@@ -211,7 +211,7 @@ const urgentAssessments = computed(() => {
 
 // Methods
 const startAssessment = (assessment: any) => {
-  router.push(`/assessment/${assessment.id}/take`);
+  router.push(`/assessment/${assessment.id}`);
 };
 
 const previewAssessment = (assessment: any) => {
@@ -255,10 +255,11 @@ const formatDate = (date: any) => {
 
 const refreshData = async () => {
   loading.value = true;
-  // TODO: Refresh data from Firestore
-  setTimeout(() => {
+  try {
+    await loadStudentData();
+  } finally {
     loading.value = false;
-  }, 1000);
+  }
 };
 
 const loadStudentData = async () => {
@@ -266,7 +267,12 @@ const loadStudentData = async () => {
     console.log('Loading student data from Firestore...');
     
     if (authStore.currentUser?.uid) {
-      const studentId = authStore.currentUser?.googleId || authStore.currentUser?.seisId || authStore.currentUser?.uid;
+      const studentId = authStore.currentUser.uid || authStore.currentUser.googleId || authStore.currentUser.seisId;
+      
+      if (!studentId) {
+        console.error('No student ID found');
+        return;
+      }
       
       console.log('Student UID:', authStore.currentUser.uid);
       console.log('Student ID for queries:', studentId);
@@ -279,6 +285,8 @@ const loadStudentData = async () => {
       
       console.log('📝 Assigned assessments:', assignedAssessments.length);
       console.log('✅ Completed results:', completedResults.length);
+      console.log('🔍 Debug - Assigned assessments:', assignedAssessments.map(a => ({ id: a.id, title: a.title })));
+      console.log('🔍 Debug - Completed results:', completedResults.map(r => ({ id: r.id, assessmentId: r.assessmentId })));
       
       // Calculate average score
       const averageScore = completedResults.length > 0 
@@ -294,11 +302,15 @@ const loadStudentData = async () => {
       };
       
       // Update arrays for display
-      pendingAssessments.value = assignedAssessments.filter(assessment => {
+      const pendingFiltered = assignedAssessments.filter(assessment => {
         return !completedResults.some(result => result.assessmentId === assessment.id);
       });
       
+      pendingAssessments.value = pendingFiltered;
       recentResults.value = completedResults.slice(0, 5); // Show last 5 results
+      
+      console.log('📋 Pending assessments after filter:', pendingFiltered.length);
+      console.log('📋 Pending assessments details:', pendingFiltered.map(a => ({ id: a.id, title: a.title })));
       
       console.log('📊 Updated student stats:', studentStats.value);
     }

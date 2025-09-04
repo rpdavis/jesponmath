@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/authStore';
 import { usePermissions } from '@/composables/usePermissions';
@@ -9,8 +9,9 @@ const router = useRouter();
 const authStore = useAuthStore();
 const permissions = usePermissions();
 
-// Menu state
+// Menu state and refs
 const menuOpen = ref(false);
+const navMenuRef = ref<HTMLElement | null>(null);
 
 // No game routes in assessment app
 const isGameRoute = computed(() => false);
@@ -38,6 +39,22 @@ const handleLogout = async () => {
   await authStore.logout();
   router.push('/login');
 };
+
+// Click outside to close menu
+const handleClickOutside = (event: MouseEvent) => {
+  if (navMenuRef.value && !navMenuRef.value.contains(event.target as Node)) {
+    closeMenu();
+  }
+};
+
+// Set up event listeners
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside);
+});
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside);
+});
 </script>
 
 <template>
@@ -46,7 +63,7 @@ const handleLogout = async () => {
     <nav v-if="showNavbar" class="navbar">
       <div class="nav-container">
         <div class="nav-brand">
-          <span class="brand-icon">📊</span>
+          <img src="/src/assets/jepson-logo.png" alt="Jepson Logo" class="brand-icon">
           <span class="brand-text">JepsonMath</span>
           <span v-if="authStore.currentUser" class="user-role-badge" :class="authStore.userRole">
             {{ permissions.getRoleIcon(authStore.userRole!) }} {{ authStore.userRole }}
@@ -55,7 +72,7 @@ const handleLogout = async () => {
         
         <div class="nav-user-info">
           <span class="user-name">{{ authStore.displayName }}</span>
-          <div class="nav-menu">
+          <div class="nav-menu" ref="navMenuRef">
             <button @click="toggleMenu" class="menu-button">
               <span class="menu-icon">☰</span>
               Menu
@@ -98,9 +115,6 @@ const handleLogout = async () => {
                 </router-link>
                 <router-link v-if="authStore.isStudent" to="/my-results" class="nav-link" @click="closeMenu">
                   📊 My Results
-                </router-link>
-                <router-link v-if="authStore.isStudent" to="/my-progress" class="nav-link" @click="closeMenu">
-                  📈 My Progress
                 </router-link>
                 <router-link v-if="authStore.isAdmin" to="/admin/users" class="nav-link" @click="closeMenu">
                   👥 Manage Users
@@ -182,7 +196,9 @@ const handleLogout = async () => {
 }
 
 .brand-icon {
-  font-size: 24px;
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
 }
 
 .brand-text {

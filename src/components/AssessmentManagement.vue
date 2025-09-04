@@ -12,10 +12,7 @@
           <span class="button-icon">➕</span>
           Create New Assessment
         </router-link>
-        <button @click="bulkAssign" class="assign-button" :disabled="selectedAssessments.length === 0">
-          <span class="button-icon">📤</span>
-          Bulk Assign ({{ selectedAssessments.length }})
-        </button>
+
         <button @click="exportAssessments" class="export-button">
           <span class="button-icon">📊</span>
           Export Assessments
@@ -98,6 +95,22 @@
           >
           Select All Visible
         </label>
+        <div v-if="selectedAssessments.length > 0" class="bulk-action-buttons">
+          <button 
+            @click="openBulkAssignModal" 
+            class="bulk-assign-btn"
+            :disabled="selectedAssessments.length === 0"
+          >
+            👥 Assign Selected ({{ selectedAssessments.length }})
+          </button>
+          <button 
+            @click="openBulkDeleteModal" 
+            class="bulk-delete-btn"
+            :disabled="selectedAssessments.length === 0"
+          >
+            🗑️ Delete Selected ({{ selectedAssessments.length }})
+          </button>
+        </div>
       </div>
     </div>
 
@@ -180,9 +193,9 @@
             </div>
 
             <!-- Assigned Students -->
-            <div v-if="getAssignedStudents(assessment).length > 0" class="assigned-students">
-              <strong>Assigned to:</strong>
-              <div class="student-tags">
+            <div class="assigned-students">
+              <strong>Assigned to: {{ getAssignedStudents(assessment).length }} student(s)</strong>
+              <div v-if="getAssignedStudents(assessment).length > 0" class="student-tags">
                 <span 
                   v-for="student in getAssignedStudents(assessment).slice(0, 3)" 
                   :key="student.uid"
@@ -196,6 +209,9 @@
                 >
                   +{{ getAssignedStudents(assessment).length - 3 }} more
                 </span>
+              </div>
+              <div v-else class="no-assignments">
+                <span class="no-assignments-text">No students assigned</span>
               </div>
             </div>
 
@@ -311,6 +327,64 @@
       </div>
     </div>
 
+    <!-- Bulk Delete Modal -->
+    <div v-if="showBulkDeleteModal" class="modal-overlay" @click="closeBulkDeleteModal">
+      <div class="modal" @click.stop>
+        <div class="modal-header">
+          <h3>🗑️ Delete Multiple Assessments</h3>
+          <button @click="closeBulkDeleteModal" class="close-btn">×</button>
+        </div>
+        
+        <div class="modal-content">
+          <div class="warning-section">
+            <div class="warning-icon">⚠️</div>
+            <p><strong>Warning:</strong> You are about to delete {{ selectedAssessments.length }} assessment(s). This action cannot be undone.</p>
+          </div>
+          
+          <div class="assessments-to-delete">
+            <h4>Assessments to be deleted:</h4>
+            <div class="assessment-list">
+              <div 
+                v-for="assessmentId in selectedAssessments" 
+                :key="assessmentId"
+                class="assessment-item"
+              >
+                <span class="assessment-name">{{ getAssessmentById(assessmentId)?.title || 'Unknown Assessment' }}</span>
+                <span class="assessment-details">
+                  Grade {{ getAssessmentById(assessmentId)?.gradeLevel }} - 
+                  {{ getAssessmentById(assessmentId)?.category }}
+                  <span v-if="getAssessmentById(assessmentId) && getAssignedStudents(getAssessmentById(assessmentId)!).length > 0" class="assigned-warning">
+                    (⚠️ Assigned to {{ getAssignedStudents(getAssessmentById(assessmentId)!).length }} student(s))
+                  </span>
+                </span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="confirmation-section">
+            <label class="confirmation-checkbox">
+              <input 
+                type="checkbox" 
+                v-model="deleteConfirmation"
+              >
+              <span>I understand this will permanently delete these assessments and cannot be undone</span>
+            </label>
+          </div>
+          
+          <div class="modal-actions">
+            <button @click="closeBulkDeleteModal" class="cancel-btn">Cancel</button>
+            <button 
+              @click="performBulkDelete" 
+              class="delete-btn"
+              :disabled="!deleteConfirmation || bulkDeleting"
+            >
+              {{ bulkDeleting ? 'Deleting...' : `Delete ${selectedAssessments.length} Assessment(s)` }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Loading State -->
     <div v-if="loading" class="loading">
       <div class="loading-spinner"></div>
@@ -337,7 +411,8 @@ import {
   getAllAssessments,
   deleteAssessment as deleteAssessmentService,
   assignAssessmentToStudent,
-  getAssessmentResults
+  getAssessmentResults,
+  duplicateAssessment as duplicateAssessmentService
 } from '@/firebase/iepServices';
 import type { Assessment } from '@/types/iep';
 import type { Student as FirebaseStudent } from '@/types/users';
@@ -362,11 +437,14 @@ const pageSize = 12;
 const loading = ref(true);
 const loadingStudents = ref(true);
 const bulkAssigning = ref(false);
+const bulkDeleting = ref(false);
+const deleteConfirmation = ref(false);
 const error = ref('');
 const success = ref('');
 
 // Modal state
 const showBulkAssignModal = ref(false);
+const showBulkDeleteModal = ref(false);
 
 // Computed properties
 const filteredAssessments = computed(() => {
@@ -417,13 +495,17 @@ const paginatedAssessments = computed(() => {
   return filteredAssessments.value.slice(start, end);
 });
 
-const assignedAssessments = computed(() => 
-  assessments.value.filter(a => a.studentSeisId || a.studentUid).length
-);
+const assignedAssessments = computed(() => {
+  // Explicitly depend on both assessments and availableStudents for reactivity
+  if (!availableStudents.value.length) return 0;
+  return assessments.value.filter(a => getAssignedStudents(a).length > 0).length;
+});
 
-const templateAssessments = computed(() => 
-  assessments.value.filter(a => !a.studentSeisId && !a.studentUid).length
-);
+const templateAssessments = computed(() => {
+  // Explicitly depend on both assessments and availableStudents for reactivity  
+  if (!availableStudents.value.length) return assessments.value.length;
+  return assessments.value.filter(a => getAssignedStudents(a).length === 0).length;
+});
 
 const completedAssessments = computed(() => {
   // TODO: Calculate from assessment results
@@ -485,7 +567,8 @@ const loadStudents = async () => {
 };
 
 const getAssessmentStatus = (assessment: Assessment) => {
-  if (assessment.studentSeisId || assessment.studentUid) {
+  const assignedStudents = getAssignedStudents(assessment);
+  if (assignedStudents.length > 0) {
     // Check if completed (would need to check results)
     return { value: 'assigned', label: 'Assigned', class: 'assigned' };
   } else {
@@ -494,14 +577,16 @@ const getAssessmentStatus = (assessment: Assessment) => {
 };
 
 const getAssignedStudents = (assessment: Assessment): FirebaseStudent[] => {
-  if (!assessment.studentSeisId && !assessment.studentUid) return [];
+  // New approach: find students who have this assessment in their assignedAssessments array
+  if (!availableStudents.value.length) {
+    return []; // Return empty array if students haven't loaded yet
+  }
   
-  // Find students by UID or SEIS ID
-  return availableStudents.value.filter(student => 
-    student.uid === assessment.studentUid ||
-    student.seisId === assessment.studentSeisId ||
-    student.uid === assessment.studentUid
+  const assigned = availableStudents.value.filter(student => 
+    student.assignedAssessments && student.assignedAssessments.includes(assessment.id)
   );
+  
+  return assigned;
 };
 
 const viewAssessment = (assessment: Assessment) => {
@@ -525,10 +610,31 @@ const viewResults = (assessment: Assessment) => {
 
 const duplicateAssessment = async (assessment: Assessment) => {
   try {
-    // TODO: Implement assessment duplication
-    alert(`Duplicate functionality for "${assessment.title}" will be available soon.`);
+    // Ask for new title
+    const newTitle = prompt(`Enter title for duplicated assessment:`, `${assessment.title} (Copy)`);
+    
+    if (!newTitle) {
+      return; // User cancelled
+    }
+    
+    console.log('📋 Starting duplication of assessment:', assessment.title);
+    
+    // Call the duplicate service
+    const newAssessmentId = await duplicateAssessmentService(assessment, newTitle.trim());
+    
+    // Refresh the assessments list to show the new copy
+    await loadAssessments();
+    
+    success.value = `Assessment "${newTitle}" created successfully!`;
+    
+    // Clear success message after a few seconds
+    setTimeout(() => {
+      success.value = '';
+    }, 3000);
+    
   } catch (err: any) {
-    error.value = 'Failed to duplicate assessment.';
+    console.error('Error duplicating assessment:', err);
+    error.value = 'Failed to duplicate assessment. Please try again.';
   }
 };
 
@@ -566,7 +672,7 @@ const deleteAssessment = async (assessment: Assessment) => {
   }
 };
 
-const bulkAssign = () => {
+const openBulkAssignModal = () => {
   if (selectedAssessments.value.length === 0) return;
   showBulkAssignModal.value = true;
 };
@@ -578,6 +684,7 @@ const performBulkAssign = async () => {
     
     let assignedCount = 0;
     
+    // Original approach: Use the existing assignAssessmentToStudent function
     for (const assessmentId of selectedAssessments.value) {
       for (const studentUid of bulkAssignStudents.value) {
         try {
@@ -620,6 +727,67 @@ const toggleSelectAll = () => {
 const closeBulkAssignModal = () => {
   showBulkAssignModal.value = false;
   bulkAssignStudents.value = [];
+};
+
+// Bulk delete methods
+const openBulkDeleteModal = () => {
+  if (selectedAssessments.value.length === 0) return;
+  showBulkDeleteModal.value = true;
+  deleteConfirmation.value = false;
+};
+
+const closeBulkDeleteModal = () => {
+  showBulkDeleteModal.value = false;
+  deleteConfirmation.value = false;
+};
+
+const performBulkDelete = async () => {
+  try {
+    bulkDeleting.value = true;
+    error.value = '';
+    
+    const assessmentsToDelete = [...selectedAssessments.value];
+    let deletedCount = 0;
+    const failedDeletions: string[] = [];
+    
+    for (const assessmentId of assessmentsToDelete) {
+      try {
+        await deleteAssessmentService(assessmentId);
+        deletedCount++;
+        
+        // Remove from local state
+        const index = assessments.value.findIndex(a => a.id === assessmentId);
+        if (index !== -1) {
+          assessments.value.splice(index, 1);
+        }
+      } catch (err) {
+        console.error('Error deleting assessment:', assessmentId, err);
+        const assessment = assessments.value.find(a => a.id === assessmentId);
+        failedDeletions.push(assessment?.title || assessmentId);
+      }
+    }
+    
+    // Clear selection
+    selectedAssessments.value = [];
+    closeBulkDeleteModal();
+    
+    if (deletedCount === assessmentsToDelete.length) {
+      success.value = `Successfully deleted ${deletedCount} assessment(s)!`;
+    } else {
+      success.value = `Deleted ${deletedCount} assessment(s). Failed to delete: ${failedDeletions.join(', ')}`;
+    }
+    setTimeout(() => { success.value = ''; }, 5000);
+    
+  } catch (err: any) {
+    console.error('Error in bulk deletion:', err);
+    error.value = err.message || 'Failed to delete assessments.';
+  } finally {
+    bulkDeleting.value = false;
+  }
+};
+
+const getAssessmentById = (assessmentId: string) => {
+  return assessments.value.find(a => a.id === assessmentId);
 };
 
 const exportAssessments = () => {
@@ -666,9 +834,14 @@ const formatDate = (timestamp: any) => {
 };
 
 // Load data on component mount
-onMounted(() => {
-  loadAssessments();
-  loadStudents();
+onMounted(async () => {
+  // Load assessments and students in parallel, but wait for both to complete
+  await Promise.all([
+    loadAssessments(),
+    loadStudents()
+  ]);
+  
+  console.log('✅ Both assessments and students loaded - UI should now show correct assignment counts');
 });
 </script>
 
@@ -1064,7 +1237,16 @@ onMounted(() => {
 .more-accommodations {
   color: #6b7280;
   font-size: 0.7rem;
+}
+
+.no-assignments {
+  margin-top: 5px;
+}
+
+.no-assignments-text {
+  color: #9ca3af;
   font-style: italic;
+  font-size: 0.9rem;
 }
 
 .assessment-actions {
@@ -1459,5 +1641,158 @@ onMounted(() => {
   .modal-actions {
     flex-direction: column;
   }
+}
+
+/* Bulk action styles */
+.bulk-action-buttons {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.bulk-assign-btn,
+.bulk-delete-btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: none;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.9rem;
+}
+
+.bulk-assign-btn {
+  background: #3b82f6;
+  color: white;
+}
+
+.bulk-assign-btn:hover:not(:disabled) {
+  background: #2563eb;
+}
+
+.bulk-delete-btn {
+  background: #dc2626;
+  color: white;
+}
+
+.bulk-delete-btn:hover:not(:disabled) {
+  background: #b91c1c;
+}
+
+.bulk-assign-btn:disabled,
+.bulk-delete-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Bulk delete modal styles */
+.warning-section {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 20px;
+}
+
+.warning-icon {
+  font-size: 1.5rem;
+  color: #dc2626;
+}
+
+.warning-section p {
+  margin: 0;
+  color: #7f1d1d;
+  line-height: 1.5;
+}
+
+.assessments-to-delete {
+  margin-bottom: 20px;
+}
+
+.assessments-to-delete h4 {
+  margin: 0 0 10px 0;
+  color: #374151;
+  font-size: 1rem;
+}
+
+.assessment-list {
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 10px;
+  background: #f9fafb;
+}
+
+.assessment-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.assessment-item:last-child {
+  border-bottom: none;
+}
+
+.assessment-name {
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.assessment-details {
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+.assigned-warning {
+  color: #dc2626;
+  font-weight: 500;
+}
+
+.confirmation-section {
+  background: #f3f4f6;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 20px;
+}
+
+.confirmation-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.confirmation-checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.confirmation-checkbox span {
+  color: #374151;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.delete-btn {
+  background: #dc2626;
+  color: white;
+  border: 2px solid #dc2626;
+}
+
+.delete-btn:hover:not(:disabled) {
+  background: #b91c1c;
+  border-color: #b91c1c;
+}
+
+.delete-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 </style>
