@@ -244,6 +244,19 @@
               </div>
               <small class="form-help">Select which file types students can upload</small>
             </div>
+            
+            <div class="form-group">
+              <label for="photoOrientation">Photo Orientation</label>
+              <select 
+                id="photoOrientation"
+                v-model="assessment.photoOrientation" 
+                class="form-select"
+              >
+                <option value="portrait">📱 Portrait (Vertical)</option>
+                <option value="landscape">📱 Landscape (Horizontal)</option>
+              </select>
+              <small class="form-help">Default orientation for camera capture (students can still rotate if needed)</small>
+            </div>
           </div>
 
           <!-- File Upload Preview -->
@@ -869,7 +882,7 @@
                   ></textarea>
                 </div>
 
-                <div v-if="question.questionType === 'short-answer'" class="form-group">
+                <div v-if="question.questionType === 'short-answer' || question.questionType === 'multiple-choice'" class="form-group">
                   <label>Additional Acceptable Answers</label>
                   <div class="acceptable-answers">
                     <div 
@@ -881,7 +894,7 @@
                         v-model="question.acceptableAnswers![answerIndex]"
                         type="text"
                         class="form-input"
-                        placeholder="Alternative correct answer..."
+                        :placeholder="question.questionType === 'multiple-choice' ? 'Alternative answer text or option index...' : 'Alternative correct answer...'"
                       >
                       <button 
                         type="button"
@@ -899,7 +912,14 @@
                       + Add Alternative Answer
                     </button>
                   </div>
-                  <small class="form-help">Students can provide any of these answers to get full credit</small>
+                  <small class="form-help">
+                    <span v-if="question.questionType === 'multiple-choice'">
+                      Students can select any of these alternative answers to get full credit (enter option text or index number)
+                    </span>
+                    <span v-else>
+                      Students can provide any of these answers to get full credit
+                    </span>
+                  </small>
                 </div>
               </div>
 
@@ -1072,6 +1092,7 @@ const assessment = ref<Omit<Assessment, 'id' | 'createdAt' | 'updatedAt'>>({
   fileUploadInstructions: 'Take a clear photo of your work showing all calculations and steps.',
   maxFileSize: 10,
   allowedFileTypes: ['jpg,jpeg,png', 'pdf'],
+  photoOrientation: 'portrait',
   
   // Multi-page photo settings
   requireMultiplePages: false,

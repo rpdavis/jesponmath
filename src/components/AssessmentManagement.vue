@@ -1081,7 +1081,7 @@ onMounted(async () => {
   display: flex;
   align-items: flex-start;
   gap: 15px;
-  margin-bottom: 20px;
+  
 }
 
 .assessment-checkbox {

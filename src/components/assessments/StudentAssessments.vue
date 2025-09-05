@@ -226,8 +226,8 @@ const averageScore = computed(() => {
 
 // Methods
 const loadAssessments = async () => {
-  // Use the student's SSID or SEIS ID for assessment lookup
-  const studentId = authStore.currentUser?.googleId || authStore.currentUser?.seisId || authStore.currentUser?.uid;
+  // Use the student's UID first, then fallback to Google ID or SEIS ID
+  const studentId = authStore.currentUser?.uid || authStore.currentUser?.googleId || authStore.currentUser?.seisId;
   
   if (!studentId) {
     error.value = 'Student ID not found. Please contact your teacher.';
@@ -247,6 +247,11 @@ const loadAssessments = async () => {
     
     assignedAssessments.value = assessments;
     assessmentResults.value = results;
+    
+    // Debug logging
+    console.log('📝 Loaded assigned assessments:', assessments.length);
+    console.log('✅ Loaded assessment results:', results.length);
+    console.log('📋 Assessment results with IDs:', results.map(r => ({ id: r.id, assessmentId: r.assessmentId })));
   } catch (err) {
     console.error('Error loading assessments:', err);
     error.value = 'Failed to load assessments. Please try again.';
@@ -278,6 +283,13 @@ const canRetakeAssessment = (result: AssessmentResult) => {
 
 const getAssessmentTitle = (assessmentId: string) => {
   const assessment = assignedAssessments.value.find(a => a.id === assessmentId);
+  
+  // Debug logging
+  if (!assessment) {
+    console.log(`🔍 Assessment title lookup failed for ID: ${assessmentId}`);
+    console.log('Available assigned assessments:', assignedAssessments.value.map(a => ({ id: a.id, title: a.title })));
+  }
+  
   return assessment?.title || 'Unknown Assessment';
 };
 

@@ -45,7 +45,7 @@
           <!-- Camera Interface -->
           <div v-else-if="cameraPermission" class="camera-interface">
             <!-- Camera Preview -->
-            <div class="camera-preview">
+            <div class="camera-preview" :class="{ 'hidden-for-preview': capturedPhoto }">
               <video 
                 ref="videoElement"
                 autoplay
@@ -75,7 +75,7 @@
 
               <!-- Camera Overlay -->
               <div class="camera-overlay">
-                <div class="viewfinder" :data-page-info="getPageInfo()">
+                <div class="viewfinder" :class="orientationClass" :data-page-info="getPageInfo()">
                   <div class="viewfinder-corners"></div>
                 </div>
                 
@@ -95,7 +95,7 @@
               </div>
             </div>
 
-            <!-- Photo Preview -->
+            <!-- Photo Preview (shown when photo is captured) -->
             <div v-if="capturedPhoto" class="photo-preview">
               <h4>📸 Photo Captured</h4>
               <div class="preview-container">
@@ -113,9 +113,10 @@
 
             <!-- Camera Tips -->
             <div class="camera-tips">
-              <h5>📋 Paper Capture Tips:</h5>
+              <h5>📋 Paper Capture Tips ({{ orientationLabel }}):</h5>
               <ul>
-                <li>✓ Position paper within the dashed outline</li>
+                <li>✓ Position paper within the dashed {{ orientationLabel.toLowerCase() }} outline</li>
+                <li>✓ {{ orientationTip }}</li>
                 <li>✓ Ensure good, even lighting</li>
                 <li>✓ Hold device steady and parallel to paper</li>
                 <li>✓ Fill the frame - get close to the paper</li>
@@ -153,7 +154,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, nextTick } from 'vue';
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 
 // Props
 const props = defineProps<{
@@ -161,6 +162,7 @@ const props = defineProps<{
   totalPages?: number;
   pageLabel?: string;
   isMultiPage?: boolean;
+  orientation?: 'portrait' | 'landscape';
 }>();
 
 // Emits
@@ -176,6 +178,21 @@ const cameraError = ref('');
 const requesting = ref(false);
 const isCapturing = ref(false);
 const capturedPhoto = ref('');
+
+// Computed properties for orientation
+const orientationClass = computed(() => {
+  return props.orientation === 'landscape' ? 'landscape' : 'portrait';
+});
+
+const orientationLabel = computed(() => {
+  return props.orientation === 'landscape' ? 'Landscape' : 'Portrait';
+});
+
+const orientationTip = computed(() => {
+  return props.orientation === 'landscape' 
+    ? 'Hold device horizontally (landscape mode) for best results'
+    : 'Hold device vertically (portrait mode) for best results';
+});
 const isFullscreen = ref(false);
 const cameras = ref<MediaDeviceInfo[]>([]);
 const currentCameraIndex = ref(0);
@@ -528,8 +545,9 @@ const capturePhoto = async () => {
       throw new Error('Canvas not supported');
     }
     
-    // Calculate crop dimensions for 8.5x11 portrait aspect ratio
-    const paperAspectRatio = 8.5 / 11; // 0.739
+    // Calculate crop dimensions based on orientation
+    const orientation = props.orientation || 'portrait';
+    const paperAspectRatio = orientation === 'landscape' ? 11 / 8.5 : 8.5 / 11; // Landscape: 1.294, Portrait: 0.739
     const videoAspectRatio = video.videoWidth / video.videoHeight;
     
     let cropWidth, cropHeight, cropX, cropY;
@@ -549,8 +567,16 @@ const capturePhoto = async () => {
     }
     
     // Set canvas size to cropped paper dimensions (high resolution)
-    const outputWidth = Math.min(1700, cropWidth); // Max width for 8.5" at ~200 DPI
-    const outputHeight = outputWidth / paperAspectRatio;
+    const maxDimension = 1700;
+    let outputWidth, outputHeight;
+    
+    if (orientation === 'landscape') {
+      outputWidth = Math.min(maxDimension, cropWidth);
+      outputHeight = outputWidth / paperAspectRatio;
+    } else {
+      outputWidth = Math.min(maxDimension, cropWidth);
+      outputHeight = outputWidth / paperAspectRatio;
+    }
     
     canvas.width = outputWidth;
     canvas.height = outputHeight;
@@ -929,6 +955,10 @@ onMounted(() => {
   max-height: 400px;
 }
 
+.camera-preview.hidden-for-preview {
+  display: none;
+}
+
 .camera-video {
   width: 100%;
   height: 100%;
@@ -1051,12 +1081,21 @@ onMounted(() => {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    /* 8.5x11 portrait aspect ratio (0.739:1) */
-    width: 42%;
-    aspect-ratio: 8.5 / 11;
     border: 2px dashed rgba(255, 255, 255, 0.8);
     border-radius: 10px;
     pointer-events: none;
+  }
+  
+  .viewfinder.portrait {
+    /* 8.5x11 portrait aspect ratio (0.739:1) */
+    width: 42%;
+    aspect-ratio: 8.5 / 11;
+  }
+  
+  .viewfinder.landscape {
+    /* 11x8.5 landscape aspect ratio (1.294:1) */
+    width: 65%;
+    aspect-ratio: 11 / 8.5;
   }
   
   /* Paper outline styling */
@@ -1317,9 +1356,14 @@ onMounted(() => {
     aspect-ratio: 4/3;
   }
   
-  .viewfinder {
+  .viewfinder.portrait {
     width: 90%;
     height: 70%;
+  }
+  
+  .viewfinder.landscape {
+    width: 90%;
+    height: 50%;
   }
 }
 

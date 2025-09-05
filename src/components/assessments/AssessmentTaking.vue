@@ -9,7 +9,6 @@
       <div class="error-icon">⚠️</div>
       <h3>Assessment Not Available</h3>
       <p>{{ error }}</p>
-      <router-link to="/assessments" class="back-button">← Back to Assessments</router-link>
     </div>
 
     <div v-else-if="assessment" class="assessment-container">
@@ -39,63 +38,24 @@
         </div>
       </div>
 
-      <!-- Assessment Header -->
-      <div class="assessment-header">
-        <div class="header-content">
-          <h1>📝 {{ assessment.title }}</h1>
-          <p>{{ assessment.description }}</p>
-          <div class="assessment-meta">
-            <span class="grade-tag">Grade {{ assessment.gradeLevel }}</span>
-            <span class="category-tag">{{ assessment.category }}</span>
-            <span v-if="assessment.standard" class="standard-tag">{{ assessment.standard }}</span>
-            <span v-if="assessment.timeLimit" class="time-tag">⏱️ {{ assessment.timeLimit }} min</span>
-          </div>
-        </div>
-        <div class="header-actions">
-          <router-link to="/assessments" class="back-button">← Back</router-link>
-        </div>
-      </div>
-
-      <!-- Instructions -->
-      <div class="instructions-section">
-        <h2>📋 Instructions</h2>
-        <div class="instructions-content">
-          <p>{{ assessment.instructions }}</p>
-          
-          <!-- Accommodations -->
-          <div v-if="assessment.accommodations?.length" class="accommodations">
-            <strong>Your Accommodations:</strong>
-            <div class="accommodation-tags">
-              <span 
-                v-for="accommodation in assessment.accommodations" 
-                :key="accommodation"
-                class="accommodation-tag"
-              >
-                {{ accommodation }}
-              </span>
-            </div>
-          </div>
-
-          <!-- File Upload Instructions -->
-          <div v-if="assessment.allowFileUpload" class="file-upload-info">
-            <div class="upload-header">
-              <span class="upload-icon">📎</span>
-              <strong>File Upload {{ assessment.requireFileUpload ? '(Required)' : '(Optional)' }}</strong>
-            </div>
-            <p>{{ assessment.fileUploadInstructions || 'You can upload photos of your work or other files.' }}</p>
-            <div class="upload-specs">
-              <small>
-                Max size: {{ assessment.maxFileSize || 10 }}MB | 
-                Allowed types: {{ (assessment.allowedFileTypes || []).join(', ') || 'All types' }}
-              </small>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <!-- Assessment Questions -->
       <div class="questions-section">
-        <h2>❓ Questions ({{ assessment.questions?.length || 0 }})</h2>
+        <!-- Assessment Header (moved inside) -->
+        <div class="assessment-header">
+          <div class="header-content">
+            <div class="title-row">
+              <h1>📝 {{ assessment.title }}</h1>
+              <span class="inline-description">{{ assessment.description }}</span>
+            </div>
+            <div class="assessment-meta">
+              <span class="grade-tag">Grade {{ assessment.gradeLevel }}</span>
+              <span class="category-tag">{{ assessment.category }}</span>
+              <span v-if="assessment.standard" class="standard-tag">{{ assessment.standard }}</span>
+              <span v-if="assessment.timeLimit" class="time-tag">⏱️ {{ assessment.timeLimit }} min</span>
+            </div>
+          </div>
+        </div>
+        
         
         <div v-if="!started" class="start-prompt">
           <div class="start-card">
@@ -226,18 +186,19 @@
             <span class="timer-text">Time Remaining: {{ formatTime(timeRemaining) }}</span>
           </div>
 
-          <!-- Progress -->
-          <div class="progress-display">
-            <span class="progress-text">{{ currentQuestionIndex + 1 }}/{{ assessment.questions?.length }}</span>
-            <div class="progress-bar">
-              <div class="progress-fill" :style="{ width: progressPercentage + '%' }"></div>
-            </div>
-          </div>
-
           <!-- Current Question -->
           <div v-if="currentQuestion" class="question-card">
             <div class="question-header">
               <h3>Question {{ currentQuestionIndex + 1 }}</h3>
+              
+              <!-- Progress Bar (inline center) -->
+              <div class="progress-compact-inline">
+                <span class="progress-text">{{ currentQuestionIndex + 1 }}/{{ assessment.questions?.length }}</span>
+                <div class="progress-bar">
+                  <div class="progress-fill" :style="{ width: progressPercentage + '%' }"></div>
+                </div>
+              </div>
+              
               <div class="question-meta">
                 <div v-if="currentQuestion.standard" class="question-standards">
                   <span 
@@ -287,7 +248,7 @@
                 <RichTextAnswerInput
                   :key="currentQuestion.id"
                   v-model="answers[currentQuestion.id] as string"
-                  placeholder="Enter your answer... Use 'Insert Fraction' button for vertical fractions like 2x/4 or complex expressions."
+                  placeholder="Enter your answer..."
                 />
               </div>
 
@@ -458,6 +419,7 @@
       :currentPage="currentPageIndex + 1"
       :totalPages="assessment?.requiredPageCount || 1"
       :pageLabel="getCurrentPageLabel()"
+      :orientation="assessment?.photoOrientation || 'portrait'"
     />
   </div>
 </template>
@@ -535,10 +497,11 @@ const loadAssessment = async () => {
       
       // Check for existing results to determine if this is a retake
       if (authStore.currentUser?.uid) {
-        const studentId = authStore.currentUser?.googleId || authStore.currentUser?.seisId || authStore.currentUser?.uid;
+        const studentId = authStore.currentUser.uid || authStore.currentUser.googleId || authStore.currentUser.seisId;
         
-        try {
-          const allStudentResults = await getAssessmentResultsByStudent(studentId);
+        if (studentId) {
+          try {
+            const allStudentResults = await getAssessmentResultsByStudent(studentId);
           existingResults.value = allStudentResults.filter(result => result.assessmentId === assessmentId);
           
           if (existingResults.value.length > 0) {
@@ -566,6 +529,7 @@ const loadAssessment = async () => {
           }
         } catch (resultsError) {
           console.warn('Could not check existing results:', resultsError);
+        }
         }
       }
       
@@ -692,9 +656,47 @@ const submitAssessment = async () => {
       
       // Handle different question types for answer comparison
       if (question.questionType === 'multiple-choice') {
-        // For multiple choice, userAnswer is the option index, correctAnswer might be index or text
-        const selectedOptionText = question.options?.[parseInt(userAnswer as string)] || '';
-        isCorrect = userAnswer === question.correctAnswer || selectedOptionText === question.correctAnswer;
+        // For multiple choice, userAnswer is the option index, correctAnswer should be index
+        // Primary check: compare option indices directly
+        isCorrect = userAnswer === question.correctAnswer;
+        
+        // Fallback: if correct answer is text instead of index, try text comparison
+        if (!isCorrect) {
+          const selectedOptionText = question.options?.[parseInt(userAnswer as string)] || '';
+          // Use enhanced comparison for text that might contain KaTeX
+          if (selectedOptionText && question.correctAnswer && typeof question.correctAnswer === 'string') {
+            isCorrect = areAnswersEquivalent(selectedOptionText, question.correctAnswer);
+          }
+        }
+        
+        // Also check acceptable answers for multiple choice
+        if (!isCorrect && question.acceptableAnswers && question.acceptableAnswers.length > 0) {
+          for (const acceptableAnswer of question.acceptableAnswers) {
+            // Check index match first
+            if (userAnswer === acceptableAnswer) {
+              isCorrect = true;
+              console.log(`✅ Multiple choice matched acceptable answer index: ${acceptableAnswer}`);
+              break;
+            }
+            
+            // Then check text match with KaTeX handling
+            const selectedOptionText = question.options?.[parseInt(userAnswer as string)] || '';
+            if (selectedOptionText && areAnswersEquivalent(selectedOptionText, acceptableAnswer)) {
+              isCorrect = true;
+              console.log(`✅ Multiple choice matched acceptable answer text: ${acceptableAnswer}`);
+              break;
+            }
+          }
+        }
+        
+        // Enhanced debug logging for multiple choice
+        console.log(`🔍 Multiple Choice Debug for Question ${index + 1}:`, {
+          userAnswerIndex: userAnswer,
+          selectedOptionText: question.options?.[parseInt(userAnswer as string)] || '',
+          correctAnswerValue: question.correctAnswer,
+          isCorrect: isCorrect,
+          optionsCount: question.options?.length || 0
+        });
       } else if (question.questionType === 'fraction') {
         // For fraction questions, check against all acceptable fraction answers
         if (question.correctFractionAnswers && typeof userAnswer === 'object') {
@@ -753,24 +755,30 @@ const submitAssessment = async () => {
       } else {
         // For other question types (short-answer, essay, etc.), use enhanced comparison
         if (typeof userAnswer === 'string' && typeof question.correctAnswer === 'string') {
+          // Trim whitespace from user answer before comparison
+          const trimmedUserAnswer = userAnswer.trim();
+          const trimmedCorrectAnswer = question.correctAnswer.trim();
+          
           // Use the enhanced answer comparison that handles HTML fractions
-          isCorrect = areAnswersEquivalent(userAnswer, question.correctAnswer);
+          isCorrect = areAnswersEquivalent(trimmedUserAnswer, trimmedCorrectAnswer);
           
           // Debug logging for answer comparison
           console.log(`📝 Answer Comparison for Question ${index + 1}:`, {
             questionType: question.questionType,
-            studentAnswer: userAnswer,
-            convertedAnswer: convertHtmlAnswerToText(userAnswer),
-            correctAnswer: question.correctAnswer,
+            originalAnswer: userAnswer,
+            trimmedAnswer: trimmedUserAnswer,
+            convertedAnswer: convertHtmlAnswerToText(trimmedUserAnswer),
+            correctAnswer: trimmedCorrectAnswer,
             isCorrect: isCorrect
           });
           
           // Also check acceptable answers if available
           if (!isCorrect && question.acceptableAnswers && question.acceptableAnswers.length > 0) {
             for (const acceptableAnswer of question.acceptableAnswers) {
-              if (areAnswersEquivalent(userAnswer, acceptableAnswer)) {
+              const trimmedAcceptableAnswer = acceptableAnswer.trim();
+              if (areAnswersEquivalent(trimmedUserAnswer, trimmedAcceptableAnswer)) {
                 isCorrect = true;
-                console.log(`✅ Matched acceptable answer: ${acceptableAnswer}`);
+                console.log(`✅ Matched acceptable answer: "${trimmedAcceptableAnswer}" (original: "${acceptableAnswer}")`);
                 break;
               }
             }
@@ -865,7 +873,7 @@ const submitAssessment = async () => {
       // Separate mode or first attempt - create new result
       resultData = {
         assessmentId: assessment.value?.id || '',
-        studentSeisId: authStore.currentUser?.googleId || authStore.currentUser?.seisId || authStore.currentUser?.uid || '',
+        studentSeisId: authStore.currentUser?.uid || authStore.currentUser?.googleId || authStore.currentUser?.seisId || '',
         studentUid: authStore.currentUser?.uid || '',
         goalId: assessment.value?.goalId || '',
         responses: responses,
@@ -1192,7 +1200,7 @@ onMounted(() => {
 <style scoped>
 .assessment-taking {
   min-height: 100vh;
-  background: #f8fafc;
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
 }
 
 .loading,
@@ -1238,23 +1246,28 @@ onMounted(() => {
 }
 
 .back-button {
-  background: #f3f4f6;
-  color: #374151;
+  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+  color: white;
   text-decoration: none;
-  padding: 10px 20px;
-  border-radius: 8px;
-  font-weight: 600;
+  padding: 14px 28px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 1.05rem;
   transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(107, 114, 128, 0.3);
+  border: 2px solid #6b7280;
 }
 
 .back-button:hover {
-  background: #e5e7eb;
+  background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(107, 114, 128, 0.5);
 }
 
 .assessment-container {
   max-width: 1000px;
   margin: 0 auto;
-  padding: 20px;
+  padding: 0 20px;
 }
 
 .retake-warning {
@@ -1350,26 +1363,30 @@ onMounted(() => {
 }
 
 .assessment-header {
-  background: white;
-  border-radius: 15px;
-  padding: 30px;
-  margin-bottom: 30px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.title-row {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+  align-items: baseline;
+  gap: 15px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
 }
 
 .header-content h1 {
   color: #1f2937;
-  font-size: 2rem;
-  margin-bottom: 10px;
+  font-size: 1.8rem;
+  margin: 0;
+  white-space: nowrap;
 }
 
-.header-content p {
+.inline-description {
   color: #6b7280;
-  margin-bottom: 15px;
-  line-height: 1.6;
+  font-size: 1.1rem;
+  font-style: italic;
 }
 
 .assessment-meta {
@@ -1408,27 +1425,20 @@ onMounted(() => {
   color: #dc2626;
 }
 
-.instructions-section,
 .questions-section {
   background: white;
   border-radius: 15px;
-  padding: 30px;
-  margin-bottom: 30px;
+  padding: 25px;
+  margin-bottom: 20px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
 }
 
-.instructions-section h2,
 .questions-section h2 {
   color: #1f2937;
   font-size: 1.5rem;
   margin-bottom: 20px;
 }
 
-.instructions-content p {
-  color: #374151;
-  line-height: 1.6;
-  margin-bottom: 20px;
-}
 
 .accommodations {
   background: #f0f4ff;
@@ -1556,68 +1566,106 @@ onMounted(() => {
   gap: 8px;
 }
 
-.progress-bar {
-  background: #f3f4f6;
-  border-radius: 10px;
-  height: 8px;
-  margin-bottom: 30px;
-  position: relative;
-  overflow: hidden;
-}
 
-.progress-fill {
-  background: linear-gradient(90deg, #10b981, #059669);
-  height: 100%;
-  border-radius: 10px;
-  transition: width 0.3s ease;
-}
-
-.progress-text {
-  position: absolute;
-  top: -25px;
-  right: 0;
-  font-size: 0.8rem;
-  color: #6b7280;
-  font-weight: 500;
-}
 
 .question-card {
-  background: #f9fafb;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border-radius: 15px;
-  padding: 30px;
-  margin-bottom: 30px;
-  border: 2px solid #e5e7eb;
+  padding: 25px;
+  margin-bottom: 20px;
+  border: 2px solid #4f46e5;
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.2);
 }
 
 .question-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 18px;
   padding-bottom: 15px;
-  border-bottom: 2px solid #e5e7eb;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.3);
 }
 
 .question-header h3 {
-  color: #1f2937;
-  font-size: 1.3rem;
+  color: #ffffff;
+  font-size: 2rem;
   margin: 0;
+  font-weight: 1000;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  letter-spacing: 1px;
 }
 
 .question-points {
-  background: #f0f4ff;
-  color: #3730a3;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
   padding: 6px 12px;
   border-radius: 8px;
   font-weight: 600;
   font-size: 0.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  white-space: nowrap;
+}
+
+.progress-compact-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  justify-content: center;
+}
+
+.progress-compact-inline .progress-text {
+  color: white;
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.progress-compact-inline .progress-bar {
+  width: 80px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 6px;
+  height: 6px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.progress-compact-inline .progress-fill {
+  background: rgba(255, 255, 255, 0.9);
+  height: 100%;
+  border-radius: 6px;
+  transition: width 0.3s ease;
 }
 
 .question-text {
-  color: #1f2937;
-  font-size: 1.1rem;
-  line-height: 1.6;
-  margin-bottom: 25px;
+  color: #ffffff;
+  font-size: 1.3rem;
+  line-height: 1.8;
+  margin-bottom: 20px;
+  font-weight: 700;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  letter-spacing: 0.3px;
+}
+
+/* Target KaTeX math within questions for better readability */
+.question-text :deep(.katex .mord),
+.question-text :deep(.katex .mtight),
+.option-label :deep(.katex .mord),
+.option-label :deep(.katex .mtight),
+.checkbox-text :deep(.katex .mord),
+.checkbox-text :deep(.katex .mtight) {
+  font-weight: 600 !important;
+}
+
+/* Also target other KaTeX elements that might contain math */
+.question-text :deep(.katex .base),
+.question-text :deep(.katex .sizing),
+.option-label :deep(.katex .base),
+.option-label :deep(.katex .sizing),
+.checkbox-text :deep(.katex .base),
+.checkbox-text :deep(.katex .sizing) {
+  font-weight: 600 !important;
 }
 
 .answer-options {
@@ -1629,24 +1677,31 @@ onMounted(() => {
 .option-label {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 15px;
-  background: white;
-  border: 2px solid #e5e7eb;
-  border-radius: 8px;
+  gap: 15px;
+  padding: 18px 20px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  border-radius: 12px;
   cursor: pointer;
   transition: all 0.2s ease;
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: #1f2937;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .option-label:hover {
-  border-color: #667eea;
-  background: #f8faff;
+  background: white;
+  border-color: #10b981;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
 }
 
 .option-label input[type="radio"] {
-  width: 18px;
-  height: 18px;
+  width: 22px;
+  height: 22px;
   cursor: pointer;
+  accent-color: #10b981;
 }
 
 .answer-textarea {
@@ -1814,10 +1869,6 @@ onMounted(() => {
   color: white;
 }
 
-.instructions-content {
-  padding: 16px;
-  color: #92400e;
-}
 
 .show-instructions-btn {
   background: #fef3c7;
@@ -1835,28 +1886,22 @@ onMounted(() => {
   color: white;
 }
 
-.progress-display {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  margin-bottom: 20px;
-}
 
-.progress-text {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: #374151;
-  min-width: 60px;
-}
 
 .review-button {
-  background: #10b981;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
   border-color: #10b981;
+  padding: 16px 32px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
 }
 
 .review-button:hover {
-  background: #059669;
-  border-color: #059669;
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(16, 185, 129, 0.5);
 }
 
 .upload-buttons {
@@ -2200,33 +2245,44 @@ onMounted(() => {
 }
 
 .nav-button {
-  padding: 12px 24px;
-  border: none;
-  border-radius: 8px;
-  font-weight: 600;
+  padding: 16px 32px;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 1.1rem;
   cursor: pointer;
   transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .prev-button,
 .next-button {
-  background: #f3f4f6;
-  color: #374151;
+  background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%);
+  color: white;
+  border-color: #4f46e5;
 }
 
 .prev-button:hover,
 .next-button:hover {
-  background: #e5e7eb;
+  background: linear-gradient(135deg, #3730a3 0%, #1e1b4b 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(79, 70, 229, 0.4);
 }
 
 .submit-button {
   background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   color: white;
+  border-color: #10b981;
+  padding: 16px 32px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
 }
 
 .submit-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(16, 185, 129, 0.3);
+  box-shadow: 0 8px 25px rgba(16, 185, 129, 0.5);
 }
 
 .nav-button:disabled {

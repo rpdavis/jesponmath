@@ -117,7 +117,7 @@ const loadResults = async () => {
     loading.value = true;
     error.value = '';
     
-    const studentId = authStore.currentUser?.googleId || authStore.currentUser?.seisId || authStore.currentUser?.uid;
+    const studentId = authStore.currentUser?.uid || authStore.currentUser?.googleId || authStore.currentUser?.seisId;
     
     if (!studentId) {
       error.value = 'Student ID not found. Please contact your teacher.';

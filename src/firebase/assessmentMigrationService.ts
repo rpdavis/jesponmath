@@ -67,8 +67,40 @@ const regradeQuestionResponse = (
 
   // Handle different question types for answer comparison
   if (updatedQuestion.questionType === 'multiple-choice') {
-    const selectedOptionText = updatedQuestion.options?.[parseInt(userAnswer as string)] || '';
-    isCorrect = userAnswer === updatedQuestion.correctAnswer || selectedOptionText === updatedQuestion.correctAnswer;
+    // Primary check: compare option indices directly
+    isCorrect = userAnswer === updatedQuestion.correctAnswer;
+    
+    // Fallback: if correct answer is text instead of index, try text comparison with KaTeX handling
+    if (!isCorrect) {
+      const selectedOptionText = updatedQuestion.options?.[parseInt(userAnswer as string)] || '';
+      if (selectedOptionText && updatedQuestion.correctAnswer) {
+        isCorrect = areAnswersEquivalent(selectedOptionText, updatedQuestion.correctAnswer);
+      }
+    }
+    
+    // Also check acceptable answers for multiple choice
+    if (!isCorrect && updatedQuestion.acceptableAnswers && updatedQuestion.acceptableAnswers.length > 0) {
+      for (const acceptableAnswer of updatedQuestion.acceptableAnswers) {
+        // Check index match first
+        if (userAnswer === acceptableAnswer) {
+          isCorrect = true;
+          reason = 'Matched acceptable answer index during migration';
+          break;
+        }
+        
+        // Then check text match with KaTeX handling
+        const selectedOptionText = updatedQuestion.options?.[parseInt(userAnswer as string)] || '';
+        if (selectedOptionText && areAnswersEquivalent(selectedOptionText, acceptableAnswer)) {
+          isCorrect = true;
+          reason = 'Matched acceptable answer text during migration';
+          break;
+        }
+      }
+    }
+    
+    if (isCorrect && !reason) {
+      reason = 'Multiple choice answer comparison with KaTeX support';
+    }
   } else if (updatedQuestion.questionType === 'fraction') {
     if (updatedQuestion.correctFractionAnswers && typeof userAnswer === 'object') {
       isCorrect = checkFractionAnswer(userAnswer as any, updatedQuestion.correctFractionAnswers);
@@ -78,16 +110,26 @@ const regradeQuestionResponse = (
   } else {
     // For other question types, use enhanced comparison
     if (typeof userAnswer === 'string' && typeof updatedQuestion.correctAnswer === 'string') {
-      isCorrect = areAnswersEquivalent(userAnswer, updatedQuestion.correctAnswer);
+      // Trim whitespace from answers before comparison
+      const trimmedUserAnswer = userAnswer.trim();
+      const trimmedCorrectAnswer = updatedQuestion.correctAnswer.trim();
+      
+      isCorrect = areAnswersEquivalent(trimmedUserAnswer, trimmedCorrectAnswer);
       
       // Also check acceptable answers
       if (!isCorrect && updatedQuestion.acceptableAnswers && updatedQuestion.acceptableAnswers.length > 0) {
         for (const acceptableAnswer of updatedQuestion.acceptableAnswers) {
-          if (areAnswersEquivalent(userAnswer, acceptableAnswer)) {
+          const trimmedAcceptableAnswer = acceptableAnswer.trim();
+          if (areAnswersEquivalent(trimmedUserAnswer, trimmedAcceptableAnswer)) {
             isCorrect = true;
+            reason = 'Matched acceptable answer during migration';
             break;
           }
         }
+      }
+      
+      if (isCorrect && !reason) {
+        reason = 'Answer comparison with trimming';
       }
     } else {
       isCorrect = userAnswer?.toString().trim().toLowerCase() === updatedQuestion.correctAnswer?.toString().trim().toLowerCase();

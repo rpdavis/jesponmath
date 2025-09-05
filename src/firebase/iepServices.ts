@@ -364,18 +364,43 @@ export const saveAssessmentResult = async (resultData: Omit<AssessmentResult, 'i
   }
 };
 
-export const getAssessmentResultsByStudent = async (studentSeisId: string) => {
+export const getAssessmentResultsByStudent = async (studentId: string) => {
   try {
-    const q = query(
-      collection(db, 'assessmentResults'), 
-      where('studentSeisId', '==', studentSeisId),
-      orderBy('completedAt', 'desc')
+    // Query by both studentSeisId and studentUid to catch all results
+    const queries = [
+      query(
+        collection(db, 'assessmentResults'), 
+        where('studentSeisId', '==', studentId)
+      ),
+      query(
+        collection(db, 'assessmentResults'), 
+        where('studentUid', '==', studentId)
+      )
+    ];
+    
+    const results = await Promise.all(queries.map(q => getDocs(q)));
+    const allDocs = results.flatMap(snapshot => snapshot.docs);
+    
+    // Remove duplicates by ID
+    const uniqueResults = new Map();
+    allDocs.forEach(doc => {
+      if (!uniqueResults.has(doc.id)) {
+        uniqueResults.set(doc.id, {
+          id: doc.id,
+          ...doc.data()
+        });
+      }
+    });
+    
+    const assessmentResults = Array.from(uniqueResults.values()) as AssessmentResult[];
+    
+    // Sort by completion date
+    assessmentResults.sort((a, b) => 
+      new Date(b.completedAt?.seconds || b.completedAt || 0).getTime() - 
+      new Date(a.completedAt?.seconds || a.completedAt || 0).getTime()
     );
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    })) as AssessmentResult[];
+    
+    return assessmentResults;
   } catch (error) {
     console.error('Error getting assessment results by student:', error);
     throw error;

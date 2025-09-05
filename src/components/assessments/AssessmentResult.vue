@@ -140,10 +140,10 @@
               <p class="question-text" v-html="renderLatexInText(getQuestionText(response.questionId))"></p>
               <div class="answer-section">
                 <div class="student-answer">
-                  <strong>Your Answer:</strong> {{ response.studentAnswer }}
+                  <strong>Your Answer:</strong> {{ getDisplayAnswer(response.questionId, response.studentAnswer) }}
                 </div>
                 <div v-if="!response.isCorrect" class="correct-answer">
-                  <strong>Correct Answer:</strong> {{ getCorrectAnswer(response.questionId) }}
+                  <strong>Correct Answer:</strong> {{ getDisplayCorrectAnswer(response.questionId) }}
                 </div>
               </div>
             </div>
@@ -377,9 +377,124 @@ const getCorrectAnswer = (questionId: string): string => {
   return question?.correctAnswer as string || 'N/A';
 };
 
+const getDisplayAnswer = (questionId: string, studentAnswer: any): string => {
+  const question = assessment.value?.questions?.find(q => q.id === questionId);
+  
+  if (!question) return 'N/A';
+  
+  // Handle different question types for display
+  if (question.questionType === 'multiple-choice') {
+    const answerIndex = parseInt(studentAnswer as string);
+    const optionText = question.options?.[answerIndex] || '';
+    if (optionText) {
+      // Convert LaTeX to plain text for display
+      const plainText = convertLatexToPlainText(optionText);
+      return `${String.fromCharCode(65 + answerIndex)}) ${plainText}`;
+    }
+    return 'N/A';
+  } else if (question.questionType === 'checkbox') {
+    if (Array.isArray(studentAnswer)) {
+      const selectedOptions = (studentAnswer as string[]).map(index => {
+        const optionIndex = parseInt(index);
+        const optionText = question.options?.[optionIndex] || '';
+        if (optionText) {
+          const plainText = convertLatexToPlainText(optionText);
+          return `${String.fromCharCode(65 + optionIndex)}) ${plainText}`;
+        }
+        return index;
+      });
+      return selectedOptions.join(', ');
+    }
+  } else if (question.questionType === 'matching') {
+    if (typeof studentAnswer === 'object' && studentAnswer !== null) {
+      const matches = Object.entries(studentAnswer as Record<string, string>)
+        .map(([left, right]) => `${left} → ${right}`)
+        .join(', ');
+      return matches || 'No matches made';
+    }
+  } else if (question.questionType === 'rank-order') {
+    if (Array.isArray(studentAnswer)) {
+      return (studentAnswer as string[]).join(', ');
+    }
+  }
+  
+  // For other question types, return as-is
+  return studentAnswer?.toString() || 'No answer';
+};
+
+const getDisplayCorrectAnswer = (questionId: string): string => {
+  const question = assessment.value?.questions?.find(q => q.id === questionId);
+  
+  if (!question) return 'N/A';
+  
+  // Handle different question types for display
+  if (question.questionType === 'multiple-choice') {
+    const answerIndex = parseInt(question.correctAnswer as string);
+    const optionText = question.options?.[answerIndex] || '';
+    if (optionText) {
+      // Convert LaTeX to plain text for display
+      const plainText = convertLatexToPlainText(optionText);
+      return `${String.fromCharCode(65 + answerIndex)}) ${plainText}`;
+    }
+    return 'N/A';
+  } else if (question.questionType === 'checkbox') {
+    if (Array.isArray(question.correctAnswers)) {
+      const correctOptions = (question.correctAnswers as string[]).map(index => {
+        const optionIndex = parseInt(index);
+        const optionText = question.options?.[optionIndex] || '';
+        if (optionText) {
+          const plainText = convertLatexToPlainText(optionText);
+          return `${String.fromCharCode(65 + optionIndex)}) ${plainText}`;
+        }
+        return index;
+      });
+      return correctOptions.join(', ');
+    }
+  } else if (question.questionType === 'matching') {
+    if (question.correctMatches) {
+      const matches = Object.entries(question.correctMatches)
+        .map(([left, right]) => `${left} → ${right}`)
+        .join(', ');
+      return matches || 'N/A';
+    }
+  } else if (question.questionType === 'rank-order') {
+    if (Array.isArray(question.correctOrder)) {
+      return question.correctOrder.join(', ');
+    }
+  }
+  
+  // For other question types, return the correct answer as-is
+  return question.correctAnswer as string || 'N/A';
+};
+
 const getQuestionPoints = (questionId: string): number => {
   const question = assessment.value?.questions?.find(q => q.id === questionId);
   return question?.points || 1;
+};
+
+// Convert LaTeX markup to plain text for display
+const convertLatexToPlainText = (text: string): string => {
+  if (!text) return '';
+  
+  // Convert common LaTeX fractions to plain text
+  let plainText = text
+    .replace(/\$\\frac\{([^}]+)\}\{([^}]+)\}\$/g, '$1/$2') // \frac{a}{b} -> a/b
+    .replace(/\$([^$]+)\$/g, '$1') // Remove $ delimiters
+    .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '$1/$2') // \frac{a}{b} -> a/b (without $)
+    .replace(/\\cdot/g, '×') // \cdot -> ×
+    .replace(/\\times/g, '×') // \times -> ×
+    .replace(/\\div/g, '÷') // \div -> ÷
+    .replace(/\\pm/g, '±') // \pm -> ±
+    .replace(/\\approx/g, '≈') // \approx -> ≈
+    .replace(/\\leq/g, '≤') // \leq -> ≤
+    .replace(/\\geq/g, '≥') // \geq -> ≥
+    .replace(/\\neq/g, '≠') // \neq -> ≠
+    .replace(/\\infty/g, '∞') // \infty -> ∞
+    .replace(/\\\\/g, '') // Remove line breaks
+    .replace(/[{}]/g, '') // Remove remaining braces
+    .trim();
+  
+  return plainText;
 };
 
 const getScoreClass = (percentage: number): string => {

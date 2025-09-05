@@ -80,6 +80,7 @@ export interface Assessment {
   fileUploadInstructions?: string; // Instructions for file upload
   maxFileSize?: number; // Max file size in MB
   allowedFileTypes?: string[]; // Allowed file extensions
+  photoOrientation?: 'portrait' | 'landscape'; // Default photo orientation
   
   // Multi-page photo capture options
   requireMultiplePages?: boolean; // Whether multiple pages are required
