@@ -22,6 +22,8 @@ export interface GeneratorOptions {
   maxDecimalPlaces?: number;
   customRange1?: { min: number; max: number };
   customRange2?: { min: number; max: number };
+  // Division-specific options
+  wholeNumberQuotientsOnly?: boolean;
 }
 
 export class MathProblemGenerator {
@@ -122,9 +124,9 @@ export class MathProblemGenerator {
         operator = '×';
         break;
       case 'division':
-        // For division, create problems that have reasonable quotients
-        // Use operand1 as quotient and operand2 as divisor, then calculate dividend
-        let quotient = operand1;
+        // For division, use operand1 as dividend (respects user's digit selection)
+        // and operand2 as divisor, then calculate quotient
+        let dividend = operand1;
         let divisor = operand2;
         
         // For division, keep divisor smaller to avoid huge problems
@@ -132,9 +134,18 @@ export class MathProblemGenerator {
           divisor = Math.floor(Math.random() * 20) + 2; // 2-21 range for divisor
         }
         
-        // Calculate dividend and add small remainder sometimes
-        const remainder = Math.random() < 0.3 ? Math.floor(Math.random() * (divisor - 1)) : 0;
-        const dividend = quotient * divisor + remainder;
+        // If whole number quotients only is enabled, adjust dividend to be evenly divisible
+        if (options.wholeNumberQuotientsOnly) {
+          // Generate a reasonable quotient first, then calculate dividend
+          const minQuotient = Math.max(1, Math.pow(10, options.minDigits1 - 1));
+          const maxQuotient = Math.min(999, Math.pow(10, options.maxDigits1) - 1);
+          const quotient = Math.floor(Math.random() * (maxQuotient - minQuotient + 1)) + minQuotient;
+          dividend = quotient * divisor;
+        }
+        
+        // Calculate quotient and remainder
+        const quotient = Math.floor(dividend / divisor);
+        const remainder = dividend % divisor;
         
         answer = quotient + (remainder > 0 ? remainder / divisor : 0);
         operator = '÷';

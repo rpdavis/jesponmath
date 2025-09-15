@@ -480,12 +480,114 @@ export async function updateStudent(uid: string, updates: Partial<Student>): Pro
 
 export async function deleteStudent(uid: string): Promise<void> {
   try {
-    const batch = writeBatch(db);
-    batch.delete(doc(db, COLLECTIONS.USERS, uid));
-    batch.delete(doc(db, COLLECTIONS.STUDENTS, uid));
-    await batch.commit();
+    console.log('🗑️ Starting cascading delete for student:', uid);
     
-    console.log('✅ Student deleted:', uid);
+    // Step 1: Get student data to find all identifiers
+    const studentDoc = await getDoc(doc(db, COLLECTIONS.STUDENTS, uid));
+    const studentData = studentDoc.data();
+    
+    if (!studentData) {
+      throw new Error('Student not found');
+    }
+    
+    const studentIdentifiers = [uid];
+    if (studentData.googleId) studentIdentifiers.push(studentData.googleId);
+    if (studentData.seisId) studentIdentifiers.push(studentData.seisId);
+    
+    console.log('🔍 Student identifiers found:', studentIdentifiers);
+    
+    // Step 2: Find all assessment results for this student
+    const resultQueries = [
+      query(collection(db, 'assessmentResults'), where('studentUid', '==', uid)),
+      query(collection(db, 'assessmentResults'), where('studentSeisId', 'in', studentIdentifiers))
+    ];
+    
+    const allResults = [];
+    for (const resultQuery of resultQueries) {
+      const snapshot = await getDocs(resultQuery);
+      allResults.push(...snapshot.docs);
+    }
+    
+    // Remove duplicates by document ID
+    const uniqueResults = allResults.filter((doc, index, arr) => 
+      arr.findIndex(d => d.id === doc.id) === index
+    );
+    
+    console.log(`📊 Found ${uniqueResults.length} assessment results to delete`);
+    
+    // Step 3: Collect storage paths from uploaded files
+    const storagePaths: string[] = [];
+    uniqueResults.forEach(resultDoc => {
+      const resultData = resultDoc.data();
+      if (resultData.uploadedFiles && Array.isArray(resultData.uploadedFiles)) {
+        resultData.uploadedFiles.forEach((file: any) => {
+          if (file.storagePath) {
+            storagePaths.push(file.storagePath);
+          }
+        });
+      }
+    });
+    
+    console.log(`📁 Found ${storagePaths.length} files to delete from storage`);
+    
+    // Step 4: Delete files from Firebase Storage
+    if (storagePaths.length > 0) {
+      const { getStorage, ref: storageRef, deleteObject } = await import('firebase/storage');
+      const storageInstance = getStorage();
+      
+      for (const storagePath of storagePaths) {
+        try {
+          const fileRef = storageRef(storageInstance, storagePath);
+          await deleteObject(fileRef);
+          console.log('🗑️ Deleted file:', storagePath);
+        } catch (fileError) {
+          console.warn('⚠️ Could not delete file (may not exist):', storagePath, fileError);
+        }
+      }
+    }
+    
+    // Step 5: Delete all assignments for this student (from junction table)
+    const { deleteStudentAssignments } = await import('./assignmentServices');
+    await deleteStudentAssignments(uid);
+    
+    // Step 6: Delete all data using batched writes
+    const batches = [];
+    let currentBatch = writeBatch(db);
+    let operationCount = 0;
+    
+    // Delete assessment results
+    uniqueResults.forEach(resultDoc => {
+      currentBatch.delete(resultDoc.ref);
+      operationCount++;
+      
+      // Firestore batch limit is 500 operations
+      if (operationCount >= 450) {
+        batches.push(currentBatch);
+        currentBatch = writeBatch(db);
+        operationCount = 0;
+      }
+    });
+    
+    // No need to clean up assignment arrays - using junction table now
+    
+    // Delete student records
+    currentBatch.delete(doc(db, COLLECTIONS.USERS, uid));
+    currentBatch.delete(doc(db, COLLECTIONS.STUDENTS, uid));
+    operationCount += 2;
+    
+    // Add the final batch if it has operations
+    if (operationCount > 0) {
+      batches.push(currentBatch);
+    }
+    
+    // Execute all batches
+    for (const batch of batches) {
+      await batch.commit();
+    }
+    
+    console.log(`✅ Student and ${uniqueResults.length} assessment results deleted successfully`);
+    console.log(`✅ ${storagePaths.length} files deleted from storage`);
+    
   } catch (error) {
     console.error('❌ Error deleting student:', error);
     throw error;

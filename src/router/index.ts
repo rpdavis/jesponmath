@@ -11,6 +11,8 @@ import StudentManagement from '@/components/StudentManagement.vue'
 import AssessmentManagement from '@/components/AssessmentManagement.vue'
 import UserManagement from '@/components/admin/UserManagement.vue'
 import TeacherManagement from '@/components/admin/TeacherManagement.vue'
+import AdminFixer from '@/components/admin/AdminFixer.vue'
+import DatabaseMigration from '@/components/admin/DatabaseMigration.vue'
 import Gradebook from '@/components/Gradebook.vue'
 import { authGuard, guestGuard, teacherGuard, adminGuard, studentGuard } from './guards'
 
@@ -120,6 +122,12 @@ const router = createRouter({
       path: '/admin/teachers',
       name: 'admin-teachers',
       component: TeacherManagement,
+      beforeEnter: [authGuard, adminGuard]
+    },
+    {
+      path: '/admin/migration',
+      name: 'database-migration',
+      component: DatabaseMigration,
       beforeEnter: [authGuard, adminGuard]
     },
     

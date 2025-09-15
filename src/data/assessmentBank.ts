@@ -5,7 +5,7 @@ import { MathGoalType, extractGradeFromStandard } from '@/types/iep';
 export const MATH_ASSESSMENT_BANK: Omit<Assessment, 'id' | 'createdAt' | 'updatedAt'>[] = [
   {
     goalId: 'area-surface-volume-composite-shapes',
-    studentSeisId: '2209884', // Justice Buckner
+    createdBy: 'system', // Sample assessment
     title: 'Composite Shapes Area Calculation',
     description: 'Assessment for calculating area of composite shapes using decomposition strategies',
     standard: '6.G.1',
@@ -69,7 +69,7 @@ export const MATH_ASSESSMENT_BANK: Omit<Assessment, 'id' | 'createdAt' | 'update
   },
   {
     goalId: 'one-two-step-equations',
-    studentSeisId: '2209884', // Justice Buckner
+    createdBy: 'system', // Sample assessment
     title: 'Solving One and Two-Step Equations',
     description: 'Assessment for solving linear equations using inverse operations and algebraic strategies',
     standard: '6.EE.7',
@@ -144,7 +144,7 @@ export const MATH_ASSESSMENT_BANK: Omit<Assessment, 'id' | 'createdAt' | 'update
   },
   {
     goalId: 'two-step-linear-equations-rational',
-    studentSeisId: '1483650', // Mason Demuth
+    createdBy: 'system', // Sample assessment
     title: 'Two-Step Linear Equations with Rational Numbers',
     description: 'Assessment for solving two-step equations involving rational coefficients',
     standard: '7.EE.4a',
@@ -219,7 +219,7 @@ export const MATH_ASSESSMENT_BANK: Omit<Assessment, 'id' | 'createdAt' | 'update
   },
   {
     goalId: 'rational-numbers-operations',
-    studentSeisId: '2216794', // Lexee Chatfield
+    createdBy: 'system', // Sample assessment
     title: 'Operations with Rational Numbers',
     description: 'Assessment for solving word problems involving all four operations with rational numbers',
     standard: '6.NS.A.1',
@@ -289,7 +289,7 @@ export const MATH_ASSESSMENT_BANK: Omit<Assessment, 'id' | 'createdAt' | 'update
   },
   {
     goalId: 'integer-operations-four-operations',
-    studentSeisId: '1571594', // Brodee Foster
+    createdBy: 'system', // Sample assessment
     title: 'Four Operations with Rational Numbers',
     description: 'Assessment for solving real-world problems using all four operations with integers and rational numbers',
     standard: '7.NS.3',
@@ -368,7 +368,7 @@ export const MATH_ASSESSMENT_BANK: Omit<Assessment, 'id' | 'createdAt' | 'update
   },
   {
     goalId: 'fractions-unlike-denominators',
-    studentSeisId: '2570001', // Dylan Hoffman
+    createdBy: 'system', // Sample assessment
     title: 'Adding and Subtracting Fractions with Unlike Denominators',
     description: 'Assessment for operations with fractions having different denominators',
     standard: '5.NF.1',
@@ -438,7 +438,7 @@ export const MATH_ASSESSMENT_BANK: Omit<Assessment, 'id' | 'createdAt' | 'update
   },
   {
     goalId: 'division-multi-digit',
-    studentSeisId: '2570001', // Dylan Hoffman
+    createdBy: 'system', // Sample assessment
     title: 'Multi-Digit Division Strategies',
     description: 'Assessment for division problems with large dividends and multi-digit divisors',
     standard: '5.NBT.6',
@@ -513,7 +513,7 @@ export const MATH_ASSESSMENT_BANK: Omit<Assessment, 'id' | 'createdAt' | 'update
   },
   {
     goalId: 'word-problems-estimation',
-    studentSeisId: '2107809', // Jazmine Herrera
+    createdBy: 'system', // Sample assessment
     title: 'Word Problems with Estimation and Four Operations',
     description: 'Assessment for estimating and solving word problems using all four operations',
     standard: '6.NS.5',
@@ -579,7 +579,7 @@ export const MATH_ASSESSMENT_BANK: Omit<Assessment, 'id' | 'createdAt' | 'update
   },
   {
     goalId: 'algebraic-expressions-verbal',
-    studentSeisId: '1536466', // Rebecca Morgan
+    createdBy: 'system', // Sample assessment
     title: 'Translating Verbal Phrases to Algebraic Expressions',
     description: 'Assessment for writing algebraic expressions from word descriptions',
     standard: '6.EE.2a',
@@ -649,9 +649,9 @@ export const MATH_ASSESSMENT_BANK: Omit<Assessment, 'id' | 'createdAt' | 'update
   }
 ];
 
-// Function to get assessments by student
-export function getAssessmentsByStudent(seisId: string): (Omit<Assessment, 'id' | 'createdAt' | 'updatedAt'>)[] {
-  return MATH_ASSESSMENT_BANK.filter(assessment => assessment.studentSeisId === seisId);
+// Function to get all sample assessments
+export function getSampleAssessments(): (Omit<Assessment, 'id' | 'createdAt' | 'updatedAt'>)[] {
+  return MATH_ASSESSMENT_BANK;
 }
 
 // Function to get assessments by standard

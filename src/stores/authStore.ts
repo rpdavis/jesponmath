@@ -203,8 +203,10 @@ export const useAuthStore = defineStore('auth', () => {
             const teachersSnapshot = await getDocs(teachersQuery);
             
             if (!teachersSnapshot.empty) {
-              existingRole = ROLES.TEACHER;
-              console.log('📧 Found existing teacher with this email');
+              const teacherDoc = teachersSnapshot.docs[0];
+              const teacherData = teacherDoc.data();
+              existingRole = teacherData.role || ROLES.TEACHER; // Use actual role from document
+              console.log('📧 Found existing teacher/admin with this email, role:', existingRole);
             }
           }
         } catch (emailCheckError) {

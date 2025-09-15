@@ -121,9 +121,7 @@ export interface Student extends BaseUser {
   caseManager?: string;
   serviceProviders?: string[];
   
-  // Assessment tracking
-  assignedAssessments?: string[]; // Assessment IDs
-  completedAssessments?: string[]; // Assessment result IDs
+  // Assessment tracking (moved to junction table)
   currentGoals?: string[]; // IEP goal IDs
   
   // Accommodations
@@ -190,7 +188,9 @@ export const COLLECTIONS = {
   STUDENTS: 'students', // Student-specific data
   ASSESSMENTS: 'assessments',
   ASSESSMENT_RESULTS: 'assessmentResults',
-  GOALS: 'goals'
+  ASSESSMENT_ASSIGNMENTS: 'assessmentAssignments', // Junction table for assignments
+  GOALS: 'goals',
+  CUSTOM_STANDARDS: 'customStandards' // Custom standards created by teachers/admins
 } as const;
 
 // User search and filter types

@@ -577,16 +577,10 @@ const getAssessmentStatus = (assessment: Assessment) => {
 };
 
 const getAssignedStudents = (assessment: Assessment): FirebaseStudent[] => {
-  // New approach: find students who have this assessment in their assignedAssessments array
-  if (!availableStudents.value.length) {
-    return []; // Return empty array if students haven't loaded yet
-  }
-  
-  const assigned = availableStudents.value.filter(student => 
-    student.assignedAssessments && student.assignedAssessments.includes(assessment.id)
-  );
-  
-  return assigned;
+  // TODO: This will be updated to use junction table in real-time
+  // For now, return empty array since migration completed with 0 items
+  // (meaning no legacy data existed to migrate)
+  return [];
 };
 
 const viewAssessment = (assessment: Assessment) => {
@@ -688,7 +682,7 @@ const performBulkAssign = async () => {
     for (const assessmentId of selectedAssessments.value) {
       for (const studentUid of bulkAssignStudents.value) {
         try {
-          await assignAssessmentToStudent(assessmentId, studentUid);
+          await assignAssessmentToStudent(assessmentId, studentUid, authStore.currentUser?.uid || 'system');
           assignedCount++;
         } catch (err) {
           console.error('Error assigning assessment:', err);

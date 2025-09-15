@@ -68,7 +68,7 @@
         <div class="action-card" @click="router.push('/assessment/create')">
           <div class="action-icon">➕</div>
           <h3>Create Assessment</h3>
-          <p>Design new assessments for IEP goals</p>
+          <p>Design new assessments for math goals</p>
           <div class="action-button">Create Assessment →</div>
         </div>
 

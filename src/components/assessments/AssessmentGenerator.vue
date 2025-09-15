@@ -237,6 +237,15 @@
             </label>
           </div>
         </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>
+              <input type="checkbox" v-model="form.wholeNumberQuotientsOnly">
+              Division: Whole number quotients only (no remainders)
+            </label>
+          </div>
+        </div>
       </div>
 
       <!-- Preview Section -->
@@ -326,6 +335,7 @@ const form = reactive({
   minDecimalPlaces: 1,
   maxDecimalPlaces: 2,
   allowZeros: false,
+  wholeNumberQuotientsOnly: false,
   instructions: 'Solve each problem in the box. Show your work.',
   generateAnswerKey: true
 });
@@ -355,7 +365,8 @@ const generatePreview = () => {
     maxDigits2: form.maxDigits2,
     minDecimalPlaces: form.minDecimalPlaces,
     maxDecimalPlaces: form.maxDecimalPlaces,
-    allowZeros: form.allowZeros
+    allowZeros: form.allowZeros,
+    wholeNumberQuotientsOnly: form.wholeNumberQuotientsOnly
   };
   
   previewProblems.value = generator.generateProblems(options);
@@ -429,7 +440,8 @@ const generateAssessment = async () => {
         maxDigits2: form.maxDigits2,
         minDecimalPlaces: form.minDecimalPlaces,
         maxDecimalPlaces: form.maxDecimalPlaces,
-        allowZeros: form.allowZeros
+        allowZeros: form.allowZeros,
+        wholeNumberQuotientsOnly: form.wholeNumberQuotientsOnly
       };
       
       const problems = generator.generateProblems(options);

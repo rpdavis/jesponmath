@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.batchCreateStudents = exports.syncGoogleClassroom = exports.updateUser = exports.createUser = void 0;
+exports.cleanupDuplicateUsers = exports.beforeUserSignedInHandler = exports.beforeUserCreatedHandler = exports.batchCreateStudents = exports.syncGoogleClassroom = exports.updateUser = exports.createUser = void 0;
 const v2_1 = require("firebase-functions/v2");
 // Set global options
 (0, v2_1.setGlobalOptions)({
@@ -13,4 +13,7 @@ Object.defineProperty(exports, "createUser", { enumerable: true, get: function (
 Object.defineProperty(exports, "updateUser", { enumerable: true, get: function () { return userManagement_1.updateUser; } });
 Object.defineProperty(exports, "syncGoogleClassroom", { enumerable: true, get: function () { return userManagement_1.syncGoogleClassroom; } });
 Object.defineProperty(exports, "batchCreateStudents", { enumerable: true, get: function () { return userManagement_1.batchCreateStudents; } });
+Object.defineProperty(exports, "beforeUserCreatedHandler", { enumerable: true, get: function () { return userManagement_1.beforeUserCreatedHandler; } });
+Object.defineProperty(exports, "beforeUserSignedInHandler", { enumerable: true, get: function () { return userManagement_1.beforeUserSignedInHandler; } });
+Object.defineProperty(exports, "cleanupDuplicateUsers", { enumerable: true, get: function () { return userManagement_1.cleanupDuplicateUsers; } });
 //# sourceMappingURL=index.js.map

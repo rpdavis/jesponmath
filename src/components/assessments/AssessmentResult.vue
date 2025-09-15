@@ -142,8 +142,40 @@
                 <div class="student-answer">
                   <strong>Your Answer:</strong> {{ getDisplayAnswer(response.questionId, response.studentAnswer) }}
                 </div>
-                <div v-if="!response.isCorrect" class="correct-answer">
-                  <strong>Correct Answer:</strong> {{ getDisplayCorrectAnswer(response.questionId) }}
+                
+                <!-- Enhanced correct answers display -->
+                <div class="correct-answers-section">
+                  <div class="primary-answer">
+                    <strong>Correct Answer:</strong> {{ getDisplayCorrectAnswer(response.questionId) }}
+                  </div>
+                  
+                  <!-- Show alternative answers if they exist -->
+                  <div v-if="getAlternativeAnswers(response.questionId).length > 0" class="alternative-answers">
+                    <strong>Also Acceptable:</strong>
+                    <div class="alternatives-list">
+                      <span 
+                        v-for="alt in getAlternativeAnswers(response.questionId)" 
+                        :key="alt"
+                        class="alternative-answer"
+                      >
+                        {{ alt }}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <!-- Show equivalent fractions if it's a fraction question -->
+                  <div v-if="isEquivalentFractionsEnabled(response.questionId) && isFractionAnswer(response.questionId)" class="equivalent-fractions">
+                    <strong>Equivalent Fractions:</strong>
+                    <div class="equivalents-list">
+                      <span 
+                        v-for="equiv in getEquivalentFractions(response.questionId)" 
+                        :key="equiv"
+                        class="equivalent-fraction"
+                      >
+                        {{ equiv }}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -472,6 +504,66 @@ const getQuestionPoints = (questionId: string): number => {
   return question?.points || 1;
 };
 
+// Get alternative answers for a question
+const getAlternativeAnswers = (questionId: string): string[] => {
+  const question = assessment.value?.questions?.find(q => q.id === questionId);
+  return question?.acceptableAnswers || [];
+};
+
+// Check if equivalent fractions are enabled for this question
+const isEquivalentFractionsEnabled = (questionId: string): boolean => {
+  const question = assessment.value?.questions?.find(q => q.id === questionId);
+  return question?.acceptEquivalentFractions || false;
+};
+
+// Check if the answer is a fraction
+const isFractionAnswer = (questionId: string): boolean => {
+  const question = assessment.value?.questions?.find(q => q.id === questionId);
+  const correctAnswer = question?.correctAnswer as string || '';
+  return correctAnswer.includes('/');
+};
+
+// Generate equivalent fractions for display
+const getEquivalentFractions = (questionId: string): string[] => {
+  const question = assessment.value?.questions?.find(q => q.id === questionId);
+  const correctAnswer = question?.correctAnswer as string;
+  
+  if (!correctAnswer || !correctAnswer.includes('/')) return [];
+  
+  try {
+    // Parse the fraction
+    const [numStr, denStr] = correctAnswer.split('/');
+    const num = parseInt(numStr.trim());
+    const den = parseInt(denStr.trim());
+    
+    if (isNaN(num) || isNaN(den) || den === 0) return [];
+    
+    // Generate equivalent fractions
+    const equivalents: string[] = [];
+    
+    // Generate 4 equivalent fractions
+    for (let i = 2; i <= 5; i++) {
+      equivalents.push(`${num * i}/${den * i}`);
+    }
+    
+    // Also add simplified version if current isn't simplified
+    const gcd = (a: number, b: number): number => b === 0 ? a : gcd(b, a % b);
+    const commonDivisor = gcd(Math.abs(num), Math.abs(den));
+    
+    if (commonDivisor > 1) {
+      const simplified = `${num / commonDivisor}/${den / commonDivisor}`;
+      if (simplified !== correctAnswer) {
+        equivalents.unshift(simplified); // Add simplified version first
+      }
+    }
+    
+    return equivalents;
+  } catch (error) {
+    console.error('Error generating equivalent fractions:', error);
+    return [];
+  }
+};
+
 // Convert LaTeX markup to plain text for display
 const convertLatexToPlainText = (text: string): string => {
   if (!text) return '';
@@ -693,7 +785,7 @@ const confirmPhotoReplacement = async () => {
     // Upload new photo to Firebase Storage
     const timestamp = Date.now();
     const fileName = `teacher_replacement_${timestamp}.jpg`;
-    const studentId = result.value.studentUid || result.value.studentSeisId;
+    const studentId = result.value.studentUid;
     const storagePath = `assessment-uploads/${studentId}/${result.value.assessmentId}/${fileName}`;
     const photoRef = storageRef(storage, storagePath);
     
@@ -1136,21 +1228,83 @@ onMounted(() => {
   gap: 10px;
 }
 
-.student-answer,
-.correct-answer {
+.student-answer {
   padding: 12px;
   border-radius: 6px;
   font-size: 0.95rem;
-}
-
-.student-answer {
   background: #f0f4ff;
   border-left: 3px solid #2563eb;
+  margin-bottom: 1rem;
 }
 
-.correct-answer {
+.correct-answers-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.primary-answer {
+  padding: 12px;
+  border-radius: 6px;
+  font-size: 0.95rem;
   background: #f0fdf4;
   border-left: 3px solid #10b981;
+}
+
+.alternative-answers {
+  padding: 0.75rem;
+  background: #dbeafe;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+}
+
+.alternative-answers strong {
+  color: #1d4ed8;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.alternatives-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.alternative-answer {
+  padding: 0.25rem 0.75rem;
+  background: #3b82f6;
+  color: white;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.equivalent-fractions {
+  padding: 0.75rem;
+  background: #f3e8ff;
+  border: 1px solid #d8b4fe;
+  border-radius: 6px;
+}
+
+.equivalent-fractions strong {
+  color: #7c3aed;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.equivalents-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.equivalent-fraction {
+  padding: 0.25rem 0.75rem;
+  background: #8b5cf6;
+  color: white;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 500;
 }
 
 .uploaded-files-section {

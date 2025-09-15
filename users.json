@@ -1,0 +1,775 @@
+{"users": [
+{
+  "localId": "13hPMZzNB8byU8fGKpE2SnDpbZm2",
+  "email": "s-723723324@vacavilleusd.org",
+  "emailVerified": true,
+  "displayName": "Lexee Chatfield",
+  "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocIghGeNla5kzgZT2evPUGzvRPMmsvfyRbfEELDtUW2gtp8F6oY=s96-c",
+  "lastSignedInAt": "1756933343273",
+  "createdAt": "1756933343272",
+  "providerUserInfo": [
+    {
+      "providerId": "google.com",
+      "rawId": "115046629869565104805",
+      "email": "s-723723324@vacavilleusd.org",
+      "displayName": "Lexee Chatfield",
+      "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocIghGeNla5kzgZT2evPUGzvRPMmsvfyRbfEELDtUW2gtp8F6oY=s96-c"
+    }
+  ]
+},
+{
+  "localId": "1NdecHWmX1g3qM78OgehZJMjaaC2",
+  "email": "s-723716833@vacavilleusd.org",
+  "emailVerified": true,
+  "displayName": "Kevin Vega Vega",
+  "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocJHnNY7oc2Ym1jZ5H4IK1ujbROJNHzDVxT3Sm68e2J_reGKlWBm=s96-c",
+  "lastSignedInAt": "1757014861881",
+  "createdAt": "1757014861881",
+  "providerUserInfo": [
+    {
+      "providerId": "google.com",
+      "rawId": "117523394467487752474",
+      "email": "s-723716833@vacavilleusd.org",
+      "displayName": "Kevin Vega Vega",
+      "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocJHnNY7oc2Ym1jZ5H4IK1ujbROJNHzDVxT3Sm68e2J_reGKlWBm=s96-c"
+    }
+  ]
+},
+{
+  "localId": "2UNJnPiMnjUuZ6DDffl2EuwVrUm2",
+  "email": "rdteacheruser@gmail.com",
+  "emailVerified": true,
+  "displayName": "Ryan Davis",
+  "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocIg2vHFPDrvvuV5RFsniuyzayFTvd2vASshRAnjSxURcqga-g=s96-c",
+  "lastSignedInAt": "1757131737671",
+  "createdAt": "1756709898410",
+  "providerUserInfo": [
+    {
+      "providerId": "google.com",
+      "rawId": "107555236801416916873",
+      "email": "rdteacheruser@gmail.com",
+      "displayName": "Ryan Davis",
+      "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocIg2vHFPDrvvuV5RFsniuyzayFTvd2vASshRAnjSxURcqga-g=s96-c"
+    }
+  ]
+},
+{
+  "localId": "3b5iRWb0vSQgINTxPeVr0bloth13",
+  "email": "rdstaffview@gmail.com",
+  "emailVerified": true,
+  "displayName": "Ryan Davis",
+  "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocIH6-qV3htB5uPEUSi38P_xh5bsImnmjUYW8GWut0GAKfMASQ=s96-c",
+  "lastSignedInAt": "1756710444889",
+  "createdAt": "1756710444889",
+  "providerUserInfo": [
+    {
+      "providerId": "google.com",
+      "rawId": "115344311862505458142",
+      "email": "rdstaffview@gmail.com",
+      "displayName": "Ryan Davis",
+      "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocIH6-qV3htB5uPEUSi38P_xh5bsImnmjUYW8GWut0GAKfMASQ=s96-c"
+    }
+  ]
+},
+{
+  "localId": "6U5COMQ2ioYAQpozuS3ZfecBDQI2",
+  "email": "s-723717356@vacavilleusd.org",
+  "emailVerified": true,
+  "displayName": "Rebecca Morgan",
+  "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocIwzmosRUzEWXSspEEZtYbfMQu5nF4K2A3I8JciZR1CRMv5OlpI=s96-c",
+  "lastSignedInAt": "1757104533301",
+  "createdAt": "1757021769625",
+  "providerUserInfo": [
+    {
+      "providerId": "google.com",
+      "rawId": "102788426812762176592",
+      "email": "s-723717356@vacavilleusd.org",
+      "displayName": "Rebecca Morgan",
+      "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocIwzmosRUzEWXSspEEZtYbfMQu5nF4K2A3I8JciZR1CRMv5OlpI=s96-c"
+    }
+  ]
+},
+{
+  "localId": "7Rn3XJLUPHRZVIsi8VgTg1c52e13",
+  "email": "s-723724134@vacavilleusd.org",
+  "emailVerified": true,
+  "displayName": "Jaime Jimenez Reyes",
+  "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocK4XXcWlVcKjG7L5wK2t5LoDOhlyCNQBqq7HH9OaWPqo5y6P-8N=s96-c",
+  "lastSignedInAt": "1757014821872",
+  "createdAt": "1757014821872",
+  "providerUserInfo": [
+    {
+      "providerId": "google.com",
+      "rawId": "100003565410609810813",
+      "email": "s-723724134@vacavilleusd.org",
+      "displayName": "Jaime Jimenez Reyes",
+      "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocK4XXcWlVcKjG7L5wK2t5LoDOhlyCNQBqq7HH9OaWPqo5y6P-8N=s96-c"
+    }
+  ]
+},
+{
+  "localId": "ApAjGicXbAYwevLMeOZKFk0ilJt2",
+  "email": "s-723728592@vacavilleusd.org",
+  "emailVerified": true,
+  "displayName": "Kaylani Bracy",
+  "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocImfMUVVbiearx5ETLcgmn4b-ENUyV4wSc1FjUTEWiXm5xIFQqg=s96-c",
+  "lastSignedInAt": "1756933256827",
+  "createdAt": "1756933256827",
+  "providerUserInfo": [
+    {
+      "providerId": "google.com",
+      "rawId": "112413764902979597583",
+      "email": "s-723728592@vacavilleusd.org",
+      "displayName": "Kaylani Bracy",
+      "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocImfMUVVbiearx5ETLcgmn4b-ENUyV4wSc1FjUTEWiXm5xIFQqg=s96-c"
+    }
+  ]
+},
+{
+  "localId": "Bm0MUld2y6WdqaFv88BSOEM2Zul2",
+  "email": "s-723728709@vacavilleusd.org",
+  "emailVerified": true,
+  "displayName": "Liliana Roberts",
+  "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocLpMLoLhTO1HheuZwFNcpRHt_saZeX00r9F46dZTfuKQSwR-7kB=s96-c",
+  "lastSignedInAt": "1757014729800",
+  "createdAt": "1757014729800",
+  "providerUserInfo": [
+    {
+      "providerId": "google.com",
+      "rawId": "110348679835212220253",
+      "email": "s-723728709@vacavilleusd.org",
+      "displayName": "Liliana Roberts",
+      "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocLpMLoLhTO1HheuZwFNcpRHt_saZeX00r9F46dZTfuKQSwR-7kB=s96-c"
+    }
+  ]
+},
+{
+  "localId": "BomdVwXez0MCTLafQtKV6U5XUK52",
+  "email": "s-723734465@vacavilleusd.org",
+  "emailVerified": true,
+  "displayName": "Lyra Latham",
+  "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocIKIEn_PwJhZ3nCIPEZTPM2W_FTtNYEIFRIKjRrkTk8GJsqheg=s96-c",
+  "lastSignedInAt": "1757021878865",
+  "createdAt": "1757021878864",
+  "providerUserInfo": [
+    {
+      "providerId": "google.com",
+      "rawId": "109208068533635439735",
+      "email": "s-723734465@vacavilleusd.org",
+      "displayName": "Lyra Latham",
+      "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocIKIEn_PwJhZ3nCIPEZTPM2W_FTtNYEIFRIKjRrkTk8GJsqheg=s96-c"
+    }
+  ]
+},
+{
+  "localId": "Ey2Po5PBmpg17XmRbXsUtnq521E2",
+  "email": "ryand@vacavilleusd.org",
+  "emailVerified": true,
+  "displayName": "Ryan Davis - VUSD Jepson",
+  "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocLZGbcJQ-BORJbZyWShwEtXXb0nb5Y_eNf6PkX6AOT0w72e=s96-c",
+  "lastSignedInAt": "1757131778848",
+  "createdAt": "1756618569885",
+  "providerUserInfo": [
+    {
+      "providerId": "google.com",
+      "rawId": "110956977412977677148",
+      "email": "ryand@vacavilleusd.org",
+      "displayName": "Ryan Davis - VUSD Jepson",
+      "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocLZGbcJQ-BORJbZyWShwEtXXb0nb5Y_eNf6PkX6AOT0w72e=s96-c"
+    }
+  ]
+},
+{
+  "localId": "FWzR0DPAARbtHIMqEZvSrsrhBEn2",
+  "email": "s-723738850@vacavilleusd.org",
+  "emailVerified": true,
+  "displayName": "Israel Ramos",
+  "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocJC2BzJOVzAU4cDy9lbLgVYWn1Rh8bKm_iKLasIM66fWKOB2w3e=s96-c",
+  "lastSignedInAt": "1757014841528",
+  "createdAt": "1757014841528",
+  "providerUserInfo": [
+    {
+      "providerId": "google.com",
+      "rawId": "107521723164837545162",
+      "email": "s-723738850@vacavilleusd.org",
+      "displayName": "Israel Ramos",
+      "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocJC2BzJOVzAU4cDy9lbLgVYWn1Rh8bKm_iKLasIM66fWKOB2w3e=s96-c"
+    }
+  ]
+},
+{
+  "localId": "FxF8mqcYZqaOOpJ8bVAgH9kkKSP2",
+  "email": "s-723737959@vacavilleusd.org",
+  "emailVerified": true,
+  "displayName": "Steven Cole",
+  "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocImeAODLtWgQ4Wse46zJSYYw7a_3M0IHR7fmXwQYuCJ5Dm7NNA3=s96-c",
+  "lastSignedInAt": "1757101716110",
+  "createdAt": "1757021870740",
+  "providerUserInfo": [
+    {
+      "providerId": "google.com",
+      "rawId": "100606647351541860839",
+      "email": "s-723737959@vacavilleusd.org",
+      "displayName": "Steven Cole",
+      "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocImeAODLtWgQ4Wse46zJSYYw7a_3M0IHR7fmXwQYuCJ5Dm7NNA3=s96-c"
+    }
+  ]
+},
+{
+  "localId": "H25BsPsjEBYbQFD7GuCAnRW4lsl1",
+  "email": "s-723733019@vacavilleusd.org",
+  "emailVerified": true,
+  "displayName": "Lucas Parks",
+  "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocJRg_s5KG0O1TLKSRtyJfFsjTAbJRWC3Qwdne3sVixIn7f-TfWK=s96-c",
+  "lastSignedInAt": "1757011679227",
+  "createdAt": "1757011679227",
+  "providerUserInfo": [
+    {
+      "providerId": "google.com",
+      "rawId": "103591810516272177392",
+      "email": "s-723733019@vacavilleusd.org",
+      "displayName": "Lucas Parks",
+      "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocJRg_s5KG0O1TLKSRtyJfFsjTAbJRWC3Qwdne3sVixIn7f-TfWK=s96-c"
+    }
+  ]
+},
+{
+  "localId": "H7zO8ualdxOI2ioZAXwIzBtxuG33",
+  "email": "s-723722236@vacavilleusd.org",
+  "emailVerified": true,
+  "displayName": "Aubrey Murtishaw",
+  "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocLiehEBuoNATZyJocIXQ-qAQw_mkCd_04SXWGF3sospnbdVMeF9=s96-c",
+  "lastSignedInAt": "1757020140531",
+  "createdAt": "1757020140531",
+  "providerUserInfo": [
+    {
+      "providerId": "google.com",
+      "rawId": "112919267734600488134",
+      "email": "s-723722236@vacavilleusd.org",
+      "displayName": "Aubrey Murtishaw",
+      "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocLiehEBuoNATZyJocIXQ-qAQw_mkCd_04SXWGF3sospnbdVMeF9=s96-c"
+    }
+  ]
+},
+{
+  "localId": "JRaSiIe6h6Y6h168Ex2meHUP7on1",
+  "email": "rypdavis@gmail.com",
+  "emailVerified": true,
+  "displayName": "Ryan Davis",
+  "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocKaqNqnEqZoY1yVwsRYR6RWF_Whcd1MF4MRvS7xfMO7-hpsNU2M=s96-c",
+  "lastSignedInAt": "1757029739265",
+  "createdAt": "1756619939592",
+  "providerUserInfo": [
+    {
+      "providerId": "google.com",
+      "rawId": "110664089822191065530",
+      "email": "rypdavis@gmail.com",
+      "displayName": "Ryan Davis",
+      "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocKaqNqnEqZoY1yVwsRYR6RWF_Whcd1MF4MRvS7xfMO7-hpsNU2M=s96-c"
+    }
+  ]
+},
+{
+  "localId": "Mmor7EyiosOY4JOQNN95McKoJmC3",
+  "email": "s-723722918@vacavilleusd.org",
+  "emailVerified": true,
+  "displayName": "Olivia Williams",
+  "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocJudfnUZEbaGa4-FKPHsuKGSFps1ipgqEWOtjHy0u_ZqZ2yMtjY=s96-c",
+  "lastSignedInAt": "1756933370108",
+  "createdAt": "1756933370107",
+  "providerUserInfo": [
+    {
+      "providerId": "google.com",
+      "rawId": "109215803494529390677",
+      "email": "s-723722918@vacavilleusd.org",
+      "displayName": "Olivia Williams",
+      "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocJudfnUZEbaGa4-FKPHsuKGSFps1ipgqEWOtjHy0u_ZqZ2yMtjY=s96-c"
+    }
+  ]
+},
+{
+  "localId": "Mxa9vGPhe4VGCOYEHuDL6vX95Al2",
+  "email": "s-723722866@vacavilleusd.org",
+  "emailVerified": true,
+  "displayName": "Victor Renteria Cabrera",
+  "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocLIF5AmcG3GLGEJX39aAWdRaryItvHxVmoBUoyoKjWecokETukr=s96-c",
+  "lastSignedInAt": "1757014744440",
+  "createdAt": "1757014744439",
+  "providerUserInfo": [
+    {
+      "providerId": "google.com",
+      "rawId": "105353533372407208034",
+      "email": "s-723722866@vacavilleusd.org",
+      "displayName": "Victor Renteria Cabrera",
+      "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocLIF5AmcG3GLGEJX39aAWdRaryItvHxVmoBUoyoKjWecokETukr=s96-c"
+    }
+  ]
+},
+{
+  "localId": "OQXA6hoMeLXGvQmvTff7H1zbieh2",
+  "email": "casemanagevue@gmail.com",
+  "emailVerified": true,
+  "displayName": "Ryan Davis",
+  "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocIkPZIcR10niryT_ush7NS2cU4HicVl1y-Bi984VAlGxq9loA=s96-c",
+  "lastSignedInAt": "1757132426095",
+  "createdAt": "1756614587799",
+  "providerUserInfo": [
+    {
+      "providerId": "google.com",
+      "rawId": "116452504672507140103",
+      "email": "casemanagevue@gmail.com",
+      "displayName": "Ryan Davis",
+      "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocIkPZIcR10niryT_ush7NS2cU4HicVl1y-Bi984VAlGxq9loA=s96-c"
+    }
+  ]
+},
+{
+  "localId": "P8TXjtZFBghKNzxjcGXm3zqol2x1",
+  "email": "s-723720896@vacavilleusd.org",
+  "emailVerified": true,
+  "displayName": "Mia Rangel Gonzalez",
+  "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocL9YRfIXuEO9mr4HDM9UFKUhKBk9ZLZ6Bk5FUZcKT9Z5suAlUCh=s96-c",
+  "lastSignedInAt": "1756933391132",
+  "createdAt": "1756933391131",
+  "providerUserInfo": [
+    {
+      "providerId": "google.com",
+      "rawId": "118341774960593286178",
+      "email": "s-723720896@vacavilleusd.org",
+      "displayName": "Mia Rangel Gonzalez",
+      "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocL9YRfIXuEO9mr4HDM9UFKUhKBk9ZLZ6Bk5FUZcKT9Z5suAlUCh=s96-c"
+    }
+  ]
+},
+{
+  "localId": "PaQ2PsUQbQblhI9X5WyCMceOuAP2",
+  "email": "s-723722437@vacavilleusd.org",
+  "emailVerified": true,
+  "displayName": "Josue Gabriel Moreno",
+  "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocLBptI-YkC6vn5HaCUMLn-dvIw1OQhFPQ2-qH7xo2tExC15-6Y=s96-c",
+  "lastSignedInAt": "1757015062949",
+  "createdAt": "1757015062949",
+  "providerUserInfo": [
+    {
+      "providerId": "google.com",
+      "rawId": "113519798525062033412",
+      "email": "s-723722437@vacavilleusd.org",
+      "displayName": "Josue Gabriel Moreno",
+      "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocLBptI-YkC6vn5HaCUMLn-dvIw1OQhFPQ2-qH7xo2tExC15-6Y=s96-c"
+    }
+  ]
+},
+{
+  "localId": "S7aKFygMrLS96FUQvrTYChxJ3Fv1",
+  "email": "s-723737628@vacavilleusd.org",
+  "emailVerified": true,
+  "displayName": "Iker Echeverria Garcia",
+  "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocKr-LXjb_jcYDystVJ8VHMwcYRjjIxqKR82UHnjANtai0DkDEcC=s96-c",
+  "lastSignedInAt": "1757021738449",
+  "createdAt": "1757021738448",
+  "providerUserInfo": [
+    {
+      "providerId": "google.com",
+      "rawId": "105396820610939069911",
+      "email": "s-723737628@vacavilleusd.org",
+      "displayName": "Iker Echeverria Garcia",
+      "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocKr-LXjb_jcYDystVJ8VHMwcYRjjIxqKR82UHnjANtai0DkDEcC=s96-c"
+    }
+  ]
+},
+{
+  "localId": "Us5G0fNAHPR793gXBUen0czJgsT2",
+  "email": "s-723735769@vacavilleusd.org",
+  "emailVerified": true,
+  "displayName": "Mikah Villagomez",
+  "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocIaxyk_mNvcj94zEku03W6AFdX2QS6vF7UpXIyFax8FqO3Dbw=s96-c",
+  "lastSignedInAt": "1756933217245",
+  "createdAt": "1756933217245",
+  "providerUserInfo": [
+    {
+      "providerId": "google.com",
+      "rawId": "114935304372339360433",
+      "email": "s-723735769@vacavilleusd.org",
+      "displayName": "Mikah Villagomez",
+      "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocIaxyk_mNvcj94zEku03W6AFdX2QS6vF7UpXIyFax8FqO3Dbw=s96-c"
+    }
+  ]
+},
+{
+  "localId": "g0s6IvJXSlZdknVvAJJRFWmWCor1",
+  "email": "s-723722666@vacavilleusd.org",
+  "emailVerified": true,
+  "displayName": "Dylan Hoffman",
+  "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocKA2SF38qseBh5O0PrNH26fkJYQaKEzy5Kl9qoqRh4NwUw98Pyl=s96-c",
+  "lastSignedInAt": "1757014730089",
+  "createdAt": "1757014730088",
+  "providerUserInfo": [
+    {
+      "providerId": "google.com",
+      "rawId": "116582563340565822594",
+      "email": "s-723722666@vacavilleusd.org",
+      "displayName": "Dylan Hoffman",
+      "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocKA2SF38qseBh5O0PrNH26fkJYQaKEzy5Kl9qoqRh4NwUw98Pyl=s96-c"
+    }
+  ]
+},
+{
+  "localId": "gMwye2vtj4XV6zYG8UW37S37GcI2",
+  "email": "s-723717112@vacavilleusd.org",
+  "emailVerified": true,
+  "displayName": "Marcos Castillo",
+  "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocIf9v7kw0cEoNrR-v0Ua5-WvRMDaFYdhAUpDCuByUrUqKxRcDgQ=s96-c",
+  "lastSignedInAt": "1757021732190",
+  "createdAt": "1756940305261",
+  "providerUserInfo": [
+    {
+      "providerId": "google.com",
+      "rawId": "107272018239566076004",
+      "email": "s-723717112@vacavilleusd.org",
+      "displayName": "Marcos Castillo",
+      "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocIf9v7kw0cEoNrR-v0Ua5-WvRMDaFYdhAUpDCuByUrUqKxRcDgQ=s96-c"
+    }
+  ]
+},
+{
+  "localId": "ga8UvBzjpvOVEBI5rSNokXXVTrD2",
+  "email": "s-723736976@vacavilleusd.org",
+  "emailVerified": true,
+  "displayName": "Samantha Loera",
+  "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocK-fRTbXH-4jGZg9Ag-mT7k2b3THbMaO3MVfUBMFxdlUmRZTeI=s96-c",
+  "lastSignedInAt": "1757014826382",
+  "createdAt": "1757014826382",
+  "providerUserInfo": [
+    {
+      "providerId": "google.com",
+      "rawId": "100489310631199306848",
+      "email": "s-723736976@vacavilleusd.org",
+      "displayName": "Samantha Loera",
+      "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocK-fRTbXH-4jGZg9Ag-mT7k2b3THbMaO3MVfUBMFxdlUmRZTeI=s96-c"
+    }
+  ]
+},
+{
+  "localId": "hksCwbAUwzgWMYfPsWMRJ9Xurep1",
+  "email": "s-723717458@vacavilleusd.org",
+  "emailVerified": true,
+  "displayName": "Daniel Giardina",
+  "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocJkalU8Qz6xI8pLARroYHbYRGKWA4TwagV0eg-nO0_UyNK78QDx=s96-c",
+  "lastSignedInAt": "1757020093336",
+  "createdAt": "1757020093335",
+  "providerUserInfo": [
+    {
+      "providerId": "google.com",
+      "rawId": "107671878158786350569",
+      "email": "s-723717458@vacavilleusd.org",
+      "displayName": "Daniel Giardina",
+      "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocJkalU8Qz6xI8pLARroYHbYRGKWA4TwagV0eg-nO0_UyNK78QDx=s96-c"
+    }
+  ]
+},
+{
+  "localId": "jImdPwcsQcUIvk6elEcsy7b3VEB3",
+  "email": "s-723721281@vacavilleusd.org",
+  "emailVerified": true,
+  "displayName": "Tucker Sanders",
+  "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocLwoSE7e7LUnjUBWmMquiuYiyAF6JgofxpDGXS9Wu3vIjH8dMVu=s96-c",
+  "lastSignedInAt": "1757010777447",
+  "createdAt": "1757010777446",
+  "providerUserInfo": [
+    {
+      "providerId": "google.com",
+      "rawId": "101160254077864177267",
+      "email": "s-723721281@vacavilleusd.org",
+      "displayName": "Tucker Sanders",
+      "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocLwoSE7e7LUnjUBWmMquiuYiyAF6JgofxpDGXS9Wu3vIjH8dMVu=s96-c"
+    }
+  ]
+},
+{
+  "localId": "jdraIlRPDDd6rbjY952bxfc9kM63",
+  "email": "s-723736107@vacavilleusd.org",
+  "emailVerified": true,
+  "displayName": "Alonzo Tatem",
+  "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocKOktUBcT91NX66NlQpTilBV4WdnYJl6EEr0aCjtwrxyDLABoE=s96-c",
+  "lastSignedInAt": "1757015222762",
+  "createdAt": "1757015222761",
+  "providerUserInfo": [
+    {
+      "providerId": "google.com",
+      "rawId": "114138739569804394184",
+      "email": "s-723736107@vacavilleusd.org",
+      "displayName": "Alonzo Tatem",
+      "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocKOktUBcT91NX66NlQpTilBV4WdnYJl6EEr0aCjtwrxyDLABoE=s96-c"
+    }
+  ]
+},
+{
+  "localId": "jtPyYvJPmTdJwPUecTjkP2tttn73",
+  "email": "s-723722808@vacavilleusd.org",
+  "emailVerified": true,
+  "displayName": "Carter Reese",
+  "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocK8VjJ9LYQUeUyfdhDzB5ri2XvLjvAZ_eK1zTWD4_GsqnRprTE=s96-c",
+  "lastSignedInAt": "1756933272024",
+  "createdAt": "1756933272023",
+  "providerUserInfo": [
+    {
+      "providerId": "google.com",
+      "rawId": "117233546926706067052",
+      "email": "s-723722808@vacavilleusd.org",
+      "displayName": "Carter Reese",
+      "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocK8VjJ9LYQUeUyfdhDzB5ri2XvLjvAZ_eK1zTWD4_GsqnRprTE=s96-c"
+    }
+  ]
+},
+{
+  "localId": "lEyIWF8kTbNiesCP349Eq5zvvk73",
+  "email": "s-723722965@vacavilleusd.org",
+  "emailVerified": true,
+  "displayName": "Michael Morgan",
+  "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocKy_BG9nc_Q5hU5-fI9IemKZhxGtKu2Vx2_nklDJKUA6ymYXnxn=s96-c",
+  "lastSignedInAt": "1756933371515",
+  "createdAt": "1756933239520",
+  "providerUserInfo": [
+    {
+      "providerId": "google.com",
+      "rawId": "103036084224405513414",
+      "email": "s-723722965@vacavilleusd.org",
+      "displayName": "Michael Morgan",
+      "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocKy_BG9nc_Q5hU5-fI9IemKZhxGtKu2Vx2_nklDJKUA6ymYXnxn=s96-c"
+    }
+  ]
+},
+{
+  "localId": "mPb6zgUHnrUrrbwMJyXJsnXP8I32",
+  "email": "s-723723546@vacavilleusd.org",
+  "emailVerified": true,
+  "displayName": "Elizabeth Sardo",
+  "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocLdGMFJ9bD0s6sf9Bo35yYEhBSG9-xksCHvXMJ4q98TaXDAVpgI=s96-c",
+  "lastSignedInAt": "1757022651440",
+  "createdAt": "1757022651439",
+  "providerUserInfo": [
+    {
+      "providerId": "google.com",
+      "rawId": "105608487172929418158",
+      "email": "s-723723546@vacavilleusd.org",
+      "displayName": "Elizabeth Sardo",
+      "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocLdGMFJ9bD0s6sf9Bo35yYEhBSG9-xksCHvXMJ4q98TaXDAVpgI=s96-c"
+    }
+  ]
+},
+{
+  "localId": "nS0P1fUyoDhZfzY5hKqmB3444PI2",
+  "email": "s-723717071@vacavilleusd.org",
+  "emailVerified": true,
+  "displayName": "William Hermon",
+  "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocL0KJBElsBFgd14AnZ1eM5U9oqlEKUHmYAY3fkdz8TgdlFdgpuZ=s96-c",
+  "lastSignedInAt": "1757021867383",
+  "createdAt": "1757021867382",
+  "providerUserInfo": [
+    {
+      "providerId": "google.com",
+      "rawId": "110644536019705768593",
+      "email": "s-723717071@vacavilleusd.org",
+      "displayName": "William Hermon",
+      "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocL0KJBElsBFgd14AnZ1eM5U9oqlEKUHmYAY3fkdz8TgdlFdgpuZ=s96-c"
+    }
+  ]
+},
+{
+  "localId": "npq0VdqCm2WB920es0RzmEzStjH3",
+  "email": "s-723726040@vacavilleusd.org",
+  "emailVerified": true,
+  "displayName": "Annabella Tabarez",
+  "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocKdwVUtrFv3ZAtu42977pOGe_ftmTKi0AHbKkM5w6OvL4JTcXI=s96-c",
+  "lastSignedInAt": "1757014810247",
+  "createdAt": "1757014810247",
+  "providerUserInfo": [
+    {
+      "providerId": "google.com",
+      "rawId": "113373604646688324206",
+      "email": "s-723726040@vacavilleusd.org",
+      "displayName": "Annabella Tabarez",
+      "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocKdwVUtrFv3ZAtu42977pOGe_ftmTKi0AHbKkM5w6OvL4JTcXI=s96-c"
+    }
+  ]
+},
+{
+  "localId": "o93bykdy4kSqVKvRvC9fSJKEVsG3",
+  "email": "s-723723949@vacavilleusd.org",
+  "emailVerified": true,
+  "displayName": "Aubree Morris",
+  "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocIcB0JlcW1b52GVuyrN5N-rjlZ2OUsTG5KGLh-xUHiS12oq9YoY=s96-c",
+  "lastSignedInAt": "1757014814388",
+  "createdAt": "1757014814388",
+  "providerUserInfo": [
+    {
+      "providerId": "google.com",
+      "rawId": "107008177910790311000",
+      "email": "s-723723949@vacavilleusd.org",
+      "displayName": "Aubree Morris",
+      "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocIcB0JlcW1b52GVuyrN5N-rjlZ2OUsTG5KGLh-xUHiS12oq9YoY=s96-c"
+    }
+  ]
+},
+{
+  "localId": "oP2g5l0L1ZdJ5TssXTiro39NTRv2",
+  "email": "s-723724176@vacavilleusd.org",
+  "emailVerified": true,
+  "displayName": "Antoinette Peregrina",
+  "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocKwj8uZEJggJOx0Bx6ENY0siQ0j2d2LcNhrplo68MjWAmF_yxM=s96-c",
+  "lastSignedInAt": "1757097065943",
+  "createdAt": "1757010987474",
+  "providerUserInfo": [
+    {
+      "providerId": "google.com",
+      "rawId": "112071407703408794402",
+      "email": "s-723724176@vacavilleusd.org",
+      "displayName": "Antoinette Peregrina",
+      "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocKwj8uZEJggJOx0Bx6ENY0siQ0j2d2LcNhrplo68MjWAmF_yxM=s96-c"
+    }
+  ]
+},
+{
+  "localId": "pcdbRmcBkYYPMortxMstRfpQYS82",
+  "email": "s-723738721@vacavilleusd.org",
+  "emailVerified": true,
+  "displayName": "Rose Almeida",
+  "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocIMu27WLktaN_aOJdvswJF7FqjS-XGAegimt7-_axDZL9hAmg=s96-c",
+  "lastSignedInAt": "1757014741487",
+  "createdAt": "1757014741486",
+  "providerUserInfo": [
+    {
+      "providerId": "google.com",
+      "rawId": "106315636805745070886",
+      "email": "s-723738721@vacavilleusd.org",
+      "displayName": "Rose Almeida",
+      "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocIMu27WLktaN_aOJdvswJF7FqjS-XGAegimt7-_axDZL9hAmg=s96-c"
+    }
+  ]
+},
+{
+  "localId": "rm0NjU76k5cY0vlc9cXJuZ8InlE2",
+  "email": "s-723740181@vacavilleusd.org",
+  "emailVerified": true,
+  "displayName": "Caiden McGovern",
+  "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocKCQbd60ylITARefcVo6s2ywwG9i4buqCFqBc32djIJ6PNSvg=s96-c",
+  "lastSignedInAt": "1757014912353",
+  "createdAt": "1757014912353",
+  "providerUserInfo": [
+    {
+      "providerId": "google.com",
+      "rawId": "107028898646676569123",
+      "email": "s-723740181@vacavilleusd.org",
+      "displayName": "Caiden McGovern",
+      "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocKCQbd60ylITARefcVo6s2ywwG9i4buqCFqBc32djIJ6PNSvg=s96-c"
+    }
+  ]
+},
+{
+  "localId": "uj9ZeBr8StTo0TrE57SyxWuxm4T2",
+  "email": "s-723724083@vacavilleusd.org",
+  "emailVerified": true,
+  "displayName": "Kwame Fountain",
+  "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocKbRlAceLmYkBUJk0HtBFVuq75Z4ogIfbsNwttDuo0tiYIrtdl7=s96-c",
+  "lastSignedInAt": "1757014878894",
+  "createdAt": "1757014878894",
+  "providerUserInfo": [
+    {
+      "providerId": "google.com",
+      "rawId": "103101295620438345456",
+      "email": "s-723724083@vacavilleusd.org",
+      "displayName": "Kwame Fountain",
+      "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocKbRlAceLmYkBUJk0HtBFVuq75Z4ogIfbsNwttDuo0tiYIrtdl7=s96-c"
+    }
+  ]
+},
+{
+  "localId": "x86vKpLhkKdRFNgWHOw5qJZFgdC2",
+  "email": "s-723738149@vacavilleusd.org",
+  "emailVerified": true,
+  "displayName": "Esau Abbott",
+  "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocLrXz97JfFjxsgYg7-_ydgB7Mn6ug7-8I-R5ZZDvTB0nUJYuaDL=s96-c",
+  "lastSignedInAt": "1756933486815",
+  "createdAt": "1756933486815",
+  "providerUserInfo": [
+    {
+      "providerId": "google.com",
+      "rawId": "108320699282078030790",
+      "email": "s-723738149@vacavilleusd.org",
+      "displayName": "Esau Abbott",
+      "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocLrXz97JfFjxsgYg7-_ydgB7Mn6ug7-8I-R5ZZDvTB0nUJYuaDL=s96-c"
+    }
+  ]
+},
+{
+  "localId": "xWqqWF2LChS5bSakse3hi6Zz7zi1",
+  "email": "s-723722448@vacavilleusd.org",
+  "emailVerified": true,
+  "displayName": "Jazmine Herrera",
+  "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocISYMOUXLW_7y4tq7aHRZeE4ostr_i1uywI5RS5LqhwrHeDTyED=s96-c",
+  "lastSignedInAt": "1757021821337",
+  "createdAt": "1757021821337",
+  "providerUserInfo": [
+    {
+      "providerId": "google.com",
+      "rawId": "109514581961642375124",
+      "email": "s-723722448@vacavilleusd.org",
+      "displayName": "Jazmine Herrera",
+      "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocISYMOUXLW_7y4tq7aHRZeE4ostr_i1uywI5RS5LqhwrHeDTyED=s96-c"
+    }
+  ]
+},
+{
+  "localId": "yReaB2kig2fPgV1MzspqTRKbSUY2",
+  "email": "s-723724017@vacavilleusd.org",
+  "emailVerified": true,
+  "displayName": "Maya Medina",
+  "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocINEvvTB92CYzJoOQvsuGJk298NX12563T58_Srq45vpmlRH7g=s96-c",
+  "lastSignedInAt": "1757021909314",
+  "createdAt": "1757021909314",
+  "providerUserInfo": [
+    {
+      "providerId": "google.com",
+      "rawId": "112554317679580511208",
+      "email": "s-723724017@vacavilleusd.org",
+      "displayName": "Maya Medina",
+      "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocINEvvTB92CYzJoOQvsuGJk298NX12563T58_Srq45vpmlRH7g=s96-c"
+    }
+  ]
+},
+{
+  "localId": "zGAqTZ1glBPhIDCITeJUx3hGoBn2",
+  "email": "darlah@vacavilleusd.org",
+  "emailVerified": true,
+  "displayName": "Darla Hicks - VUSD Jepson",
+  "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocL1kdXVs58v9yABGfari9j-SESutbYLzmQLGq3dcQVHI5FKtFYo=s96-c",
+  "lastSignedInAt": "1757095660628",
+  "createdAt": "1757095660627",
+  "providerUserInfo": [
+    {
+      "providerId": "google.com",
+      "rawId": "112156229520696854892",
+      "email": "darlah@vacavilleusd.org",
+      "displayName": "Darla Hicks - VUSD Jepson",
+      "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocL1kdXVs58v9yABGfari9j-SESutbYLzmQLGq3dcQVHI5FKtFYo=s96-c"
+    }
+  ]
+},
+{
+  "localId": "zM7frIAS2ieXZr8OpD5kNY2csMP2",
+  "email": "s-723723168@vacavilleusd.org",
+  "emailVerified": true,
+  "displayName": "Matteo Silva",
+  "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocIg1fshmtGmiQOMCi-UX8maikvouZEf_dPnzWite0y42hpmlilr=s96-c",
+  "lastSignedInAt": "1756933401090",
+  "createdAt": "1756933401089",
+  "providerUserInfo": [
+    {
+      "providerId": "google.com",
+      "rawId": "115949451365361233150",
+      "email": "s-723723168@vacavilleusd.org",
+      "displayName": "Matteo Silva",
+      "photoUrl": "https://lh3.googleusercontent.com/a/ACg8ocIg1fshmtGmiQOMCi-UX8maikvouZEf_dPnzWite0y42hpmlilr=s96-c"
+    }
+  ]
+}]}

@@ -75,6 +75,66 @@ export const fixCurrentStudent = async () => {
   }
 };
 
+// Fix admin user role conflict
+export const fixAdminUserRoleConflict = async (userUid: string = 'OQXA6hoMeLXGvQmvTff7H1zbieh2') => {
+  try {
+    console.log('🔄 Fixing admin user role conflict for:', userUid);
+    
+    // Step 1: Check if user exists in teachers collection and get their data
+    const teacherRef = doc(db, 'teachers', userUid);
+    const teacherDoc = await getDoc(teacherRef);
+    
+    if (!teacherDoc.exists()) {
+      throw new Error('User not found in teachers collection');
+    }
+    
+    const teacherData = teacherDoc.data();
+    console.log('📋 Found teacher data:', teacherData);
+    
+    // Step 2: Delete from students collection if it exists there
+    try {
+      const studentRef = doc(db, 'students', userUid);
+      const studentDoc = await getDoc(studentRef);
+      if (studentDoc.exists()) {
+        console.log('🗑️ Removing user from students collection...');
+        await updateDoc(studentRef, { isActive: false }); // Soft delete first
+        console.log('✅ User removed from students collection');
+      }
+    } catch (error) {
+      console.log('ℹ️ User not found in students collection (this is expected)');
+    }
+    
+    // Step 3: Update/Create correct user record in users collection
+    const userRef = doc(db, 'users', userUid);
+    const correctUserData = {
+      uid: userUid,
+      email: teacherData.email,
+      displayName: teacherData.displayName || 'Admin',
+      role: teacherData.role || 'admin', // Use role from teachers collection
+      isActive: true,
+      createdAt: teacherData.createdAt || new Date(),
+      lastLogin: new Date(),
+      updatedAt: new Date()
+    };
+    
+    await setDoc(userRef, correctUserData);
+    console.log('✅ Created/updated correct user record with admin role');
+    
+    // Step 4: Ensure teachers collection has correct admin role
+    await updateDoc(teacherRef, {
+      role: 'admin',
+      updatedAt: new Date()
+    });
+    console.log('✅ Confirmed admin role in teachers collection');
+    
+    console.log('🎉 Admin user role conflict resolved successfully!');
+    return true;
+  } catch (error) {
+    console.error('❌ Error fixing admin user role conflict:', error);
+    throw error;
+  }
+};
+
 // Migrate admin to new admin collection
 export const migrateAdminToAdminCollection = async () => {
   try {

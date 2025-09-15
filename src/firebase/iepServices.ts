@@ -11,7 +11,8 @@ import {
   orderBy,
   serverTimestamp,
   arrayUnion,
-  arrayRemove
+  arrayRemove,
+  writeBatch
 } from 'firebase/firestore';
 import { db } from './config';
 import type { 
@@ -297,26 +298,25 @@ export const getAssessmentsByCategory = async (category: Assessment['category'])
   }
 };
 
-export const getAssessmentsByStudent = async (studentId: string) => {
+export const getAssessmentsByStudent = async (studentUid: string) => {
   try {
-    console.log('🔍 Looking for assessments for student:', studentId);
+    console.log('🔍 Looking for assessments for student:', studentUid);
     
-    // New approach: Get student document and read their assignedAssessments array
-    const studentDoc = await getDoc(doc(db, 'students', studentId));
-    if (!studentDoc.exists()) {
-      console.log('Student not found:', studentId);
+    // NEW: Get student's assignments from junction table
+    const assignmentsQuery = query(
+      collection(db, 'assessmentAssignments'),
+      where('studentUid', '==', studentUid)
+    );
+    
+    const assignmentsSnapshot = await getDocs(assignmentsQuery);
+    
+    if (assignmentsSnapshot.empty) {
+      console.log('No assessments assigned to student:', studentUid);
       return [];
     }
     
-    const studentData = studentDoc.data();
-    const assignedAssessmentIds = studentData.assignedAssessments || [];
-    
+    const assignedAssessmentIds = assignmentsSnapshot.docs.map(doc => doc.data().assessmentId);
     console.log(`📋 Student has ${assignedAssessmentIds.length} assigned assessments:`, assignedAssessmentIds);
-    
-    if (assignedAssessmentIds.length === 0) {
-      console.log('No assessments assigned to student:', studentId);
-      return [];
-    }
     
     // Fetch the actual assessment documents
     const assessments: Assessment[] = [];
@@ -342,7 +342,7 @@ export const getAssessmentsByStudent = async (studentId: string) => {
       new Date(a.createdAt?.seconds || a.createdAt || 0).getTime()
     );
     
-    console.log(`📝 Found ${assessments.length} assessments for student ${studentId}`);
+    console.log(`📝 Found ${assessments.length} assessments for student ${studentUid}`);
     return assessments;
   } catch (error) {
     console.error('Error getting assessments by student:', error);
@@ -364,35 +364,40 @@ export const saveAssessmentResult = async (resultData: Omit<AssessmentResult, 'i
   }
 };
 
-export const getAssessmentResultsByStudent = async (studentId: string) => {
+// Create manual assessment result for teacher-entered scores
+export const createManualAssessmentResult = async (resultData: Omit<AssessmentResult, 'id' | 'completedAt'>) => {
   try {
-    // Query by both studentSeisId and studentUid to catch all results
-    const queries = [
-      query(
-        collection(db, 'assessmentResults'), 
-        where('studentSeisId', '==', studentId)
-      ),
-      query(
-        collection(db, 'assessmentResults'), 
-        where('studentUid', '==', studentId)
-      )
-    ];
+    console.log('📝 Creating manual assessment result:', { assessmentId: resultData.assessmentId, studentUid: resultData.studentUid });
     
-    const results = await Promise.all(queries.map(q => getDocs(q)));
-    const allDocs = results.flatMap(snapshot => snapshot.docs);
-    
-    // Remove duplicates by ID
-    const uniqueResults = new Map();
-    allDocs.forEach(doc => {
-      if (!uniqueResults.has(doc.id)) {
-        uniqueResults.set(doc.id, {
-          id: doc.id,
-          ...doc.data()
-        });
-      }
+    const docRef = await addDoc(collection(db, 'assessmentResults'), {
+      ...resultData,
+      completedAt: serverTimestamp(),
+      // Mark as manually entered
+      manuallyEntered: true,
+      enteredBy: resultData.gradedBy
     });
     
-    const assessmentResults = Array.from(uniqueResults.values()) as AssessmentResult[];
+    console.log('✅ Manual assessment result created:', docRef.id);
+    return docRef.id;
+  } catch (error) {
+    console.error('❌ Error creating manual assessment result:', error);
+    throw error;
+  }
+};
+
+export const getAssessmentResultsByStudent = async (studentUid: string) => {
+  try {
+    // SIMPLIFIED: Single query using only studentUid
+    const q = query(
+      collection(db, 'assessmentResults'), 
+      where('studentUid', '==', studentUid)
+    );
+    
+    const snapshot = await getDocs(q);
+    const assessmentResults = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    })) as AssessmentResult[];
     
     // Sort by completion date
     assessmentResults.sort((a, b) => 
@@ -466,63 +471,51 @@ export async function getAssessmentsByTeacher(teacherUid: string): Promise<Asses
   }
 }
 
-export async function assignAssessmentToStudent(assessmentId: string, studentUid: string): Promise<void> {
-  try {
-    // Add assessment ID to student's assignedAssessments array
-    const studentDoc = doc(db, 'students', studentUid);
-    await updateDoc(studentDoc, {
-      assignedAssessments: arrayUnion(assessmentId),
-      updatedAt: serverTimestamp()
-    });
-    
-    console.log('✅ Assessment assigned to student:', assessmentId, '→', studentUid);
-  } catch (error) {
-    console.error('Error assigning assessment to student:', error);
-    throw error;
-  }
-}
-
-export async function unassignAssessmentFromStudent(assessmentId: string, studentUid: string): Promise<void> {
-  try {
-    // Remove assessment ID from student's assignedAssessments array
-    const studentDoc = doc(db, 'students', studentUid);
-    await updateDoc(studentDoc, {
-      assignedAssessments: arrayRemove(assessmentId),
-      updatedAt: serverTimestamp()
-    });
-    
-    console.log('✅ Assessment unassigned from student:', assessmentId, '→', studentUid);
-  } catch (error) {
-    console.error('Error unassigning assessment from student:', error);
-    throw error;
-  }
-}
-
-export async function getCurrentlyAssignedStudents(assessmentId: string): Promise<any[]> {
-  try {
-    // Query students who have this assessment in their assignedAssessments array
-    const q = query(
-      collection(db, 'students'),
-      where('assignedAssessments', 'array-contains', assessmentId)
-    );
-    const snapshot = await getDocs(q);
-    
-    return snapshot.docs.map(doc => ({
-      uid: doc.id,
-      ...doc.data()
-    }));
-  } catch (error) {
-    console.error('Error getting currently assigned students:', error);
-    throw error;
-  }
-}
+// Assignment functions moved to assignmentServices.ts
+// Import and re-export for backward compatibility
+export { 
+  assignAssessmentToStudent,
+  unassignAssessmentFromStudent,
+  getAssessmentAssignments as getCurrentlyAssignedStudents,
+  bulkAssignAssessment,
+  markAssignmentStarted,
+  markAssignmentCompleted,
+  getAssessmentStats
+} from './assignmentServices';
 
 export async function deleteAssessment(assessmentId: string): Promise<void> {
   try {
-    await deleteDoc(doc(db, 'assessments', assessmentId));
-    console.log('✅ Assessment deleted:', assessmentId);
+    console.log('🗑️ Starting cascading delete for assessment:', assessmentId);
+    
+    // Step 1: Delete all assignments (from junction table)
+    const { deleteAssessmentAssignments } = await import('./assignmentServices');
+    await deleteAssessmentAssignments(assessmentId);
+    
+    // Step 2: Get all results for this assessment
+    const resultsQuery = query(
+      collection(db, 'assessmentResults'),
+      where('assessmentId', '==', assessmentId)
+    );
+    const resultsSnapshot = await getDocs(resultsQuery);
+    
+    console.log(`📊 Found ${resultsSnapshot.docs.length} results to delete`);
+    
+    // Step 3: Delete all results using batch
+    const batch = writeBatch(db);
+    
+    resultsSnapshot.docs.forEach(resultDoc => {
+      batch.delete(resultDoc.ref);
+    });
+    
+    // Step 4: Delete the assessment itself
+    batch.delete(doc(db, 'assessments', assessmentId));
+    
+    // Step 5: Commit all deletions
+    await batch.commit();
+    
+    console.log(`✅ Assessment, assignments, and ${resultsSnapshot.docs.length} results deleted successfully`);
   } catch (error) {
-    console.error('Error deleting assessment:', error);
+    console.error('Error deleting assessment and results:', error);
     throw error;
   }
 }

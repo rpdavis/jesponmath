@@ -2,7 +2,7 @@
   <div class="progress-tracking">
     <div class="header">
       <h1>📈 Progress Tracking</h1>
-      <p>Monitor student progress on IEP math goals</p>
+      <p>Monitor student progress on math goals</p>
     </div>
 
     <!-- Student Selection -->

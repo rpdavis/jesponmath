@@ -26,7 +26,7 @@
         <div class="hero-content">
           <img src="@/assets/jepson-logo.png" alt="Jepson Math Logo" class="hero-logo">
           <h1>JepsonMath Assessment Tracker</h1>
-          <p>Track and manage IEP goal assessments for math students</p>
+          <p>Track and manage math goal assessments for students</p>
         </div>
       </div>
 
@@ -35,8 +35,8 @@
         <div class="features-grid">
           <div class="feature-item">
             <div class="feature-icon">🎯</div>
-            <h4>IEP Goal Alignment</h4>
-            <p>Assessments aligned to specific IEP math goals and standards</p>
+            <h4>Math Goal Alignment</h4>
+            <p>Assessments aligned to specific math goals and standards</p>
           </div>
           <div class="feature-item">
             <div class="feature-icon">📊</div>

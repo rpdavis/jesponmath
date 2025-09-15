@@ -30,16 +30,14 @@
             >
           </div>
           
-          <div class="form-group">
-            <label for="standard">Overall Standard (optional)</label>
-            <input 
-              id="standard"
-              v-model="assessment.standard" 
-              type="text" 
-              class="form-input"
-              placeholder="e.g., 7.NS.A.2 (leave blank if setting per question)"
-            >
-            <small class="form-help">You can set standards for individual questions instead</small>
+          <div class="form-group full-width">
+            <label>Overall Standard (optional)</label>
+            <StandardSelector 
+              v-model="selectedStandard"
+              :grade="assessment.gradeLevel.toString()"
+              @update:modelValue="updateAssessmentStandard"
+            />
+            <small class="form-help">You can set different standards for individual questions instead</small>
           </div>
         </div>
 
@@ -550,24 +548,37 @@
                 />
               </div>
 
+              <!-- Question Standards (Accordion) -->
               <div class="form-group">
-                <label>Standards for this Question</label>
-                <input 
-                  v-model="question.standard" 
-                  type="text" 
-                  class="form-input"
-                  placeholder="e.g., 7.NS.A.2 or 7.NS.A.2; 7.EE.B.3 for multiple standards"
-                  @input="updateQuestionStandards(question)"
-                >
-                <small class="form-help">Separate multiple standards with semicolons (;) - this question will count toward all listed standards</small>
-                <div v-if="question.standards && question.standards.length > 1" class="standards-preview">
-                  <span class="standards-label">This question covers:</span>
-                  <div class="standards-tags">
+                <div class="accordion-header" @click="toggleQuestionStandardsAccordion(question.id)">
+                  <label>📏 Standards for this Question</label>
+                  <div class="accordion-toggle">
                     <span 
-                      v-for="standard in question.standards" 
-                      :key="standard"
-                      class="standard-tag"
-                    >{{ standard }}</span>
+                      class="current-standard" 
+                      v-if="question.standard"
+                      :class="{ 
+                        'custom-standard': question.standard.startsWith('CUSTOM:'),
+                        'ccss-standard': !question.standard.startsWith('CUSTOM:')
+                      }"
+                    >
+                      {{ getStandardDisplayName(question.standard) }}
+                    </span>
+                    <span class="no-standard" v-else>No standard selected</span>
+                    <span class="accordion-icon" :class="{ expanded: expandedStandards[question.id] }">
+                      {{ expandedStandards[question.id] ? '▼' : '▶' }}
+                    </span>
+                  </div>
+                </div>
+                
+                <div v-if="expandedStandards[question.id]" class="accordion-content">
+                  <StandardSelector 
+                    :modelValue="getQuestionStandardSelection(question)"
+                    :grade="assessment.gradeLevel.toString()"
+                    @update:modelValue="updateQuestionStandard(question, $event)"
+                  />
+                  
+                  <div class="standards-help">
+                    <small>💡 <strong>Tip:</strong> This question will count toward the selected standard in gradebook and progress tracking.</small>
                   </div>
                 </div>
               </div>
@@ -921,6 +932,23 @@
                     </span>
                   </small>
                 </div>
+                
+                <!-- Equivalent Fractions Option -->
+                <div v-if="question.questionType === 'short-answer'" class="form-group">
+                  <label class="checkbox-label">
+                    <input 
+                      type="checkbox" 
+                      v-model="question.acceptEquivalentFractions"
+                      class="form-checkbox"
+                    >
+                    <span class="checkbox-text">
+                      🔢 Accept equivalent fractions (e.g., 1/2 = 2/4 = 3/6)
+                    </span>
+                  </label>
+                  <small class="form-help">
+                    When enabled, students get credit for any equivalent fraction, even if not simplified
+                  </small>
+                </div>
               </div>
 
               <div class="form-group">
@@ -1021,6 +1049,7 @@ import { parseStandards, formatStandardsForDisplay } from '@/utils/standardsUtil
 import type { Student as FirebaseStudent } from '@/types/users';
 import AssessmentUpdateWarning from '@/components/AssessmentUpdateWarning.vue';
 import LaTeXEditor from '@/components/LaTeXEditor.vue';
+import StandardSelector from '@/components/StandardSelector.vue';
 
 const router = useRouter();
 const route = useRoute();
@@ -1072,10 +1101,20 @@ const availableFileTypes = ref([
   { value: '*', label: '📁 All File Types' }
 ]);
 
+// Standard selection state
+const selectedStandard = ref<{
+  type: 'custom' | 'ccss';
+  standardId: string;
+  standard: any;
+} | null>(null);
+
+// Question standards accordion state
+const expandedStandards = ref<Record<string, boolean>>({});
+
 // Assessment data
 const assessment = ref<Omit<Assessment, 'id' | 'createdAt' | 'updatedAt'>>({
   goalId: '',
-  studentSeisId: '', // Will be set to first selected student, or empty for templates
+  createdBy: authStore.currentUser?.uid || '', // Required field
   title: '',
   description: '',
   standard: '', // Now optional
@@ -1513,7 +1552,7 @@ const proceedWithUpdate = async () => {
         changesSummary += `📊 ${migrationResult.updatedResults} student results updated\n\n`;
         
         changes.forEach(change => {
-          changesSummary += `👤 ${change.studentEmail}:\n`;
+          changesSummary += `👤 ${change.studentUid}:\n`;
           changesSummary += `   Score: ${change.oldScore} → ${change.newScore} (${change.oldPercentage}% → ${change.newPercentage}%)\n`;
           if (change.questionsChanged.length > 0) {
             changesSummary += `   Questions changed: ${change.questionsChanged.length}\n`;
@@ -1598,6 +1637,59 @@ watch(() => assessment.value.requiredPageCount, (newCount: number | undefined) =
   }
 });
 
+// Standard selection handler
+const updateAssessmentStandard = (standardSelection: any) => {
+  if (standardSelection) {
+    // Update assessment standard based on selection type
+    if (standardSelection.type === 'custom') {
+      assessment.value.standard = `CUSTOM:${standardSelection.standard.code}`;
+    } else {
+      assessment.value.standard = standardSelection.standard.code;
+    }
+  } else {
+    assessment.value.standard = '';
+  }
+};
+
+// Question standards accordion methods
+const toggleQuestionStandardsAccordion = (questionId: string) => {
+  expandedStandards.value[questionId] = !expandedStandards.value[questionId];
+};
+
+const getQuestionStandardSelection = (question: AssessmentQuestion) => {
+  if (!question.standard) return null;
+  
+  // For now, return null to avoid type issues
+  // The StandardSelector will handle the initial state
+  return null;
+};
+
+const updateQuestionStandard = (question: AssessmentQuestion, standardSelection: any) => {
+  if (standardSelection) {
+    // Update question standard based on selection type
+    if (standardSelection.type === 'custom') {
+      question.standard = `CUSTOM:${standardSelection.standard.code}`;
+    } else {
+      question.standard = standardSelection.standard.code;
+    }
+  } else {
+    question.standard = '';
+  }
+  
+  // Update the standards array for compatibility
+  updateQuestionStandards(question);
+};
+
+const getStandardDisplayName = (standardCode: string): string => {
+  if (!standardCode) return 'No standard';
+  
+  if (standardCode.startsWith('CUSTOM:')) {
+    return standardCode.replace('CUSTOM:', ''); // Just the code, no "(Custom)"
+  } else {
+    return standardCode; // Just the CCSS code, no "(CCSS)"
+  }
+};
+
 const loadAssessment = async () => {
   if (!isEditing.value) return;
   
@@ -1618,7 +1710,7 @@ const loadAssessment = async () => {
       // Set selected students based on current assignments (new approach)
       try {
         const currentlyAssigned = await getCurrentlyAssignedStudents(assessmentId);
-        const assignedUids = currentlyAssigned.map(s => s.uid);
+        const assignedUids = currentlyAssigned.map(s => s.studentUid);
         selectedStudents.value = assignedUids;
         
         // Set assignment mode based on selection
@@ -1713,7 +1805,7 @@ const performSave = async () => {
         // Then, manage student assignments
         // Get currently assigned students for this assessment
         const currentlyAssigned = await getCurrentlyAssignedStudents(assessmentId);
-        const currentlyAssignedUids = currentlyAssigned.map(s => s.uid);
+        const currentlyAssignedUids = currentlyAssigned.map(s => s.studentUid);
         
         // Students to add (in selectedStudents but not currently assigned)
         const studentsToAdd = selectedStudents.value.filter(uid => !currentlyAssignedUids.includes(uid));
@@ -1723,7 +1815,7 @@ const performSave = async () => {
         
         // Add new assignments
         for (const studentUid of studentsToAdd) {
-          await assignAssessmentToStudent(assessmentId, studentUid);
+          await assignAssessmentToStudent(assessmentId, studentUid, authStore.currentUser?.uid || 'system');
         }
         
         // Remove old assignments
@@ -1739,7 +1831,7 @@ const performSave = async () => {
         // Create the assessment template (without student-specific fields)
         const assessmentData = {
           ...assessment.value,
-          createdBy: authStore.currentUser?.uid
+          createdBy: authStore.currentUser?.uid || 'system'
         };
         
         // Ensure no student-specific fields in template
@@ -1751,7 +1843,7 @@ const performSave = async () => {
         
         // Assign to selected students
         for (const studentUid of selectedStudents.value) {
-          await assignAssessmentToStudent(newAssessmentId, studentUid);
+          await assignAssessmentToStudent(newAssessmentId, studentUid, authStore.currentUser?.uid || 'system');
           console.log('✅ Assigned to student:', studentUid);
         }
         
@@ -1765,9 +1857,7 @@ const performSave = async () => {
       // Create template assessment (no student assigned)
       const templateData = {
         ...assessment.value,
-        studentSeisId: '',
-        studentUid: '',
-        createdBy: authStore.currentUser?.uid
+        createdBy: authStore.currentUser?.uid || 'system'
       };
       
       if (isEditing.value) {
@@ -1946,6 +2036,10 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.form-group.full-width {
+  grid-column: 1 / -1;
 }
 
 .form-group label {
@@ -2319,6 +2413,127 @@ onMounted(() => {
 
 .remove-button:hover {
   background: #fee2e2;
+}
+
+/* Question Standards Accordion */
+.accordion-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.accordion-header:hover {
+  background: #e9ecef;
+  border-color: #667eea;
+}
+
+.accordion-header label {
+  font-weight: 600;
+  color: #495057;
+  margin: 0;
+}
+
+.accordion-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.current-standard {
+  padding: 0.25rem 0.75rem;
+  color: white;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.current-standard.custom-standard {
+  background: #667eea; /* Blue for custom standards */
+}
+
+.current-standard.ccss-standard {
+  background: #28a745; /* Green for CCSS standards */
+}
+
+.no-standard {
+  padding: 0.25rem 0.75rem;
+  background: #e9ecef;
+  color: #6c757d;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+.accordion-icon {
+  font-size: 0.9rem;
+  color: #667eea;
+  font-weight: bold;
+  transition: transform 0.3s ease;
+}
+
+.accordion-icon.expanded {
+  transform: rotate(90deg);
+}
+
+.accordion-content {
+  margin-top: 0.75rem;
+  padding: 1rem;
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  border-top: none;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+.standards-help {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background: #e3f2fd;
+  border: 1px solid #bbdefb;
+  border-radius: 4px;
+}
+
+.standards-help small {
+  color: #1976d2;
+  font-weight: 500;
+}
+
+/* Checkbox styling */
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  padding: 0.75rem;
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.checkbox-label:hover {
+  background: #e9ecef;
+  border-color: #667eea;
+}
+
+.form-checkbox {
+  width: 18px;
+  height: 18px;
+  accent-color: #667eea;
+  cursor: pointer;
+}
+
+.checkbox-text {
+  font-weight: 500;
+  color: #495057;
+  user-select: none;
 }
 
 .question-content {

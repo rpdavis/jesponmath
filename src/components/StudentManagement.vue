@@ -2,7 +2,7 @@
   <div class="student-management">
     <div class="header">
       <h1>{{ permissions.isAdmin ? '👥 Student Management' : '🎓 My Students' }}</h1>
-      <p>{{ permissions.isAdmin ? 'Add, edit, and manage students for IEP assessments' : 'View and manage your assigned students' }}</p>
+      <p>{{ permissions.isAdmin ? 'Add, edit, and manage students for math assessments' : 'View and manage your assigned students' }}</p>
     </div>
 
     <!-- Action Bar -->
@@ -62,7 +62,7 @@
         <div class="stat-icon">🎯</div>
         <div class="stat-content">
           <div class="stat-number">{{ studentsWithGoals }}</div>
-          <div class="stat-label">With IEP Goals</div>
+          <div class="stat-label">With Learning Plans</div>
         </div>
       </div>
       <div class="stat-card">
@@ -99,7 +99,7 @@
               <th>Google ID</th>
               <th>School</th>
               <th>Case Manager</th>
-              <th>IEP Date</th>
+              <th>Plan Date</th>
               <th>Status</th>
               <th>Actions</th>
             </tr>
@@ -385,7 +385,7 @@
               >
             </div>
             <div class="form-group">
-              <label for="iepDate">IEP Date</label>
+              <label for="iepDate">Plan Date</label>
               <input 
                 id="iepDate"
                 v-model="studentForm.iepDate" 
@@ -410,7 +410,7 @@
               <div class="checkbox-group">
                 <label class="checkbox-label">
                   <input type="checkbox" v-model="studentForm.hasIEP">
-                  Has IEP (Individualized Education Program)
+                  Has Learning Plan
                 </label>
                 <label class="checkbox-label">
                   <input type="checkbox" v-model="studentForm.has504">
@@ -820,7 +820,7 @@ const handleStudentsImported = async (importedStudents: any[]) => {
 const exportStudents = () => {
   try {
     const csvContent = [
-      ['First Name', 'Last Name', 'SEIS ID', 'District ID', 'Grade', 'School', 'Case Manager', 'IEP Date', 'Status'].join(','),
+        ['First Name', 'Last Name', 'SEIS ID', 'District ID', 'Grade', 'School', 'Case Manager', 'Plan Date', 'Status'].join(','),
       ...students.value.map(student => [
         student.firstName,
         student.lastName,

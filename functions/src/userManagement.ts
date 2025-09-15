@@ -126,198 +126,6 @@ export const updateUser = onCall(async (request) => {
   }
 });
 
-// Sync users from Google Classroom (server-side for security)
-export const syncGoogleClassroom = onCall(async (request) => {
-  const { auth: authContext, data } = request;
-  
-  if (!authContext) {
-    throw new HttpsError('unauthenticated', 'User must be authenticated');
-  }
-  
-  // Verify caller is a teacher
-  const callerDoc = await db.collection('users').doc(authContext.uid).get();
-  const callerData = callerDoc.data();
-  
-  if (!callerData || callerData.userType !== 'teacher') {
-    throw new HttpsError('permission-denied', 'Only teachers can sync Google Classroom data');
-  }
-  
-  const { accessToken } = data;
-  
-  try {
-    // Fetch courses from Google Classroom API
-    const coursesResponse = await fetch('https://classroom.googleapis.com/v1/courses', {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json'
-      }
-    });
-    
-    if (!coursesResponse.ok) {
-      throw new Error('Failed to fetch Google Classroom courses');
-    }
-    
-    const coursesData = await coursesResponse.json();
-    const courses = coursesData.courses || [];
-    
-    let studentsCreated = 0;
-    let studentsUpdated = 0;
-    const errors: string[] = [];
-    
-    // Process each course
-    for (const course of courses) {
-      try {
-        // Fetch students for this course
-        const studentsResponse = await fetch(
-          `https://classroom.googleapis.com/v1/courses/${course.id}/students`,
-          {
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'Content-Type': 'application/json'
-            }
-          }
-        );
-        
-        if (!studentsResponse.ok) continue;
-        
-        const studentsData = await studentsResponse.json();
-        const students = studentsData.students || [];
-        
-        // Process each student
-        for (const student of students) {
-          try {
-            const profile = student.profile;
-            if (!profile?.emailAddress) continue;
-            
-            // Check if student already exists
-            const existingUserQuery = await db
-              .collection('users')
-              .where('email', '==', profile.emailAddress)
-              .where('userType', '==', 'student')
-              .get();
-            
-            const studentData = {
-              email: profile.emailAddress,
-              studentEmail: profile.emailAddress,
-              firstName: profile.name?.givenName || '',
-              lastName: profile.name?.familyName || '',
-              userType: 'student',
-              grade: extractGradeFromCourse(course.name) || '07',
-              schoolSite: 'Willis Jepson Middle',
-              classroomData: {
-                googleId: profile.id,
-                courseId: course.id,
-                courseName: course.name,
-                section: course.section || '',
-                enrollmentCode: course.enrollmentCode
-              },
-              isActive: true,
-              createdAt: new Date(),
-              updatedAt: new Date()
-            };
-            
-            if (existingUserQuery.empty) {
-              // Create new student
-              const userRecord = await auth.createUser({
-                email: profile.emailAddress,
-                password: generateRandomPassword(),
-                displayName: `${profile.name?.givenName || ''} ${profile.name?.familyName || ''}`,
-                emailVerified: false
-              });
-              
-              studentData.firebaseUid = userRecord.uid;
-              await db.collection('users').doc(userRecord.uid).set(studentData);
-              studentsCreated++;
-            } else {
-              // Update existing student
-              const existingDoc = existingUserQuery.docs[0];
-              await existingDoc.ref.update({
-                ...studentData,
-                updatedAt: new Date()
-              });
-              studentsUpdated++;
-            }
-          } catch (studentError) {
-            console.error('Error processing student:', studentError);
-            errors.push(`${profile?.name?.givenName || 'Unknown'}: ${studentError.message}`);
-          }
-        }
-      } catch (courseError) {
-        console.error('Error processing course:', courseError);
-        errors.push(`Course ${course.name}: ${courseError.message}`);
-      }
-    }
-    
-    return {
-      success: true,
-      studentsCreated,
-      studentsUpdated,
-      errors
-    };
-  } catch (error) {
-    console.error('Error syncing Google Classroom:', error);
-    throw new HttpsError('internal', 'Failed to sync Google Classroom data');
-  }
-});
-
-// Batch create students
-export const batchCreateStudents = onCall(async (request) => {
-  const { auth: authContext, data } = request;
-  
-  if (!authContext) {
-    throw new HttpsError('unauthenticated', 'User must be authenticated');
-  }
-  
-  const { students } = data;
-  
-  try {
-    const results = [];
-    
-    for (const studentData of students) {
-      try {
-        // Create Firebase Auth user
-        const userRecord = await auth.createUser({
-          email: studentData.email,
-          password: generateRandomPassword(),
-          displayName: `${studentData.firstName} ${studentData.lastName}`,
-          emailVerified: false
-        });
-        
-        // Create Firestore document
-        const userData = {
-          firebaseUid: userRecord.uid,
-          email: studentData.email,
-          userType: 'student',
-          firstName: studentData.firstName,
-          lastName: studentData.lastName,
-          isActive: true,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          ...studentData
-        };
-        
-        await db.collection('users').doc(userRecord.uid).set(userData);
-        
-        results.push({
-          success: true,
-          uid: userRecord.uid,
-          email: studentData.email
-        });
-      } catch (error) {
-        results.push({
-          success: false,
-          email: studentData.email,
-          error: error.message
-        });
-      }
-    }
-    
-    return { results };
-  } catch (error) {
-    console.error('Error batch creating students:', error);
-    throw new HttpsError('internal', 'Failed to batch create students');
-  }
-});
 
 // NEW: OAuth merging handlers
 
@@ -597,7 +405,7 @@ export const syncGoogleClassroom = onCall(async (request) => {
             }
           } catch (studentError: any) {
             console.error('Error processing student:', studentError);
-            errors.push(`${profile?.name?.givenName || 'Unknown'}: ${studentError.message}`);
+            errors.push(`${student.profile?.name?.givenName || 'Unknown'}: ${studentError.message}`);
           }
         }
       } catch (courseError: any) {
@@ -685,7 +493,7 @@ export const cleanupDuplicateUsers = onCall(async (request) => {
   
   // Check if user is admin
   const userDoc = await db.collection('users').doc(request.auth.uid).get();
-  if (!userDoc.exists() || userDoc.data()?.role !== 'admin') {
+  if (!userDoc.exists || userDoc.data()?.role !== 'admin') {
     throw new HttpsError('permission-denied', 'Must be admin');
   }
   
@@ -712,8 +520,8 @@ export const cleanupDuplicateUsers = onCall(async (request) => {
         console.log(`🔍 Found ${records.length} duplicate students for email: ${email}`);
         
         // Keep the record with the most complete data (has googleId)
-        const recordToKeep = records.find(r => r.data.googleId) || records[0];
-        const recordsToDelete = records.filter(r => r.id !== recordToKeep.id);
+        const recordToKeep = records.find((r: any) => r.data.googleId) || records[0];
+        const recordsToDelete = records.filter((r: any) => r.id !== recordToKeep.id);
         
         // Delete duplicates
         for (const record of recordsToDelete) {
@@ -724,7 +532,7 @@ export const cleanupDuplicateUsers = onCall(async (request) => {
         duplicates.push({
           email,
           kept: recordToKeep.id,
-          deleted: recordsToDelete.map(r => r.id)
+          deleted: recordsToDelete.map((r: any) => r.id)
         });
       }
     }

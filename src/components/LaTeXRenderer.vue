@@ -47,3 +47,6 @@ watch(() => props.displayMode, renderMath)
 
 
 
+
+
+

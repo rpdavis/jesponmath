@@ -47,7 +47,7 @@ export async function populateStudentsAndGoals() {
       
       for (const goalData of studentData.goals) {
         const goal: Omit<Goal, 'id' | 'createdAt' | 'updatedAt'> = {
-          studentSeisId: studentData.seisId,
+          studentUid: 'system-generated', // Will be updated when real students are imported
           category: 'SA',
           areaOfNeed: goalData.areaOfNeed,
           goalNumber: goalData.goalNumber,

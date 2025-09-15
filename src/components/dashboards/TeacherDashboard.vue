@@ -47,7 +47,7 @@
         <div class="action-card primary" @click="router.push('/assessment/create')">
           <div class="action-icon">➕</div>
           <h3>Create New Assessment</h3>
-          <p>Design assessments aligned to IEP math goals</p>
+          <p>Design assessments aligned to math goals</p>
           <div class="action-button">Create Assessment →</div>
         </div>
 
@@ -68,7 +68,7 @@
         <div class="action-card" @click="router.push('/progress')">
           <div class="action-icon">📈</div>
           <h3>Track Progress</h3>
-          <p>Monitor student performance and IEP goal progress</p>
+          <p>Monitor student performance and math goal progress</p>
           <div class="action-button">View Progress →</div>
         </div>
 

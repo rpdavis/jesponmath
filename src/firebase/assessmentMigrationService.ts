@@ -17,7 +17,6 @@ export interface MigrationResult {
   totalResults: number;
   updatedResults: number;
   scoreChanges: Array<{
-    studentEmail: string;
     studentUid: string;
     oldScore: number;
     newScore: number;
@@ -248,8 +247,7 @@ export const migrateAssessmentResults = async (
         // Track the change
         if (questionsChanged.length > 0 || newScore !== oldScore) {
           scoreChanges.push({
-            studentEmail: result.studentEmail || 'Unknown',
-            studentUid: result.studentUid || result.studentSeisId || '',
+            studentUid: result.studentUid || '',
             oldScore,
             newScore,
             oldPercentage,
@@ -289,7 +287,7 @@ export const hasExistingResults = async (assessmentId: string): Promise<{
   try {
     const results = await getExistingResults(assessmentId);
     const studentEmails = results
-      .map(r => r.studentEmail || 'Unknown')
+      .map(r => r.studentUid || 'Unknown')
       .filter((email, index, arr) => arr.indexOf(email) === index); // Unique emails
 
     return {

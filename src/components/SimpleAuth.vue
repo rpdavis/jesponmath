@@ -4,7 +4,7 @@
       <div class="auth-card">
         <div class="auth-header">
           <h1>📊 JepsonMath Assessments</h1>
-          <p>Sign in to manage IEP assessments and track student progress</p>
+          <p>Sign in to manage math assessments and track student progress</p>
         </div>
 
         <!-- Sign In Form -->

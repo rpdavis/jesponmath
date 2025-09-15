@@ -90,15 +90,30 @@ service cloud.firestore {
       allow write: if isStudent() && request.resource.data.studentUid == request.auth.uid;
     }
     
+    // Assessment assignments (junction table)
+    match /assessmentAssignments/{assignmentId} {
+      // Teachers and admins can read all assignments
+      allow read: if isTeacher() || isAdmin();
+      // Students can only read their own assignments
+      allow read: if isStudent() && resource.data.studentUid == request.auth.uid;
+      
+      // Only teachers and admins can create/update assignments
+      allow write: if isTeacher() || isAdmin();
+      
+      // Students can update status when starting/completing (limited fields)
+      allow update: if isStudent() && 
+                       resource.data.studentUid == request.auth.uid &&
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'startedAt', 'completedAt', 'updatedAt']);
+    }
+    
     // User profiles (legacy - for compatibility)
     match /userProfiles/{document} {
       allow read, write: if isAuthenticated();
     }
     
-    // For development/testing - allows open access
-    // TODO: Remove this in production
-    match /{document=**} {
-      allow read, write: if true;
-    }
+    // REMOVED: Development rule for security
+    // match /{document=**} {
+    //   allow read, write: if true;
+    // }
   }
 }

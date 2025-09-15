@@ -21,7 +21,7 @@ export interface Student {
 
 export interface Goal {
   id: string; // Document ID in Firestore
-  studentSeisId: string;
+  studentUid: string; // Single identifier - Firebase Auth UID only
   category: 'HW' | 'Assign' | 'ESA' | 'SA' | 'PA' | 'Other';
   areaOfNeed: string;
   goalNumber: string;
@@ -61,9 +61,7 @@ export interface ProgressReport {
 export interface Assessment {
   id: string;
   goalId: string;
-  studentSeisId: string;
-  studentUid?: string; // New field for efficient queries
-  createdBy?: string; // Track who created the assessment
+  createdBy: string; // Teacher UID who created the assessment (now required)
   title: string;
   description: string;
   standard?: string; // Optional - can be set per question instead
@@ -96,7 +94,6 @@ export interface Assessment {
   
   createdAt: any;
   updatedAt: any;
-  assignedAt?: any; // When assessment was assigned to student
 }
 
 export interface FractionAnswer {
@@ -113,6 +110,7 @@ export interface AssessmentQuestion {
   options?: string[]; // For multiple choice
   correctAnswer: string | string[];
   acceptableAnswers?: string[]; // Alternative acceptable answers for short-answer
+  acceptEquivalentFractions?: boolean; // Accept all equivalent fractions (e.g., 1/2 = 2/4 = 3/6)
   correctFractionAnswers?: (FractionAnswer | string)[]; // Support multiple equivalent fraction answers
   // For matching questions
   matchingPairs?: { left: string; right: string }[];
@@ -133,8 +131,7 @@ export interface AssessmentQuestion {
 export interface AssessmentResult {
   id: string;
   assessmentId: string;
-  studentSeisId: string;
-  studentUid?: string; // Also store student UID for easier queries
+  studentUid: string; // Single identifier - Firebase Auth UID only
   goalId: string;
   responses: AssessmentResponse[];
   score: number;
@@ -155,10 +152,9 @@ export interface AssessmentResult {
   uploadedFiles?: UploadedFile[];
   
   // Migration tracking
-  studentEmail?: string;
   migratedAt?: any;
   migratedBy?: string;
-  migrationReason?: string; // Student uploaded files/photos
+  migrationReason?: string;
 }
 
 export interface AssessmentAttempt {
@@ -196,6 +192,33 @@ export interface UploadedFile {
   thumbnailUrl?: string; // For images
   uploadedAt: any; // timestamp
   questionId?: string; // If file is for specific question
+}
+
+// NEW: Junction table for assessment assignments
+export interface AssessmentAssignment {
+  id: string; // Auto-generated document ID
+  assessmentId: string; // Reference to assessment
+  studentUid: string; // Reference to student (Firebase Auth UID)
+  assignedBy: string; // Teacher UID who assigned
+  assignedAt: any; // When assigned (Timestamp)
+  dueDate?: any; // Optional due date (Timestamp)
+  status: 'assigned' | 'started' | 'completed' | 'overdue';
+  priority?: 'low' | 'medium' | 'high';
+  notes?: string; // Assignment-specific notes
+  
+  // Completion tracking
+  startedAt?: any; // When student started (Timestamp)
+  completedAt?: any; // When completed (Timestamp)
+  
+  // Settings overrides for this specific assignment
+  allowRetakes?: boolean; // Override assessment setting
+  maxRetakes?: number; // Override assessment setting
+  timeLimit?: number; // Override time limit for this student
+  accommodations?: string[]; // Student-specific accommodations
+  
+  // Metadata
+  createdAt: any; // Timestamp
+  updatedAt: any; // Timestamp
 }
 
 // Math-specific goal categories based on standards
