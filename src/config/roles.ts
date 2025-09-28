@@ -165,6 +165,9 @@ export const NAVIGATION_ITEMS: Record<UserRole, Array<{
     { path: '/gradebook', label: 'Gradebook', icon: '📊' },
     { path: '/assessments', label: 'All Assessments', icon: '📝' },
     { path: '/progress', label: 'Progress Tracking', icon: '📈', permission: PERMISSIONS.VIEW_STUDENT_RESULTS },
+    { path: '/admin/migration', label: 'Database Migration', icon: '🔄', permission: PERMISSIONS.MANAGE_SYSTEM },
+    { path: '/admin/csv-migration', label: 'CSV Import', icon: '📊', permission: PERMISSIONS.MANAGE_SYSTEM },
+    { path: '/admin/standards', label: 'Manage Standards', icon: '📏', permission: PERMISSIONS.MANAGE_SYSTEM },
     { path: '/admin/system', label: 'System Settings', icon: '⚙️', permission: PERMISSIONS.MANAGE_SYSTEM }
   ],
   

@@ -103,6 +103,33 @@
           </div>
         </div>
 
+        <!-- Assignment Dates -->
+        <div class="form-row">
+          <div class="form-group">
+            <label for="assignDate">Assign Date</label>
+            <input 
+              id="assignDate"
+              v-model="assignDateInput" 
+              type="datetime-local" 
+              class="form-input"
+              @change="updateAssignDate"
+            >
+            <small class="form-help">When this assessment will be assigned to students</small>
+          </div>
+          
+          <div class="form-group">
+            <label for="dueDate">Due Date</label>
+            <input 
+              id="dueDate"
+              v-model="dueDateInput" 
+              type="datetime-local" 
+              class="form-input"
+              @change="updateDueDate"
+            >
+            <small class="form-help">When students should complete this assessment</small>
+          </div>
+        </div>
+
         <div class="form-group">
           <label for="instructions">Instructions for Students</label>
           <textarea 
@@ -1143,7 +1170,11 @@ const assessment = ref<Omit<Assessment, 'id' | 'createdAt' | 'updatedAt'>>({
   allowRetakes: false,
   maxRetakes: 1,
   retakeMode: 'separate',
-  retakeInstructions: 'You may retake this assessment to improve your score.'
+  retakeInstructions: 'You may retake this assessment to improve your score.',
+  
+  // Assignment dates
+  assignDate: null,
+  dueDate: null
 });
 
 // Time limit controls
@@ -1154,6 +1185,27 @@ const toggleTimeLimit = () => {
     assessment.value.timeLimit = 0; // 0 means no time limit
   } else {
     assessment.value.timeLimit = 30; // Default to 30 minutes
+  }
+};
+
+// Date input controls
+const assignDateInput = ref('');
+const dueDateInput = ref('');
+
+// Convert dates to/from ISO string format for datetime-local inputs
+const updateAssignDate = () => {
+  if (assignDateInput.value) {
+    assessment.value.assignDate = new Date(assignDateInput.value);
+  } else {
+    assessment.value.assignDate = null;
+  }
+};
+
+const updateDueDate = () => {
+  if (dueDateInput.value) {
+    assessment.value.dueDate = new Date(dueDateInput.value);
+  } else {
+    assessment.value.dueDate = null;
   }
 };
 
@@ -1706,6 +1758,14 @@ const loadAssessment = async () => {
       // Copy all fields except id, createdAt, updatedAt
       const { id, createdAt, updatedAt, ...assessmentData } = data;
       assessment.value = assessmentData;
+      
+      // Initialize date inputs for editing
+      if (data.assignDate) {
+        assignDateInput.value = new Date(data.assignDate.seconds * 1000).toISOString().slice(0, 16);
+      }
+      if (data.dueDate) {
+        dueDateInput.value = new Date(data.dueDate.seconds * 1000).toISOString().slice(0, 16);
+      }
       
       // Set selected students based on current assignments (new approach)
       try {

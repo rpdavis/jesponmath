@@ -674,13 +674,27 @@ export async function getStudentsByTeacher(teacherUid: string): Promise<Student[
 
 export async function getUserProfile(uid: string): Promise<Teacher | Student | null> {
   try {
-    // First check if it's a teacher
-    const teacher = await getTeacher(uid);
-    if (teacher) return teacher;
+    // Get user from the single users collection (original design)
+    const userDoc = await getDoc(doc(db, COLLECTIONS.USERS, uid));
+    if (!userDoc.exists()) {
+      return null;
+    }
     
-    // Then check if it's a student
-    const student = await getStudent(uid);
-    if (student) return student;
+    const userData = userDoc.data();
+    
+    // Return user data based on userType (original design)
+    if (userData.userType === 'teacher') {
+      return { uid, ...userData } as Teacher;
+    } else if (userData.userType === 'student') {
+      return { uid, ...userData } as Student;
+    }
+    
+    // Fallback: if no userType, check role for backwards compatibility
+    if (userData.role === 'admin' || userData.role === 'teacher') {
+      return { uid, ...userData, userType: 'teacher' } as unknown as Teacher;
+    } else if (userData.role === 'student') {
+      return { uid, ...userData, userType: 'student' } as unknown as Student;
+    }
     
     return null;
   } catch (error) {

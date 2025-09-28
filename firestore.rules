@@ -73,8 +73,9 @@ service cloud.firestore {
     match /assessments/{assessmentId} {
       // Teachers and admins can read/write assessments
       allow read, write: if isTeacher() || isAdmin();
-      // Students can read assessments assigned to them
-      allow read: if isStudent() && resource.data.studentUid == request.auth.uid;
+      // Students can read any assessment (they need to see assessment content to take it)
+      // Assignment validation is handled at the application level
+      allow read: if isStudent();
     }
     
     // Assessment results
@@ -104,6 +105,24 @@ service cloud.firestore {
       allow update: if isStudent() && 
                        resource.data.studentUid == request.auth.uid &&
                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'startedAt', 'completedAt', 'updatedAt']);
+    }
+    
+    // Custom standards collection
+    match /customStandards/{standardId} {
+      // Teachers and admins can read/write custom standards
+      allow read, write: if isTeacher() || isAdmin();
+      // Students can read standards (for assessment taking)
+      allow read: if isStudent();
+    }
+    
+    // App settings collection
+    match /appSettings/{settingId} {
+      // Admins can read/write all settings
+      allow read, write: if isAdmin();
+      // Teachers can read settings (but not write)
+      allow read: if isTeacher();
+      // Students can read certain settings
+      allow read: if isStudent() && (settingId == 'academicPeriods');
     }
     
     // User profiles (legacy - for compatibility)

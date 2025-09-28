@@ -809,7 +809,10 @@ const submitAssessment = async () => {
         questionId: question.id,
         studentAnswer: userAnswer,
         isCorrect: isCorrect,
-        pointsEarned: pointsEarned
+        pointsEarned: pointsEarned,
+        // Cache the standard for performance
+        cachedStandard: question.standard,
+        standardSyncedAt: new Date()
       });
     });
     

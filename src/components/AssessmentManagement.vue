@@ -414,6 +414,7 @@ import {
   getAssessmentResults,
   duplicateAssessment as duplicateAssessmentService
 } from '@/firebase/iepServices';
+import { getAssessmentAssignments } from '@/firebase/assignmentServices';
 import type { Assessment } from '@/types/iep';
 import type { Student as FirebaseStudent } from '@/types/users';
 
@@ -424,6 +425,7 @@ const permissions = usePermissions();
 // State
 const assessments = ref<Assessment[]>([]);
 const availableStudents = ref<FirebaseStudent[]>([]);
+const assignmentData = ref<any[]>([]);
 const selectedAssessments = ref<string[]>([]);
 const bulkAssignStudents = ref<string[]>([]);
 
@@ -566,6 +568,28 @@ const loadStudents = async () => {
   }
 };
 
+const loadAssignmentData = async () => {
+  try {
+    console.log('🔍 Loading assignment data for all assessments...');
+    const allAssignments: any[] = [];
+    
+    // For each assessment, get its assignments
+    for (const assessment of assessments.value) {
+      try {
+        const assessmentAssignments = await getAssessmentAssignments(assessment.id);
+        allAssignments.push(...assessmentAssignments);
+      } catch (error) {
+        console.error(`Error loading assignments for assessment ${assessment.id}:`, error);
+      }
+    }
+    
+    assignmentData.value = allAssignments;
+    console.log(`📋 Loaded ${allAssignments.length} assignment records across all assessments`);
+  } catch (err: any) {
+    console.error('Error loading assignment data:', err);
+  }
+};
+
 const getAssessmentStatus = (assessment: Assessment) => {
   const assignedStudents = getAssignedStudents(assessment);
   if (assignedStudents.length > 0) {
@@ -577,10 +601,14 @@ const getAssessmentStatus = (assessment: Assessment) => {
 };
 
 const getAssignedStudents = (assessment: Assessment): FirebaseStudent[] => {
-  // TODO: This will be updated to use junction table in real-time
-  // For now, return empty array since migration completed with 0 items
-  // (meaning no legacy data existed to migrate)
-  return [];
+  // Get students assigned to this assessment from junction table
+  return availableStudents.value.filter(student => {
+    // Check if this student has an assignment for this assessment
+    return assignmentData.value.some(assignment => 
+      assignment.assessmentId === assessment.id && 
+      assignment.studentUid === student.uid
+    );
+  });
 };
 
 const viewAssessment = (assessment: Assessment) => {
@@ -829,13 +857,16 @@ const formatDate = (timestamp: any) => {
 
 // Load data on component mount
 onMounted(async () => {
-  // Load assessments and students in parallel, but wait for both to complete
+  // Load assessments and students first, then assignments (which depends on assessments)
   await Promise.all([
     loadAssessments(),
     loadStudents()
   ]);
   
-  console.log('✅ Both assessments and students loaded - UI should now show correct assignment counts');
+  // Load assignments after assessments are loaded
+  await loadAssignmentData();
+  
+  console.log('✅ Assessments, students, and assignments loaded - UI should now show correct assignment counts');
 });
 </script>
 

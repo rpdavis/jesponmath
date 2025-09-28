@@ -663,6 +663,14 @@ const savePointsEdit = async (questionId: string) => {
       result.value.responses[responseIndex].adjustedAt = new Date();
       result.value.responses[responseIndex].adjustmentReason = newPoints > oldPoints ? 'Partial credit given' : 'Points deducted';
       
+      // Update isCorrect based on new points - find the question to get max points
+      const question = assessment.value?.questions?.find(q => q.id === questionId);
+      if (question) {
+        // Consider correct if student got full points for the question
+        result.value.responses[responseIndex].isCorrect = newPoints >= question.points;
+        console.log(`🔍 Updated isCorrect for question ${questionId}: ${newPoints}/${question.points} = ${result.value.responses[responseIndex].isCorrect}`);
+      }
+      
       // Recalculate total score
       const totalEarned = result.value.responses.reduce((sum, r) => sum + (r.pointsEarned || 0), 0);
       const totalPossible = result.value.totalPoints || 0;

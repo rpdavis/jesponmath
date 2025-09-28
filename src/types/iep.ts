@@ -92,6 +92,10 @@ export interface Assessment {
   retakeMode?: 'separate' | 'combined'; // How to handle multiple attempts
   retakeInstructions?: string; // Instructions for retakes
   
+  // Assignment dates
+  assignDate?: any; // When the assessment is assigned to students (Timestamp)
+  dueDate?: any; // When the assessment is due (Timestamp)
+  
   createdAt: any;
   updatedAt: any;
 }
@@ -180,6 +184,10 @@ export interface AssessmentResponse {
   regraded?: boolean;
   regradedAt?: Date;
   regradedBy?: string;
+  
+  // Cached standard for performance (synced from question)
+  cachedStandard?: string; // The standard this question covers (e.g., "CUSTOM:7Q1.ESA-4")
+  standardSyncedAt?: any; // Timestamp when this was last synced from question
 }
 
 export interface UploadedFile {

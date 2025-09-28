@@ -13,6 +13,9 @@ import UserManagement from '@/components/admin/UserManagement.vue'
 import TeacherManagement from '@/components/admin/TeacherManagement.vue'
 import AdminFixer from '@/components/admin/AdminFixer.vue'
 import DatabaseMigration from '@/components/admin/DatabaseMigration.vue'
+import CSVMigration from '@/components/admin/CSVMigration.vue'
+import StandardsManager from '@/components/admin/StandardsManager.vue'
+import AcademicPeriodManager from '@/components/admin/AcademicPeriodManager.vue'
 import Gradebook from '@/components/Gradebook.vue'
 import { authGuard, guestGuard, teacherGuard, adminGuard, studentGuard } from './guards'
 
@@ -128,6 +131,24 @@ const router = createRouter({
       path: '/admin/migration',
       name: 'database-migration',
       component: DatabaseMigration,
+      beforeEnter: [authGuard, adminGuard]
+    },
+    {
+      path: '/admin/csv-migration',
+      name: 'csv-migration',
+      component: CSVMigration,
+      beforeEnter: [authGuard, adminGuard]
+    },
+    {
+      path: '/admin/standards',
+      name: 'standards-manager',
+      component: StandardsManager,
+      beforeEnter: [authGuard, adminGuard]
+    },
+    {
+      path: '/admin/periods',
+      name: 'academic-periods',
+      component: AcademicPeriodManager,
       beforeEnter: [authGuard, adminGuard]
     },
     

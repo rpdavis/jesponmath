@@ -102,14 +102,15 @@ export async function bulkAssignAssessment(
   try {
     console.log('📋 Bulk assigning assessment:', { assessmentId, studentCount: studentUids.length });
     
-    // Check for existing assignments
+    // Check for existing assignments - get ALL existing assignments for this assessment
     const existingQuery = query(
       collection(db, COLLECTIONS.ASSESSMENT_ASSIGNMENTS),
-      where('assessmentId', '==', assessmentId),
-      where('studentUid', 'in', studentUids.slice(0, 10)) // Firestore 'in' limit
+      where('assessmentId', '==', assessmentId)
     );
     const existing = await getDocs(existingQuery);
-    const alreadyAssigned = existing.docs.map(doc => doc.data().studentUid);
+    const alreadyAssigned = existing.docs.map(doc => doc.data().studentUid as string);
+    
+    console.log(`🔍 Found ${alreadyAssigned.length} existing assignments for assessment ${assessmentId}`);
     
     // Filter out already assigned students
     const studentsToAssign = studentUids.filter(uid => !alreadyAssigned.includes(uid));
@@ -166,11 +167,18 @@ export async function bulkAssignAssessment(
     }
     
     // Execute all batches
-    for (const batch of batches) {
-      await batch.commit();
+    console.log(`🔄 Executing ${batches.length} batches...`);
+    for (let i = 0; i < batches.length; i++) {
+      try {
+        await batches[i].commit();
+        console.log(`✅ Batch ${i + 1}/${batches.length} committed successfully`);
+      } catch (batchError) {
+        console.error(`❌ Batch ${i + 1}/${batches.length} failed:`, batchError);
+        throw new Error(`Batch commit failed: ${batchError}`);
+      }
     }
     
-    console.log(`✅ Assessment assigned to ${studentsToAssign.length} students`);
+    console.log(`✅ Assessment assigned to ${studentsToAssign.length} students (${alreadyAssigned.length} were already assigned)`);
     return assignmentIds;
   } catch (error) {
     console.error('❌ Error bulk assigning assessment:', error);

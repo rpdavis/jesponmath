@@ -28,7 +28,7 @@ export interface CCSSStandard {
   cluster: string; // Cluster within domain
   title: string; // Short title
   description: string; // Full standard description
-  category: 'Number & Operations' | 'Algebra' | 'Geometry' | 'Measurement' | 'Data Analysis' | 'Statistics & Probability';
+  category: 'Number & Operations' | 'Algebra' | 'Geometry' | 'Measurement' | 'Data Analysis' | 'Statistics & Probability' | 'Reading' | 'Writing' | 'Language' | 'Speaking & Listening';
 }
 
 export interface StandardSelection {

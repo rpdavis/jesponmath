@@ -5,6 +5,13 @@
       <p>Track student progress across all assessment categories</p>
     </div>
 
+    <!-- Academic Period Selector -->
+    <AcademicPeriodSelector 
+      :allowFuturePeriods="true"
+      @periodChanged="onPeriodChanged"
+      @periodTypeChanged="onPeriodTypeChanged"
+    />
+    
     <!-- View Mode and Filters -->
     <div class="filters-section">
       <!-- View Mode Radio Buttons -->
@@ -52,6 +59,20 @@
           <option value="SA">Standard Assessment (SA)</option>
           <option value="PA">Progress Assessment (PA)</option>
           <option value="Other">Other</option>
+        </select>
+      </div>
+      
+      <div v-if="viewMode === 'assignments'" class="filter-group">
+        <label for="sortFilter">Sort By:</label>
+        <select id="sortFilter" v-model="selectedSort" class="filter-select">
+          <option value="created-desc">Created Date (Newest)</option>
+          <option value="created-asc">Created Date (Oldest)</option>
+          <option value="assign-desc">Assign Date (Newest)</option>
+          <option value="assign-asc">Assign Date (Oldest)</option>
+          <option value="due-desc">Due Date (Newest)</option>
+          <option value="due-asc">Due Date (Oldest)</option>
+          <option value="title-asc">Title (A-Z)</option>
+          <option value="title-desc">Title (Z-A)</option>
         </select>
       </div>
       
@@ -123,7 +144,7 @@
                         {{ getStudentScore(student.uid, assessment.id)?.score || 0 }}/{{ getStudentScore(student.uid, assessment.id)?.totalPoints || assessment.totalPoints }}
                       </div>
                       <div class="score-percentage">
-                        {{ getStudentScore(student.uid, assessment.id)?.percentage || 0 }}%
+                        {{ Math.round(getStudentScore(student.uid, assessment.id)?.percentage || 0) }}%
                       </div>
                     </span>
                     <span v-else class="no-score clickable" @click="openManualScoreDialog(student.uid, assessment.id, assessment)">-</span>
@@ -211,7 +232,7 @@
                         {{ getStandardScore(student.uid, standard).correct }}/{{ getStandardScore(student.uid, standard).total }}
                       </span>
                       <div class="mastery-percentage">
-                        {{ getStandardScore(student.uid, standard).percentage }}%
+                        {{ Math.round(getStandardScore(student.uid, standard).percentage) }}%
                       </div>
                     </div>
                   </td>
@@ -318,6 +339,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import AcademicPeriodSelector from '@/components/AcademicPeriodSelector.vue';
+import { useGlobalAcademicPeriods } from '@/composables/useAcademicPeriods';
+import type { AcademicPeriod, PeriodType } from '@/types/academicPeriods';
 import { useAuthStore } from '@/stores/authStore';
 import { getStudentsByTeacher } from '@/firebase/userServices';
 import { getAssessmentsByTeacher, getAssessmentResults, createManualAssessmentResult } from '@/firebase/iepServices';
@@ -340,12 +364,27 @@ const viewMode = ref('assignments'); // 'assignments' or 'standards'
 const selectedClass = ref('');
 const selectedPeriod = ref('');
 const selectedCategory = ref('');
+const selectedSort = ref('created-desc'); // Default to newest first
 
 // Manual score dialog state
 const showScoreDialog = ref(false);
 const selectedStudent = ref<Student | null>(null);
 const selectedAssessment = ref<Assessment | null>(null);
 const questionScores = ref<{ [questionId: string]: string }>({});
+
+// Academic period management
+const { filterAssessments, filterResults } = useGlobalAcademicPeriods();
+
+// Academic period event handlers
+const onPeriodChanged = (period: AcademicPeriod) => {
+  console.log(`📅 Period changed to: ${period.name}`);
+  // Filtered data will automatically update via computed properties
+};
+
+const onPeriodTypeChanged = (type: PeriodType) => {
+  console.log(`🔄 Period type changed to: ${type}`);
+  // Filtered data will automatically update via computed properties
+};
 
 // Computed properties for manual scoring
 const totalManualScore = computed(() => {
@@ -387,10 +426,54 @@ const filteredStudents = computed(() => {
 });
 
 const filteredAssessments = computed(() => {
-  return assessments.value.filter(assessment => {
+  console.log('🔍 Filtering assessments - Total:', assessments.value.length);
+  
+  // Check if academic period is initialized
+  const { selectedPeriod } = useGlobalAcademicPeriods();
+  console.log('📅 Current selected period:', selectedPeriod.value?.name, selectedPeriod.value?.startDate, selectedPeriod.value?.endDate);
+  
+  // First apply academic period filtering
+  let filtered = filterAssessments(assessments.value);
+  console.log('📅 After period filtering:', filtered.length);
+  
+  // Then apply category filtering
+  filtered = filtered.filter(assessment => {
     if (selectedCategory.value && assessment.category !== selectedCategory.value) return false;
     return true;
   });
+  
+  console.log('📊 Final filtered assessments:', filtered.length);
+  
+  // Apply sorting
+  filtered.sort((a, b) => {
+    const [sortField, sortDirection] = selectedSort.value.split('-');
+    let comparison = 0;
+    
+    switch (sortField) {
+      case 'created':
+        const aCreated = a.createdAt?.seconds || a.createdAt || 0;
+        const bCreated = b.createdAt?.seconds || b.createdAt || 0;
+        comparison = new Date(bCreated * 1000).getTime() - new Date(aCreated * 1000).getTime();
+        break;
+      case 'assign':
+        const aAssign = a.assignDate?.seconds || a.assignDate || 0;
+        const bAssign = b.assignDate?.seconds || b.assignDate || 0;
+        comparison = new Date(bAssign * 1000).getTime() - new Date(aAssign * 1000).getTime();
+        break;
+      case 'due':
+        const aDue = a.dueDate?.seconds || a.dueDate || 0;
+        const bDue = b.dueDate?.seconds || b.dueDate || 0;
+        comparison = new Date(bDue * 1000).getTime() - new Date(aDue * 1000).getTime();
+        break;
+      case 'title':
+        comparison = a.title.localeCompare(b.title);
+        break;
+    }
+    
+    return sortDirection === 'desc' ? comparison : -comparison;
+  });
+  
+  return filtered;
 });
 
 // Get unique standards from all assessments
@@ -503,22 +586,24 @@ const loadGradebookData = async () => {
 };
 
 const getStudentScore = (studentUid: string, assessmentId: string) => {
-  // Try to find by both studentSeisId and studentUid for compatibility
-  const result = assessmentResults.value.find(result => 
+  // First filter results by academic period
+  const periodFilteredResults = filterResults(assessmentResults.value);
+  
+  // Then find the specific result
+  const result = periodFilteredResults.find(result => 
     result.studentUid === studentUid && 
     result.assessmentId === assessmentId
   );
   
-  console.log(`🔍 Looking for score - StudentUID: ${studentUid}, AssessmentID: ${assessmentId}, Found:`, result ? 'YES' : 'NO');
-  if (result) {
-    console.log('📊 Score details:', { percentage: result.percentage, score: result.score, totalPoints: result.totalPoints });
-  }
+  // Removed verbose logging to clean up console
   
   return result;
 };
 
 const getStudentAverage = (studentUid: string): number => {
-  const studentResults = assessmentResults.value.filter(result => 
+  // Filter by academic period first, then by student
+  const periodFilteredResults = filterResults(assessmentResults.value);
+  const studentResults = periodFilteredResults.filter(result => 
     result.studentUid === studentUid
   );
   if (studentResults.length === 0) return 0;
@@ -581,6 +666,7 @@ const clearFilters = () => {
   selectedClass.value = '';
   selectedPeriod.value = '';
   selectedCategory.value = '';
+  selectedSort.value = 'created-desc';
 };
 
 // Standards-based methods
@@ -610,7 +696,7 @@ const getStandardScore = (studentUid: string, standard: string) => {
         total++; // Only count if student took the assessment
         
         // Find the response for this specific question
-        const response = result.responses?.find(r => r.questionId === question.id);
+        const response = result.responses?.find((r: any) => r.questionId === question.id);
         if (response && response.isCorrect) {
           correct++;
         }

@@ -79,6 +79,27 @@
           <div class="action-button">Manage Assessments →</div>
         </div>
 
+        <div class="action-card" @click="router.push('/admin/standards')">
+          <div class="action-icon">📏</div>
+          <h3>Manage Standards</h3>
+          <p>Create and manage custom assessment standards</p>
+          <div class="action-button">Manage Standards →</div>
+        </div>
+
+        <div class="action-card" @click="router.push('/admin/csv-migration')">
+          <div class="action-icon">📊</div>
+          <h3>CSV Import</h3>
+          <p>Import historical assessment data from CSV files</p>
+          <div class="action-button">CSV Import →</div>
+        </div>
+
+        <div class="action-card" @click="router.push('/admin/periods')">
+          <div class="action-icon">📅</div>
+          <h3>Academic Periods</h3>
+          <p>Configure quarters, semesters, or trimesters</p>
+          <div class="action-button">Manage Periods →</div>
+        </div>
+
         <div class="action-card" @click="router.push('/admin/system')">
           <div class="action-icon">⚙️</div>
           <h3>System Settings</h3>
