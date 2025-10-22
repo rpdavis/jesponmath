@@ -21,6 +21,7 @@ import { loadAcademicPeriodSettings } from '@/firebase/appSettingsService';
 const currentAcademicYear = ref<AcademicYear | null>(null);
 const selectedPeriodType = ref<PeriodType>('quarters');
 const selectedPeriod = ref<AcademicPeriod | null>(null);
+let isInitialized = false;
 
 export function useAcademicPeriods() {
   
@@ -129,8 +130,11 @@ export function useAcademicPeriods() {
     ) || null;
   };
   
-  // Always reload configuration to ensure we get latest saved settings
-  initializeAcademicYear().catch(console.error);
+  // Initialize only once per singleton instance
+  if (!isInitialized) {
+    isInitialized = true;
+    initializeAcademicYear().catch(console.error);
+  }
   
   return {
     // State
@@ -153,11 +157,14 @@ export function useAcademicPeriods() {
   };
 }
 
-// Singleton instance for global state - but allow reinitialization
+// Singleton instance for global state
 let globalAcademicPeriods: ReturnType<typeof useAcademicPeriods> | null = null;
 
 export function useGlobalAcademicPeriods() {
-  // Always create fresh instance to ensure saved settings are loaded
-  globalAcademicPeriods = useAcademicPeriods();
+  // Only create instance once and reuse it
+  if (!globalAcademicPeriods) {
+    globalAcademicPeriods = useAcademicPeriods();
+  }
+  
   return globalAcademicPeriods;
 }

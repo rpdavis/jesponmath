@@ -459,7 +459,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/authStore';
 import { usePermissions } from '@/composables/usePermissions';
-import { getAllStudents, getStudentsByTeacher, createStudent, updateStudent, deleteStudent as deleteStudentService, getStudentBySSID } from '@/firebase/userServices';
+import { getAllStudents, getStudentsByTeacher, createStudent, updateStudent, deleteStudent as deleteStudentService, getStudentBySSID, getStudentByEmail } from '@/firebase/userServices';
 import GoogleClassroomImport from './GoogleClassroomImport.vue';
 import type { Student as FirebaseStudent, CreateStudentData } from '@/types/users';
 import type { Student } from '@/types/iep';
@@ -707,9 +707,10 @@ const handleStudentsImported = async (importedStudents: any[]) => {
     saving.value = true;
     error.value = '';
     
-    console.log('💾 Saving imported students to Firestore...', importedStudents.length);
+    console.log('💾 Processing imported students from Google Classroom...', importedStudents.length);
     
     let savedCount = 0;
+    let updatedCount = 0;
     let skippedCount = 0;
     const errors: string[] = [];
     
@@ -740,7 +741,7 @@ const handleStudentsImported = async (importedStudents: any[]) => {
           section: importedStudent.section || importedStudent.classroomInfo?.section || ''
         };
         
-        console.log('📝 Converting imported student:', {
+        console.log('📝 Processing imported student:', {
           name: `${studentData.firstName} ${studentData.lastName}`,
           email: studentData.email,
           assignedTeacher: studentData.assignedTeacher,
@@ -752,8 +753,6 @@ const handleStudentsImported = async (importedStudents: any[]) => {
           section: studentData.section
         });
         
-        console.log('🔍 Full studentData object being passed to createStudent:', studentData);
-        
         // Validate required fields (only email required)
         if (!studentData.email) {
           errors.push(`${importedStudent.firstName || 'Unknown'} ${importedStudent.lastName || 'Student'}: Missing email address`);
@@ -762,34 +761,84 @@ const handleStudentsImported = async (importedStudents: any[]) => {
         }
         
         // Check if student already exists by email
-        // Note: Duplicate checking now relies on email uniqueness in createStudent function
+        const existingStudent = await getStudentByEmail(studentData.email);
         
-        // Create the student in Firestore
-        await createStudent(studentData);
-        savedCount++;
-        
-        console.log(`✅ Saved student: ${studentData.firstName} ${studentData.lastName}`);
+        if (existingStudent) {
+          // Update existing student's course information
+          console.log(`🔄 Updating existing student: ${studentData.firstName} ${studentData.lastName}`);
+          
+          const updateData = {
+            // Update class/course information
+            courseName: studentData.courseName,
+            courseId: studentData.courseId,
+            section: studentData.section,
+            period: studentData.period,
+            className: studentData.className,
+            
+            // Update Google Classroom fields
+            googleId: studentData.googleId,
+            
+            // Re-assign to current teacher (in case they moved between teachers)
+            assignedTeacher: studentData.assignedTeacher,
+            
+            // Update school info if provided
+            schoolOfAttendance: studentData.schoolOfAttendance,
+            
+            // Keep existing IEP/504 status and other important fields unchanged
+            // Only update if not already set
+            grade: studentData.grade || existingStudent.grade,
+            
+            // Update timestamp
+            updatedAt: new Date()
+          };
+          
+          // Remove undefined values to avoid overwriting with empty data
+          Object.keys(updateData).forEach(key => {
+            if (updateData[key as keyof typeof updateData] === undefined || updateData[key as keyof typeof updateData] === '') {
+              delete updateData[key as keyof typeof updateData];
+            }
+          });
+          
+          await updateStudent(existingStudent.uid, updateData);
+          updatedCount++;
+          
+          console.log(`✅ Updated existing student: ${studentData.firstName} ${studentData.lastName}`);
+          console.log('🔍 Updated fields:', updateData);
+          
+        } else {
+          // Create new student
+          console.log(`➕ Creating new student: ${studentData.firstName} ${studentData.lastName}`);
+          await createStudent(studentData);
+          savedCount++;
+          
+          console.log(`✅ Created new student: ${studentData.firstName} ${studentData.lastName}`);
+        }
         
       } catch (studentError: any) {
-        console.error(`❌ Error saving student ${importedStudent.firstName} ${importedStudent.lastName}:`, studentError);
+        console.error(`❌ Error processing student ${importedStudent.firstName} ${importedStudent.lastName}:`, studentError);
         errors.push(`${importedStudent.firstName} ${importedStudent.lastName}: ${studentError.message}`);
         skippedCount++;
       }
     }
     
-    // Reload students to show the newly imported ones
+    // Reload students to show the updated data
     await loadStudents();
     
     showClassroomImport.value = false;
     
     // Show detailed success message
     let message = `Google Classroom import completed! `;
+    
     if (savedCount > 0) {
-      message += `${savedCount} students saved successfully. `;
+      message += `${savedCount} new student${savedCount !== 1 ? 's' : ''} created. `;
+    }
+    if (updatedCount > 0) {
+      message += `${updatedCount} existing student${updatedCount !== 1 ? 's' : ''} updated with new class information. `;
     }
     if (skippedCount > 0) {
-      message += `${skippedCount} students skipped (duplicates or errors). `;
+      message += `${skippedCount} student${skippedCount !== 1 ? 's' : ''} skipped due to errors. `;
     }
+    
     if (errors.length > 0) {
       message += `Errors: ${errors.slice(0, 3).join(', ')}`;
       if (errors.length > 3) {
@@ -797,7 +846,8 @@ const handleStudentsImported = async (importedStudents: any[]) => {
       }
     }
     
-    if (savedCount > 0) {
+    // Show success if any students were processed successfully
+    if (savedCount > 0 || updatedCount > 0) {
       success.value = message;
     } else {
       error.value = message;

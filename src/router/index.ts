@@ -16,6 +16,7 @@ import DatabaseMigration from '@/components/admin/DatabaseMigration.vue'
 import CSVMigration from '@/components/admin/CSVMigration.vue'
 import StandardsManager from '@/components/admin/StandardsManager.vue'
 import AcademicPeriodManager from '@/components/admin/AcademicPeriodManager.vue'
+import AeriesGradeExport from '@/components/admin/AeriesGradeExport.vue'
 import Gradebook from '@/components/Gradebook.vue'
 import { authGuard, guestGuard, teacherGuard, adminGuard, studentGuard } from './guards'
 
@@ -150,6 +151,12 @@ const router = createRouter({
       name: 'academic-periods',
       component: AcademicPeriodManager,
       beforeEnter: [authGuard, adminGuard]
+    },
+    {
+      path: '/admin/aeries-export',
+      name: 'aeries-export',
+      component: AeriesGradeExport,
+      beforeEnter: [authGuard, teacherGuard] // Both teachers and admins can export grades
     },
     
     // Fallback redirect

@@ -108,7 +108,7 @@ export interface FractionAnswer {
 export interface AssessmentQuestion {
   id: string;
   questionText: string;
-  questionType: 'multiple-choice' | 'short-answer' | 'essay' | 'true-false' | 'fill-blank' | 'matching' | 'fraction' | 'rank-order' | 'checkbox';
+  questionType: 'multiple-choice' | 'short-answer' | 'essay' | 'true-false' | 'fill-blank' | 'matching' | 'fraction' | 'rank-order' | 'checkbox' | 'horizontal-ordering';
   standard?: string; // Standards for this specific question (can be multiple, separated by ';')
   standards?: string[]; // Array of individual standards (parsed from standard field)
   options?: string[]; // For multiple choice
@@ -127,6 +127,10 @@ export interface AssessmentQuestion {
   orderType?: 'ascending' | 'descending' | 'custom'; // Type of ordering
   // For checkbox questions (multiple correct answers)
   correctAnswers?: string[]; // Array of correct option indices or values
+  // For horizontal ordering questions
+  orderingItems?: string[]; // Items to be ordered horizontally (2-8 items)
+  correctHorizontalOrder?: string[]; // The correct left-to-right order
+  orderDirection?: 'ascending' | 'descending'; // Whether to order from least to greatest or greatest to least
   points: number;
   explanation?: string;
   hints?: string[];

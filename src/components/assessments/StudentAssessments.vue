@@ -10,7 +10,7 @@ th<template>
       <div class="stat-card">
         <div class="stat-icon">📋</div>
         <div class="stat-content">
-          <div class="stat-number">{{ assignedAssessments.length }}</div>
+          <div class="stat-number">{{ filteredAssignedAssessments.length }}</div>
           <div class="stat-label">Assigned</div>
         </div>
       </div>
@@ -170,7 +170,7 @@ th<template>
     </div>
 
     <!-- No Assessments Message -->
-    <div v-if="assignedAssessments.length === 0 && !loading" class="no-assessments">
+    <div v-if="filteredAssignedAssessments.length === 0 && !loading" class="no-assessments">
       <div class="no-assessments-icon">📚</div>
       <h3>No Assessments Assigned</h3>
       <p>Your teacher hasn't assigned any assessments yet. Check back later!</p>
@@ -200,6 +200,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/authStore';
 import { getAssessmentsByStudent, getAssessmentResultsByStudent } from '@/firebase/iepServices';
+import { useGlobalAcademicPeriods } from '@/composables/useAcademicPeriods';
 import type { Assessment, AssessmentResult } from '@/types/iep';
 
 const router = useRouter();
@@ -210,18 +211,30 @@ const assessmentResults = ref<AssessmentResult[]>([]);
 const loading = ref(true);
 const error = ref('');
 
+// Academic period management
+const { filterAssessments, filterResults } = useGlobalAcademicPeriods();
+
+// Filter data by current academic period
+const filteredAssignedAssessments = computed(() => {
+  return filterAssessments(assignedAssessments.value);
+});
+
+const filteredAssessmentResults = computed(() => {
+  return filterResults(assessmentResults.value);
+});
+
 // Computed properties
-const completedAssessments = computed(() => assessmentResults.value);
+const completedAssessments = computed(() => filteredAssessmentResults.value);
 
 const pendingAssessments = computed(() => {
-  const completedIds = assessmentResults.value.map(r => r.assessmentId);
-  return assignedAssessments.value.filter(a => !completedIds.includes(a.id));
+  const completedIds = filteredAssessmentResults.value.map(r => r.assessmentId);
+  return filteredAssignedAssessments.value.filter(a => !completedIds.includes(a.id));
 });
 
 const averageScore = computed(() => {
-  if (assessmentResults.value.length === 0) return 0;
-  const total = assessmentResults.value.reduce((sum, result) => sum + result.percentage, 0);
-  return Math.round(total / assessmentResults.value.length);
+  if (filteredAssessmentResults.value.length === 0) return 0;
+  const total = filteredAssessmentResults.value.reduce((sum, result) => sum + result.percentage, 0);
+  return Math.round(total / filteredAssessmentResults.value.length);
 });
 
 // Methods

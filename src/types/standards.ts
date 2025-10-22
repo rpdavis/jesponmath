@@ -9,6 +9,12 @@ export interface CustomStandard {
   description?: string; // Optional detailed description
   ccssAlignment?: string; // Optional CCSS standard this aligns to
   category?: 'Number & Operations' | 'Algebra' | 'Geometry' | 'Measurement' | 'Data Analysis' | 'Problem Solving' | 'Other';
+  appCategory?: string; // Custom app-specific category (user-defined)
+  maxScore?: number; // Maximum score/points for this standard (1-999)
+  scoringMethod?: 'keepTop' | 'average' | 'additive'; // How to calculate scores for this standard
+  
+  // Aeries Integration
+  aeriesAssignmentName?: string; // Assignment name in Aeries (e.g., "ESA1" for "7.q1.ESA1")
   
   // Metadata
   createdBy: string; // Teacher/admin UID who created
@@ -35,6 +41,18 @@ export interface StandardSelection {
   type: 'custom' | 'ccss';
   standardId: string; // Either custom standard ID or CCSS code
   standard: CustomStandard | CCSSStandard;
+}
+
+export interface AppCategory {
+  id: string; // Auto-generated document ID
+  name: string; // Category name (e.g., "IEP Goals", "District Standards")
+  description?: string; // Optional description
+  color?: string; // Optional color code for UI
+  createdBy: string; // User who created this category
+  isActive: boolean; // Whether this category is available for use
+  createdAt: any; // Timestamp
+  updatedAt: any; // Timestamp
+  usageCount?: number; // How many standards use this category
 }
 
 // Grade levels for dropdown

@@ -419,6 +419,25 @@ export async function getStudent(uid: string): Promise<Student | null> {
   }
 }
 
+export async function getStudentByEmail(email: string): Promise<Student | null> {
+  try {
+    const studentsQuery = query(
+      collection(db, COLLECTIONS.STUDENTS),
+      where('email', '==', email)
+    );
+    const snapshot = await getDocs(studentsQuery);
+    
+    if (!snapshot.empty) {
+      const doc = snapshot.docs[0];
+      return { uid: doc.id, ...doc.data() } as Student;
+    }
+    return null;
+  } catch (error) {
+    console.error('❌ Error getting student by email:', error);
+    throw error;
+  }
+}
+
 export async function getStudentBySSID(ssid: string): Promise<Student | null> {
   try {
     const q = query(collection(db, COLLECTIONS.STUDENTS), where('ssid', '==', ssid));

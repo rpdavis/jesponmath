@@ -31,10 +31,19 @@ service cloud.firestore {
       // Teachers can read basic user data for their students
       allow read: if isTeacher();
       
-      // Only admins can write user data (role changes, etc.)
-      allow write: if isAdmin();
-      // Users can update their own profile
-      allow write: if isAuthenticated() && request.auth.uid == userId;
+      // Allow creating new student user records
+      allow create: if isTeacher() && request.resource.data.role == 'student';
+      // Only admins can create non-student users or modify roles
+      allow create: if isAdmin();
+      
+      // Allow users to update their own profile (but not their role)
+      allow update: if isAuthenticated() && request.auth.uid == userId && 
+                       (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'uid']));
+      // Admins can update any user data
+      allow update: if isAdmin();
+      
+      // Only admins can delete users
+      allow delete: if isAdmin();
     }
     
     // Teachers collection
@@ -112,6 +121,14 @@ service cloud.firestore {
       // Teachers and admins can read/write custom standards
       allow read, write: if isTeacher() || isAdmin();
       // Students can read standards (for assessment taking)
+      allow read: if isStudent();
+    }
+    
+    // App categories collection
+    match /appCategories/{categoryId} {
+      // Teachers and admins can read/write app categories
+      allow read, write: if isTeacher() || isAdmin();
+      // Students can read categories (for viewing standards)
       allow read: if isStudent();
     }
     

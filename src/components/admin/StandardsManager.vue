@@ -83,9 +83,24 @@
               <span class="value">{{ standard.category }}</span>
             </div>
             
+            <div class="detail-row" v-if="standard.appCategory">
+              <span class="label">App Category:</span>
+              <span class="value app-category">{{ standard.appCategory }}</span>
+            </div>
+            
+            <div class="detail-row" v-if="standard.maxScore">
+              <span class="label">Max Score:</span>
+              <span class="value max-score">{{ standard.maxScore }} points</span>
+            </div>
+            
             <div class="detail-row" v-if="standard.ccssAlignment">
               <span class="label">CCSS Alignment:</span>
               <span class="value ccss-code">{{ standard.ccssAlignment }}</span>
+            </div>
+            
+            <div class="detail-row" v-if="standard.aeriesAssignmentName">
+              <span class="label">Aeries Assignment:</span>
+              <span class="value aeries-name">{{ standard.aeriesAssignmentName }}</span>
             </div>
             
             <div class="detail-row" v-if="standard.description">
@@ -176,6 +191,104 @@
                 </select>
               </div>
             </div>
+            
+            <!-- App Category Section -->
+            <div class="form-row">
+              <div class="form-group">
+                <label for="appCategory">App Category</label>
+                <div class="app-category-input">
+                  <select 
+                    id="appCategory"
+                    v-model="standardForm.appCategory" 
+                    class="form-select"
+                  >
+                    <option value="">Select App Category</option>
+                    <option v-for="category in appCategories" :key="category.id" :value="category.name">
+                      {{ category.name }}
+                    </option>
+                  </select>
+                  <button type="button" @click="showAddCategoryModal = true" class="add-category-button">
+                    ➕ Add New
+                  </button>
+                </div>
+                <small class="form-help">
+                  Custom categories specific to your application needs
+                </small>
+              </div>
+              
+              <div class="form-group">
+                <label for="maxScore">Max Score</label>
+                <input 
+                  id="maxScore"
+                  v-model.number="standardForm.maxScore" 
+                  type="number"
+                  min="1"
+                  max="999"
+                  step="1"
+                  class="form-input max-score-input"
+                  placeholder="e.g., 100"
+                >
+                <small class="form-help">
+                  Maximum possible score for this standard (1-999)
+                </small>
+              </div>
+            </div>
+            
+            <!-- Scoring Method Section -->
+            <div class="form-row">
+              <div class="form-group scoring-method-group">
+                <label>Scoring Method</label>
+                <div class="radio-group">
+                  <label class="radio-option">
+                    <input 
+                      type="radio" 
+                      v-model="standardForm.scoringMethod" 
+                      value="additive"
+                      name="scoringMethod"
+                    >
+                    <span class="radio-label">
+                      <strong>Additive</strong> - All attempts count, max score caps denominator
+                    </span>
+                    <small class="radio-help">
+                      Current behavior: 5 correct out of 10 attempts with maxScore=5 shows 5/5
+                    </small>
+                  </label>
+                  
+                  <label class="radio-option">
+                    <input 
+                      type="radio" 
+                      v-model="standardForm.scoringMethod" 
+                      value="keepTop"
+                      name="scoringMethod"
+                    >
+                    <span class="radio-label">
+                      <strong>Keep Top Score</strong> - Only best attempts count
+                    </span>
+                    <small class="radio-help">
+                      Takes highest scoring attempts up to maxScore limit
+                    </small>
+                  </label>
+                  
+                  <label class="radio-option">
+                    <input 
+                      type="radio" 
+                      v-model="standardForm.scoringMethod" 
+                      value="average"
+                      name="scoringMethod"
+                    >
+                    <span class="radio-label">
+                      <strong>Average Scores</strong> - Average all attempts
+                    </span>
+                    <small class="radio-help">
+                      Calculates average percentage across all attempts
+                    </small>
+                  </label>
+                </div>
+                <small class="form-help">
+                  Choose how student scores are calculated for this standard
+                </small>
+              </div>
+            </div>
           </div>
 
           <!-- CCSS Alignment -->
@@ -214,6 +327,25 @@
             </div>
           </div>
 
+          <!-- Aeries Integration -->
+          <div class="form-section">
+            <h3>📤 Aeries Integration (Optional)</h3>
+            
+            <div class="form-group">
+              <label for="aeriesAssignmentName">Aeries Assignment Name</label>
+              <input 
+                id="aeriesAssignmentName"
+                v-model="standardForm.aeriesAssignmentName" 
+                type="text" 
+                class="form-input"
+                placeholder="e.g., ESA1 (for 7.q1.ESA1)"
+              >
+              <small class="form-help">
+                Name to use in Aeries gradebook. Example: "7.q1.ESA1" → "ESA1"
+              </small>
+            </div>
+          </div>
+
           <!-- Description -->
           <div class="form-section">
             <h3>📝 Description (Optional)</h3>
@@ -237,6 +369,71 @@
             </button>
             <button type="submit" :disabled="saving" class="save-button">
               {{ saving ? 'Saving...' : (editingStandard ? 'Update Standard' : 'Create Standard') }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Add App Category Modal -->
+    <div v-if="showAddCategoryModal" class="modal-overlay" @click="closeAddCategoryModal">
+      <div class="modal-content" @click.stop>
+        <div class="modal-header">
+          <h2>➕ Add App Category</h2>
+          <button @click="closeAddCategoryModal" class="close-button">✕</button>
+        </div>
+        
+        <form @submit.prevent="createAppCategory" class="category-form">
+          <div class="form-group">
+            <label for="categoryName">Category Name *</label>
+            <input 
+              id="categoryName"
+              v-model="categoryForm.name" 
+              type="text" 
+              required 
+              class="form-input"
+              placeholder="e.g., IEP Goals, District Standards"
+              maxlength="50"
+            >
+          </div>
+          
+          <div class="form-group">
+            <label for="categoryDescription">Description</label>
+            <textarea 
+              id="categoryDescription"
+              v-model="categoryForm.description" 
+              class="form-textarea"
+              rows="2"
+              placeholder="Optional description of this category..."
+              maxlength="200"
+            ></textarea>
+          </div>
+          
+          <div class="form-group">
+            <label for="categoryColor">Color (Optional)</label>
+            <div class="color-input-group">
+              <input 
+                id="categoryColor"
+                v-model="categoryForm.color" 
+                type="color"
+                class="color-input"
+              >
+              <input 
+                v-model="categoryForm.color" 
+                type="text"
+                class="color-text-input"
+                placeholder="#FF5733"
+                pattern="^#[0-9A-Fa-f]{6}$"
+              >
+            </div>
+          </div>
+          
+          <div class="form-actions">
+            <button type="button" @click="closeAddCategoryModal" class="cancel-button">
+              Cancel
+            </button>
+            <button type="submit" :disabled="savingCategory" class="save-button">
+              {{ savingCategory ? 'Creating...' : 'Create Category' }}
             </button>
           </div>
         </form>
@@ -269,15 +466,24 @@ import {
 } from '@/firebase/standardsServices';
 import { searchCCSS, getCCSSByGrade } from '@/data/ccssStandards';
 import { GRADE_LEVELS, STANDARD_CATEGORIES } from '@/types/standards';
-import type { CustomStandard, CCSSStandard } from '@/types/standards';
+import type { CustomStandard, CCSSStandard, AppCategory } from '@/types/standards';
+import {
+  getAllAppCategories,
+  createAppCategory as createAppCategoryService,
+  validateAppCategory,
+  isCategoryNameAvailable
+} from '@/firebase/appCategoriesService';
 
 const authStore = useAuthStore();
 
 // State
 const loading = ref(true);
 const saving = ref(false);
+const savingCategory = ref(false);
 const customStandards = ref<CustomStandard[]>([]);
+const appCategories = ref<AppCategory[]>([]);
 const showCreateModal = ref(false);
+const showAddCategoryModal = ref(false);
 const editingStandard = ref<CustomStandard | null>(null);
 const successMessage = ref('');
 const errorMessage = ref('');
@@ -297,10 +503,21 @@ const standardForm = ref({
   code: '',
   grade: '',
   category: '',
+  appCategory: '',
+  maxScore: undefined as number | undefined,
+  scoringMethod: 'additive' as 'keepTop' | 'average' | 'additive',
   description: '',
   ccssAlignment: '',
+  aeriesAssignmentName: '',
   createdBy: authStore.currentUser?.uid || '',
   isActive: true
+});
+
+// Category Form
+const categoryForm = ref({
+  name: '',
+  description: '',
+  color: '#3B82F6'
 });
 
 // Methods
@@ -333,16 +550,24 @@ const loadStandards = async () => {
 
 const editStandard = (standard: CustomStandard) => {
   editingStandard.value = standard;
+  showCreateModal.value = true; // Make sure modal opens
   standardForm.value = {
     name: standard.name,
     code: standard.code,
     grade: standard.grade,
     category: standard.category || '',
+    appCategory: standard.appCategory || '',
+    maxScore: standard.maxScore,
+    scoringMethod: standard.scoringMethod || 'additive',
     description: standard.description || '',
     ccssAlignment: standard.ccssAlignment || '',
+    aeriesAssignmentName: standard.aeriesAssignmentName || '',
     createdBy: standard.createdBy,
     isActive: standard.isActive
   };
+  
+  console.log('📝 Editing standard - description:', standard.description);
+  console.log('📝 Form description set to:', standardForm.value.description);
   
   // Load CCSS for this grade
   if (standard.grade) {
@@ -403,8 +628,12 @@ const saveStandard = async () => {
         code: standardForm.value.code,
         grade: standardForm.value.grade,
         category: (standardForm.value.category as any) || undefined,
+        appCategory: standardForm.value.appCategory || undefined,
+        maxScore: standardForm.value.maxScore,
+        scoringMethod: standardForm.value.scoringMethod,
         description: standardForm.value.description || undefined,
         ccssAlignment: standardForm.value.ccssAlignment || undefined,
+        aeriesAssignmentName: standardForm.value.aeriesAssignmentName || undefined,
         isActive: standardForm.value.isActive
       });
       
@@ -416,8 +645,12 @@ const saveStandard = async () => {
         code: standardForm.value.code,
         grade: standardForm.value.grade,
         category: (standardForm.value.category as any) || undefined,
+        appCategory: standardForm.value.appCategory || undefined,
+        maxScore: standardForm.value.maxScore,
+        scoringMethod: standardForm.value.scoringMethod,
         description: standardForm.value.description || undefined,
         ccssAlignment: standardForm.value.ccssAlignment || undefined,
+        aeriesAssignmentName: standardForm.value.aeriesAssignmentName || undefined,
         createdBy: authStore.currentUser?.uid || 'system',
         isActive: true
       });
@@ -446,8 +679,12 @@ const closeModal = () => {
     code: '',
     grade: '',
     category: '',
+    appCategory: '',
+    maxScore: undefined,
+    scoringMethod: 'additive',
     description: '',
     ccssAlignment: '',
+    aeriesAssignmentName: '',
     createdBy: authStore.currentUser?.uid || '',
     isActive: true
   };
@@ -496,9 +733,84 @@ const getGradeLabel = (grade: string): string => {
   return gradeObj?.label || grade;
 };
 
+// App Category Methods
+const loadAppCategories = async () => {
+  try {
+    const categories = await getAllAppCategories();
+    appCategories.value = categories;
+  } catch (error: any) {
+    console.error('Error loading app categories:', error);
+    errorMessage.value = 'Failed to load app categories';
+    setTimeout(() => { errorMessage.value = ''; }, 5000);
+  }
+};
+
+const createAppCategory = async () => {
+  try {
+    savingCategory.value = true;
+    
+    // Validate form
+    const errors = validateAppCategory(categoryForm.value);
+    if (errors.length > 0) {
+      errorMessage.value = errors.join(', ');
+      setTimeout(() => { errorMessage.value = ''; }, 5000);
+      return;
+    }
+    
+    // Check name availability
+    const isAvailable = await isCategoryNameAvailable(categoryForm.value.name);
+    if (!isAvailable) {
+      errorMessage.value = `Category name "${categoryForm.value.name}" already exists`;
+      setTimeout(() => { errorMessage.value = ''; }, 5000);
+      return;
+    }
+    
+    // Create category
+    await createAppCategoryService({
+      name: categoryForm.value.name,
+      description: categoryForm.value.description,
+      color: categoryForm.value.color,
+      createdBy: authStore.currentUser?.uid || '',
+      isActive: true
+    });
+    
+    successMessage.value = 'App category created successfully!';
+    setTimeout(() => { successMessage.value = ''; }, 3000);
+    
+    // Reset form and reload categories
+    categoryForm.value = {
+      name: '',
+      description: '',
+      color: '#3B82F6'
+    };
+    
+    closeAddCategoryModal();
+    await loadAppCategories();
+    
+  } catch (error: any) {
+    console.error('Error creating app category:', error);
+    errorMessage.value = error.message || 'Failed to create app category';
+    setTimeout(() => { errorMessage.value = ''; }, 5000);
+  } finally {
+    savingCategory.value = false;
+  }
+};
+
+const closeAddCategoryModal = () => {
+  showAddCategoryModal.value = false;
+  categoryForm.value = {
+    name: '',
+    description: '',
+    color: '#3B82F6'
+  };
+};
+
 // Lifecycle
 onMounted(async () => {
-  await loadStandards();
+  await Promise.all([
+    loadStandards(),
+    loadAppCategories()
+  ]);
 });
 </script>
 
@@ -717,6 +1029,16 @@ onMounted(async () => {
   border-radius: 4px;
   font-family: monospace;
   font-size: 0.85rem;
+}
+
+.aeries-name {
+  background: #e3f2fd;
+  color: #1565c0;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 0.85rem;
+  font-weight: 600;
 }
 
 .description {
@@ -1005,5 +1327,128 @@ onMounted(async () => {
   border: 1px solid #f5c6cb;
   border-radius: 6px;
   z-index: 2000;
+}
+
+/* App Category Styles */
+.app-category-input {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.app-category-input .form-select {
+  flex: 1;
+}
+
+.add-category-button {
+  padding: 0.75rem 1rem;
+  background: #28a745;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s ease;
+}
+
+.add-category-button:hover {
+  background: #218838;
+}
+
+.app-category {
+  background: #e3f2fd;
+  color: #1565c0;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.category-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.color-input-group {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.color-input {
+  width: 50px;
+  height: 40px;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.color-text-input {
+  flex: 1;
+  padding: 0.75rem;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  font-family: monospace;
+}
+
+.max-score-input {
+  width: 120px;
+}
+
+.max-score {
+  background: #fff3cd;
+  color: #856404;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+/* Scoring Method Styles */
+.scoring-method-group {
+  width: 100%;
+}
+
+.radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin: 0.5rem 0;
+}
+
+.radio-option {
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.radio-option:hover {
+  border-color: #3b82f6;
+  background: #f8faff;
+}
+
+.radio-option input {
+  margin-right: 0.5rem;
+}
+
+.radio-label {
+  display: flex;
+  align-items: center;
+  font-size: 0.95rem;
+  color: #374151;
+  margin-bottom: 0.25rem;
+}
+
+.radio-help {
+  color: #6b7280;
+  font-size: 0.8rem;
+  margin-left: 1.5rem;
+  font-style: italic;
 }
 </style>

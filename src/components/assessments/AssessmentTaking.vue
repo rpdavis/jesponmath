@@ -365,6 +365,21 @@
                   💡 Tip: You can select multiple answers. Make sure to choose all that are correct.
                 </p>
               </div>
+
+              <!-- Horizontal Ordering Questions -->
+              <div v-else-if="currentQuestion.questionType === 'horizontal-ordering'" class="horizontal-ordering-question">
+                <HorizontalOrderingInput
+                  :items="currentQuestion.orderingItems || []"
+                  :correct-order="currentQuestion.correctHorizontalOrder || []"
+                  :order-direction="currentQuestion.orderDirection || 'ascending'"
+                  :max-items="8"
+                  :model-value="getHorizontalOrderingAnswer(currentQuestion.id)"
+                  @update:modelValue="setHorizontalOrderingAnswer(currentQuestion.id, $event)"
+                />
+                <p class="horizontal-ordering-help">
+                  💡 Tip: Drag items from the bottom to the ordering area above. Items will be numbered in the order you place them.
+                </p>
+              </div>
             </div>
           </div>
 
@@ -434,6 +449,7 @@ import { db, storage } from '@/firebase/config';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import CameraCapture from '@/components/CameraCapture.vue';
 import FractionInput from '@/components/FractionInput.vue';
+import HorizontalOrderingInput from '@/components/HorizontalOrderingInput.vue';
 import RichTextAnswerInput from '@/components/RichTextAnswerInput.vue';
 import type { Assessment, AssessmentQuestion, FractionAnswer } from '@/types/iep';
 import { checkFractionAnswer, type Fraction } from '@/utils/fractionUtils';
@@ -751,6 +767,16 @@ const submitAssessment = async () => {
           isCorrect = userAnswers.length === correctAnswers.length &&
                      userAnswers.every(answer => correctAnswers.includes(answer)) &&
                      correctAnswers.every(answer => userAnswers.includes(answer));
+        }
+      } else if (question.questionType === 'horizontal-ordering') {
+        // For horizontal ordering questions, check if items are in correct order
+        if (question.correctHorizontalOrder && Array.isArray(userAnswer)) {
+          const userOrder = userAnswer as string[];
+          const correctOrder = question.correctHorizontalOrder;
+          
+          // Check if arrays are same length and in same order
+          isCorrect = userOrder.length === correctOrder.length &&
+                     userOrder.every((item, index) => item === correctOrder[index]);
         }
       } else {
         // For other question types (short-answer, essay, etc.), use enhanced comparison
@@ -1185,6 +1211,21 @@ const toggleCheckboxAnswer = (questionId: string, value: string) => {
   }
   
   answers.value[questionId] = currentAnswers as any;
+};
+
+// Horizontal ordering question methods
+const getHorizontalOrderingAnswer = (questionId: string): string[] => {
+  const answer = answers.value[questionId];
+  if (Array.isArray(answer)) {
+    return answer as string[];
+  }
+  // Initialize as empty array if not set
+  answers.value[questionId] = [] as any;
+  return [];
+};
+
+const setHorizontalOrderingAnswer = (questionId: string, value: string[]) => {
+  answers.value[questionId] = value as any;
 };
 
 // Cleanup timer on unmount

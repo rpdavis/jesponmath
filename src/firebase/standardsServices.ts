@@ -61,6 +61,7 @@ export const searchCustomStandards = async (searchTerm: string): Promise<CustomS
 export const createCustomStandard = async (standardData: Omit<CustomStandard, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> => {
   try {
     console.log('📚 Creating new custom standard:', standardData.code);
+    console.log('📊 Standard data received:', standardData);
     
     // Filter out undefined values - Firestore doesn't allow them
     const cleanData: any = {
@@ -84,6 +85,20 @@ export const createCustomStandard = async (standardData: Omit<CustomStandard, 'i
     if (standardData.ccssAlignment) {
       cleanData.ccssAlignment = standardData.ccssAlignment;
     }
+    if (standardData.appCategory) {
+      cleanData.appCategory = standardData.appCategory;
+    }
+    if (standardData.maxScore && standardData.maxScore > 0) {
+      cleanData.maxScore = standardData.maxScore;
+      console.log('📊 Adding maxScore to cleanData:', standardData.maxScore);
+    } else {
+      console.log('📊 MaxScore not added - value:', standardData.maxScore);
+    }
+    if (standardData.scoringMethod) {
+      cleanData.scoringMethod = standardData.scoringMethod;
+    }
+    
+    console.log('📊 Final cleanData being saved:', cleanData);
     
     const docRef = await addDoc(collection(db, COLLECTIONS.CUSTOM_STANDARDS), cleanData);
     
@@ -97,6 +112,9 @@ export const createCustomStandard = async (standardData: Omit<CustomStandard, 'i
 
 export const updateCustomStandard = async (standardId: string, updates: Partial<CustomStandard>): Promise<void> => {
   try {
+    console.log('📚 Updating custom standard:', standardId);
+    console.log('📊 Updates received:', updates);
+    
     const docRef = doc(db, COLLECTIONS.CUSTOM_STANDARDS, standardId);
     
     // Filter out undefined values - Firestore doesn't allow them
@@ -107,10 +125,20 @@ export const updateCustomStandard = async (standardId: string, updates: Partial<
     // Only add fields that have values
     Object.keys(updates).forEach(key => {
       const value = (updates as any)[key];
-      if (value !== undefined && value !== null && value !== '') {
+      // Special handling for maxScore - allow 0 to be excluded but not other numbers
+      if (key === 'maxScore') {
+        if (typeof value === 'number' && value > 0) {
+          cleanUpdates[key] = value;
+          console.log(`📊 Adding ${key} to updates:`, value);
+        } else {
+          console.log(`📊 Skipping ${key} - invalid value:`, value);
+        }
+      } else if (value !== undefined && value !== null && value !== '') {
         cleanUpdates[key] = value;
       }
     });
+    
+    console.log('📊 Final cleanUpdates being saved:', cleanUpdates);
     
     await updateDoc(docRef, cleanUpdates);
     

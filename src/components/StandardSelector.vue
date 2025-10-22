@@ -80,6 +80,8 @@
             <div class="standard-meta">
               <span class="grade-badge">{{ getGradeLabel(standard.grade) }}</span>
               <span v-if="standard.category" class="category-badge">{{ standard.category }}</span>
+              <span v-if="standard.appCategory" class="app-category-badge">{{ standard.appCategory }}</span>
+              <span v-if="standard.maxScore" class="max-score-badge">Max: {{ standard.maxScore }}</span>
               <span v-if="standard.ccssAlignment" class="ccss-badge">CCSS: {{ standard.ccssAlignment }}</span>
             </div>
           </div>
@@ -615,5 +617,23 @@ onMounted(async () => {
 
 .clear-selection:hover {
   background: #c82333;
+}
+
+.app-category-badge {
+  background: #e3f2fd;
+  color: #1565c0;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 0.7rem;
+  font-weight: 500;
+}
+
+.max-score-badge {
+  background: #fff3cd;
+  color: #856404;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 0.7rem;
+  font-weight: 600;
 }
 </style>

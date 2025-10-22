@@ -55,17 +55,17 @@ export const PERMISSIONS_MATRIX: Record<UserRole, Permission[]> = {
   ],
   
   [ROLES.TEACHER]: [
-    // Assessment and assigned student management only
+    // Assessment and student management
     PERMISSIONS.CREATE_ASSESSMENTS,
     PERMISSIONS.EDIT_ASSESSMENTS,
     PERMISSIONS.DELETE_ASSESSMENTS,
+    PERMISSIONS.MANAGE_STUDENTS, // Can add/manage their own students
     PERMISSIONS.VIEW_STUDENT_RESULTS, // Only for their assigned students
     PERMISSIONS.IMPORT_CLASSROOM,
     PERMISSIONS.ASSIGN_ASSESSMENTS,
     PERMISSIONS.TAKE_ASSESSMENTS, // For preview/testing
     PERMISSIONS.VIEW_OWN_RESULTS,
     PERMISSIONS.VIEW_OWN_PROGRESS
-    // REMOVED: MANAGE_STUDENTS (can't add/delete students)
   ],
   
   [ROLES.STUDENT]: [
@@ -98,7 +98,7 @@ export const ROUTE_PERMISSIONS: Record<string, Permission[]> = {
 // Role descriptions for UI
 export const ROLE_DESCRIPTIONS: Record<UserRole, string> = {
   [ROLES.ADMIN]: 'System Administrator - Full access to all features, user management, and system settings',
-  [ROLES.TEACHER]: 'Teacher - Create and manage assessments, view student progress, import from Google Classroom',
+  [ROLES.TEACHER]: 'Teacher - Create and manage assessments, add and manage students, view student progress, import from Google Classroom',
   [ROLES.STUDENT]: 'Student - Take assigned assessments and view personal results and progress'
 };
 
@@ -168,6 +168,7 @@ export const NAVIGATION_ITEMS: Record<UserRole, Array<{
     { path: '/admin/migration', label: 'Database Migration', icon: '🔄', permission: PERMISSIONS.MANAGE_SYSTEM },
     { path: '/admin/csv-migration', label: 'CSV Import', icon: '📊', permission: PERMISSIONS.MANAGE_SYSTEM },
     { path: '/admin/standards', label: 'Manage Standards', icon: '📏', permission: PERMISSIONS.MANAGE_SYSTEM },
+    { path: '/admin/aeries-export', label: 'Export to Aeries', icon: '📤' },
     { path: '/admin/system', label: 'System Settings', icon: '⚙️', permission: PERMISSIONS.MANAGE_SYSTEM }
   ],
   
@@ -178,7 +179,8 @@ export const NAVIGATION_ITEMS: Record<UserRole, Array<{
     { path: '/manage-assessments', label: 'Manage Assessments', icon: '📋' },
     { path: '/gradebook', label: 'Gradebook', icon: '📊' },
     { path: '/assessments', label: 'My Assessments', icon: '📝' },
-    { path: '/progress', label: 'Student Progress', icon: '📈', permission: PERMISSIONS.VIEW_STUDENT_RESULTS }
+    { path: '/progress', label: 'Student Progress', icon: '📈', permission: PERMISSIONS.VIEW_STUDENT_RESULTS },
+    { path: '/admin/aeries-export', label: 'Export to Aeries', icon: '📤' }
   ],
   
   [ROLES.STUDENT]: [

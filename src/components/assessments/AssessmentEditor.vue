@@ -624,6 +624,7 @@
                     <option value="matching">Matching</option>
                     <option value="rank-order">Rank Order</option>
                     <option value="checkbox">Multiple Select (Checkboxes)</option>
+                    <option value="horizontal-ordering">Horizontal Ordering</option>
                   </select>
                 </div>
                 
@@ -903,6 +904,87 @@
                     </span>
                     <span v-else class="correct-count">
                       {{ getCorrectCheckboxAnswers(question).length }} option(s)
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Horizontal Ordering Configuration -->
+              <div v-if="question.questionType === 'horizontal-ordering'" class="horizontal-ordering-config">
+                <div class="form-group">
+                  <label>Ordering Items *</label>
+                  <p class="help-text">Add 2-8 items that students will drag to order horizontally</p>
+                  
+                  <div class="ordering-items-list">
+                    <div 
+                      v-for="(item, itemIndex) in question.orderingItems || []" 
+                      :key="itemIndex"
+                      class="ordering-item"
+                    >
+                      <span class="item-number">{{ itemIndex + 1 }}.</span>
+                      <LaTeXEditor 
+                        v-model="question.orderingItems![itemIndex]"
+                        :rows="2"
+                        :show-preview="false"
+                        placeholder="e.g., $\frac{1}{2}$, $0.75$, $\frac{2}{3}$"
+                        class="ordering-latex-editor"
+                      />
+                      <button 
+                        type="button"
+                        @click="removeOrderingItem(index, itemIndex)"
+                        class="remove-btn"
+                      >×</button>
+                    </div>
+                  </div>
+                  
+                  <button 
+                    type="button"
+                    @click="addOrderingItem(index)"
+                    class="add-btn"
+                    :disabled="(question.orderingItems || []).length >= 8"
+                  >+ Add Ordering Item</button>
+                  
+                  <div class="form-group" style="margin-top: 20px;">
+                    <label>Order Direction *</label>
+                    <select v-model="question.orderDirection" class="form-select">
+                      <option value="ascending">Ascending (least to greatest)</option>
+                      <option value="descending">Descending (greatest to least)</option>
+                    </select>
+                  </div>
+                  
+                  <div class="form-group">
+                    <label>Correct Order *</label>
+                    <p class="help-text">
+                      Drag items above to set the correct order, or select the correct sequence manually
+                    </p>
+                    <div class="correct-order-list">
+                      <div 
+                        v-for="(item, orderIndex) in question.correctHorizontalOrder || []" 
+                        :key="orderIndex"
+                        class="correct-order-item"
+                      >
+                        <span class="order-number">{{ orderIndex + 1 }}.</span>
+                        <select v-model="question.correctHorizontalOrder![orderIndex]" class="form-select">
+                          <option value="">Select item</option>
+                          <option 
+                            v-for="orderingItem in question.orderingItems || []" 
+                            :key="orderingItem"
+                            :value="orderingItem"
+                          >{{ orderingItem }}</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div class="ordering-summary">
+                    <strong>Items to Order:</strong> {{ (question.orderingItems || []).length }} item(s)
+                    <br>
+                    <strong>Correct Order Set:</strong> 
+                    <span v-if="(question.correctHorizontalOrder || []).length === 0" class="no-correct">
+                      ⚠️ No correct order set
+                    </span>
+                    <span v-else class="correct-count">
+                      {{ (question.correctHorizontalOrder || []).length }} position(s)
                     </span>
                   </div>
                 </div>
@@ -1567,6 +1649,46 @@ const toggleCorrectCheckboxAnswer = (questionIndex: number, optionIndex: number)
 
 const getCorrectCheckboxAnswers = (question: AssessmentQuestion): string[] => {
   return question.correctAnswers || [];
+};
+
+// Horizontal ordering question methods
+const addOrderingItem = (questionIndex: number) => {
+  const question = assessment.value!.questions[questionIndex];
+  if (!question.orderingItems) {
+    question.orderingItems = [];
+  }
+  if (question.orderingItems.length < 8) {
+    question.orderingItems.push('');
+    updateCorrectHorizontalOrder(question);
+  }
+};
+
+const removeOrderingItem = (questionIndex: number, itemIndex: number) => {
+  const question = assessment.value!.questions[questionIndex];
+  if (question.orderingItems) {
+    question.orderingItems.splice(itemIndex, 1);
+    updateCorrectHorizontalOrder(question);
+  }
+};
+
+const updateCorrectHorizontalOrder = (question: AssessmentQuestion) => {
+  if (!question.orderingItems) return;
+  
+  // Initialize correct horizontal order array
+  if (!question.correctHorizontalOrder) {
+    question.correctHorizontalOrder = [...question.orderingItems].filter(item => item.trim());
+  } else {
+    // Ensure correct order has same length as ordering items
+    const filteredItems = question.orderingItems.filter(item => item.trim());
+    question.correctHorizontalOrder = question.correctHorizontalOrder.filter(item => filteredItems.includes(item));
+    
+    // Add any new items that aren't in correct order yet
+    filteredItems.forEach(item => {
+      if (!question.correctHorizontalOrder!.includes(item)) {
+        question.correctHorizontalOrder!.push(item);
+      }
+    });
+  }
 };
 
 const updateQuestionStandards = (question: AssessmentQuestion) => {

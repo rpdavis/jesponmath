@@ -27,6 +27,29 @@
             <span class="radio-label">📊 Show by Standards</span>
           </label>
         </div>
+        
+        <!-- App Category Filter Buttons (only show in standards view) -->
+        <div v-if="viewMode === 'standards' && uniqueAppCategories.length > 0" class="app-category-filters">
+          <label class="filter-label">App Categories:</label>
+          <div class="category-buttons">
+            <button 
+              @click="selectedAppCategory = ''"
+              class="category-filter-btn"
+              :class="{ active: selectedAppCategory === '' }"
+            >
+              All
+            </button>
+            <button 
+              v-for="category in uniqueAppCategories" 
+              :key="category"
+              @click="selectedAppCategory = category"
+              class="category-filter-btn"
+              :class="{ active: selectedAppCategory === category }"
+            >
+              {{ category }}
+            </button>
+          </div>
+        </div>
       </div>
       
       <div class="filter-group">
@@ -76,9 +99,14 @@
         </select>
       </div>
       
-      <button @click="exportGradebook" class="export-btn">
-        📤 Export CSV
-      </button>
+      <div class="export-buttons">
+        <button @click="exportGradebook" class="export-btn">
+          📤 Export CSV
+        </button>
+        <button @click="showAeriesExport = true" class="export-btn aeries-btn">
+          📊 Export to Aeries
+        </button>
+      </div>
     </div>
 
     <!-- Loading State -->
@@ -107,7 +135,7 @@
         
         <div class="gradebook-table-wrapper">
           <table class="gradebook-table">
-            <thead>
+            <thead class="sticky-header">
               <tr>
                 <th class="student-name-col">Student</th>
                 <th v-for="assessment in group.assessments" :key="assessment.id" class="assessment-col" :title="assessment.title">
@@ -193,7 +221,7 @@
           
           <div class="gradebook-table-wrapper">
             <table class="gradebook-table standards-table">
-              <thead>
+              <thead class="sticky-header">
                 <tr>
                   <th class="student-name-col">Student</th>
                   <th v-for="standard in group.standards" :key="standard" class="standard-col" :title="standard">
@@ -201,8 +229,8 @@
                       <span 
                         class="standard-title"
                         :class="{ 
-                          'custom-standard': standard.startsWith('CUSTOM:'),
-                          'ccss-standard': !standard.startsWith('CUSTOM:')
+                          'custom-standard': getStandardDisplayInfo(standard).isCustom,
+                          'ccss-standard': !getStandardDisplayInfo(standard).isCustom
                         }"
                       >
                         {{ getCleanStandardName(standard) }}
@@ -210,7 +238,7 @@
                       <span class="standard-info">Correct/Total</span>
                     </div>
                   </th>
-                  <th class="mastery-col">Mastery</th>
+                  <th class="mastery-col">Standard Mastery</th>
                 </tr>
               </thead>
               <tbody>
@@ -333,6 +361,19 @@
         </div>
       </div>
     </div>
+    
+    <!-- Aeries Export Modal -->
+    <div v-if="showAeriesExport" class="modal-overlay" @click="showAeriesExport = false">
+      <div class="modal-content" @click.stop>
+        <div class="modal-header">
+          <h2>📊 Export Grades to Aeries</h2>
+          <button @click="showAeriesExport = false" class="close-button">✕</button>
+        </div>
+        <div class="modal-body">
+          <AeriesGradeExport />
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -340,14 +381,17 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import AcademicPeriodSelector from '@/components/AcademicPeriodSelector.vue';
+import AeriesGradeExport from '@/components/admin/AeriesGradeExport.vue';
 import { useGlobalAcademicPeriods } from '@/composables/useAcademicPeriods';
 import type { AcademicPeriod, PeriodType } from '@/types/academicPeriods';
 import { useAuthStore } from '@/stores/authStore';
 import { getStudentsByTeacher } from '@/firebase/userServices';
 import { getAssessmentsByTeacher, getAssessmentResults, createManualAssessmentResult } from '@/firebase/iepServices';
+import { getAllCustomStandards } from '@/firebase/standardsServices';
 import { parseStandards, groupQuestionsByStandards, getAllStandardsFromQuestions } from '@/utils/standardsUtils';
 import type { Student } from '@/types/users';
 import type { Assessment, AssessmentResult } from '@/types/iep';
+import type { CustomStandard } from '@/types/standards';
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -358,12 +402,14 @@ const error = ref('');
 const students = ref<Student[]>([]);
 const assessments = ref<Assessment[]>([]);
 const assessmentResults = ref<AssessmentResult[]>([]);
+const customStandards = ref<CustomStandard[]>([]);
 
 // View mode and filters
 const viewMode = ref('assignments'); // 'assignments' or 'standards'
 const selectedClass = ref('');
 const selectedPeriod = ref('');
 const selectedCategory = ref('');
+const selectedAppCategory = ref('');
 const selectedSort = ref('created-desc'); // Default to newest first
 
 // Manual score dialog state
@@ -372,8 +418,11 @@ const selectedStudent = ref<Student | null>(null);
 const selectedAssessment = ref<Assessment | null>(null);
 const questionScores = ref<{ [questionId: string]: string }>({});
 
+// Aeries export modal state
+const showAeriesExport = ref(false);
+
 // Academic period management
-const { filterAssessments, filterResults } = useGlobalAcademicPeriods();
+const { filterAssessments, filterResults, selectedPeriod: currentAcademicPeriod } = useGlobalAcademicPeriods();
 
 // Academic period event handlers
 const onPeriodChanged = (period: AcademicPeriod) => {
@@ -426,23 +475,14 @@ const filteredStudents = computed(() => {
 });
 
 const filteredAssessments = computed(() => {
-  console.log('🔍 Filtering assessments - Total:', assessments.value.length);
-  
-  // Check if academic period is initialized
-  const { selectedPeriod } = useGlobalAcademicPeriods();
-  console.log('📅 Current selected period:', selectedPeriod.value?.name, selectedPeriod.value?.startDate, selectedPeriod.value?.endDate);
-  
   // First apply academic period filtering
   let filtered = filterAssessments(assessments.value);
-  console.log('📅 After period filtering:', filtered.length);
   
   // Then apply category filtering
   filtered = filtered.filter(assessment => {
     if (selectedCategory.value && assessment.category !== selectedCategory.value) return false;
     return true;
   });
-  
-  console.log('📊 Final filtered assessments:', filtered.length);
   
   // Apply sorting
   filtered.sort((a, b) => {
@@ -476,7 +516,7 @@ const filteredAssessments = computed(() => {
   return filtered;
 });
 
-// Get unique standards from all assessments
+// Get unique standards from all assessments with app category filtering
 const uniqueStandards = computed(() => {
   const allQuestions = filteredAssessments.value.flatMap(assessment => [
     // Include assessment-level standard as a pseudo-question
@@ -485,7 +525,27 @@ const uniqueStandards = computed(() => {
     ...(assessment.questions || [])
   ]);
   
-  return getAllStandardsFromQuestions(allQuestions);
+  let standards = getAllStandardsFromQuestions(allQuestions);
+  
+  // Apply app category filter if selected
+  if (selectedAppCategory.value) {
+    standards = standards.filter(standardCode => {
+      const customStd = getCustomStandardByCode(standardCode);
+      return customStd?.appCategory === selectedAppCategory.value;
+    });
+  }
+  
+  return standards;
+});
+
+// Get unique app categories from custom standards
+const uniqueAppCategories = computed(() => {
+  const categories = customStandards.value
+    .map(std => std.appCategory)
+    .filter((category): category is string => Boolean(category))
+    .filter((category, index, arr) => arr.indexOf(category) === index);
+  
+  return categories.sort();
 });
 
 // Group students by class and period
@@ -540,14 +600,16 @@ const loadGradebookData = async () => {
     
     console.log('📊 Loading gradebook data...');
     
-    // Load teacher's students and assessments
-    const [teacherStudents, teacherAssessments] = await Promise.all([
+    // Load teacher's students, assessments, and custom standards
+    const [teacherStudents, teacherAssessments, allCustomStandards] = await Promise.all([
       getStudentsByTeacher(authStore.currentUser.uid),
-      getAssessmentsByTeacher(authStore.currentUser.uid)
+      getAssessmentsByTeacher(authStore.currentUser.uid),
+      getAllCustomStandards()
     ]);
     
     students.value = teacherStudents;
     assessments.value = teacherAssessments;
+    customStandards.value = allCustomStandards;
     
     console.log('👥 Loaded students:', students.value.length);
     console.log('📝 Loaded assessments:', assessments.value.length);
@@ -572,10 +634,8 @@ const loadGradebookData = async () => {
     
     console.log('📊 Loaded assessment results:', assessmentResults.value.length);
     
-    // Debug assessment results
-    assessmentResults.value.forEach(result => {
-      console.log(`📊 Result: AssessmentID: ${result.assessmentId}, StudentUid: ${result.studentUid}, Score: ${result.percentage}%`);
-    });
+    // Clear standard score cache when new data is loaded
+    clearStandardScoreCache();
     
   } catch (err: any) {
     console.error('❌ Error loading gradebook:', err);
@@ -666,13 +726,33 @@ const clearFilters = () => {
   selectedClass.value = '';
   selectedPeriod.value = '';
   selectedCategory.value = '';
+  selectedAppCategory.value = '';
   selectedSort.value = 'created-desc';
 };
 
-// Standards-based methods
+// Memoized standard scores to avoid expensive recalculations
+const standardScoreCache = ref<Map<string, { correct: number; total: number; percentage: number }>>(new Map());
+
+// Clear cache when data changes
+const clearStandardScoreCache = () => {
+  standardScoreCache.value.clear();
+};
+
+// Standards-based methods with caching
 const getStandardScore = (studentUid: string, standard: string) => {
-  let correct = 0;
-  let total = 0;
+  const cacheKey = `${studentUid}-${standard}`;
+  
+  // Check cache first
+  if (standardScoreCache.value.has(cacheKey)) {
+    return standardScoreCache.value.get(cacheKey)!;
+  }
+  
+  // Get custom standard metadata for maxScore limit
+  const customStd = getCustomStandardByCode(standard);
+  const maxScore = customStd?.maxScore;
+  
+  // Collect all question attempts for this standard
+  const questionAttempts: { isCorrect: boolean; score: number }[] = [];
   
   // FIXED: Only count questions from assessments the student actually took
   assessments.value.forEach(assessment => {
@@ -693,19 +773,71 @@ const getStandardScore = (studentUid: string, standard: string) => {
       const questionCoversStandard = questionStandards.includes(standard) || assessmentCoversStandard;
       
       if (questionCoversStandard) {
-        total++; // Only count if student took the assessment
-        
         // Find the response for this specific question
         const response = result.responses?.find((r: any) => r.questionId === question.id);
-        if (response && response.isCorrect) {
-          correct++;
+        if (response) {
+          questionAttempts.push({
+            isCorrect: response.isCorrect,
+            score: response.score || (response.isCorrect ? question.points : 0)
+          });
         }
       }
     });
   });
   
-  const percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
-  return { correct, total, percentage };
+  // If no attempts, return 0/0
+  if (questionAttempts.length === 0) {
+    const result = { correct: 0, total: 0, percentage: 0 };
+    standardScoreCache.value.set(cacheKey, result);
+    return result;
+  }
+  
+  // Apply scoring method logic
+  const scoringMethod = customStd?.scoringMethod || 'additive';
+  let correct = 0;
+  let total = 0;
+  let percentage = 0;
+  
+  if (scoringMethod === 'keepTop') {
+    // Keep Top Score: Take highest scoring attempts up to maxScore
+    questionAttempts.sort((a, b) => b.score - a.score);
+    const limitedAttempts = maxScore && maxScore > 0 ? 
+      questionAttempts.slice(0, maxScore) : 
+      questionAttempts;
+    
+    correct = limitedAttempts.filter(attempt => attempt.isCorrect).length;
+    total = limitedAttempts.length;
+    percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
+    
+  } else if (scoringMethod === 'average') {
+    // Average Scores: Calculate average percentage across all attempts
+    if (questionAttempts.length > 0) {
+      const attemptPercentages = questionAttempts.map(attempt => 
+        attempt.isCorrect ? 100 : 0
+      );
+      percentage = Math.round(attemptPercentages.reduce((sum: number, pct: number) => sum + pct, 0) / attemptPercentages.length);
+      correct = Math.round((percentage / 100) * questionAttempts.length);
+      total = questionAttempts.length;
+    }
+    
+  } else {
+    // Additive (current behavior): All attempts count, maxScore caps denominator
+    questionAttempts.sort((a, b) => b.score - a.score);
+    const limitedAttempts = maxScore && maxScore > 0 ? 
+      questionAttempts.slice(0, maxScore) : 
+      questionAttempts;
+    
+    correct = limitedAttempts.filter(attempt => attempt.isCorrect).length;
+    total = limitedAttempts.length;
+    percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
+  }
+  
+  const result = { correct, total, percentage };
+  
+  // Cache the result
+  standardScoreCache.value.set(cacheKey, result);
+  
+  return result;
 };
 
 const getStandardMasteryClass = (scoreData: { correct: number; total: number; percentage: number }): string => {
@@ -715,16 +847,37 @@ const getStandardMasteryClass = (scoreData: { correct: number; total: number; pe
   return 'beginning';
 };
 
+// Calculate student's overall standards mastery using maxScore-based calculation
 const getStudentStandardsAverage = (studentUid: string): number => {
-  const standardScores = uniqueStandards.value.map(standard => 
-    getStandardScore(studentUid, standard).percentage
-  ).filter(score => score > 0);
+  const standardMasteries: number[] = [];
   
-  if (standardScores.length === 0) return 0;
+  uniqueStandards.value.forEach(standard => {
+    const customStd = getCustomStandardByCode(standard);
+    const scoreData = getStandardScore(studentUid, standard);
+    
+    if (scoreData.total > 0) {
+      let mastery: number;
+      
+      if (customStd?.maxScore && customStd.maxScore > 0) {
+        // If maxScore is set, calculate mastery as (correct / maxScore) * 100
+        // Cap at 100% if they exceed maxScore
+        mastery = Math.min(100, Math.round((scoreData.correct / customStd.maxScore) * 100));
+      } else {
+        // If no maxScore set, use regular percentage
+        mastery = scoreData.percentage;
+      }
+      
+      standardMasteries.push(mastery);
+    }
+  });
   
-  const total = standardScores.reduce((sum, score) => sum + score, 0);
-  return Math.round(total / standardScores.length);
+  if (standardMasteries.length === 0) return 0;
+  
+  const total = standardMasteries.reduce((sum, mastery) => sum + mastery, 0);
+  return Math.round(total / standardMasteries.length);
 };
+
+// (Replaced with maxScore-based version above)
 
 const getClassStandardsAverage = (group: any): number => {
   const allScores: number[] = [];
@@ -756,6 +909,40 @@ const getCleanStandardName = (standardCode: string): string => {
   } else {
     return standardCode; // Return CCSS code as-is
   }
+};
+
+// Get custom standard metadata by code
+const getCustomStandardByCode = (standardCode: string): CustomStandard | null => {
+  if (!standardCode) return null;
+  
+  // Remove CUSTOM: prefix if present
+  const cleanCode = standardCode.startsWith('CUSTOM:') ? 
+    standardCode.replace('CUSTOM:', '') : standardCode;
+  
+  return customStandards.value.find(std => std.code === cleanCode) || null;
+};
+
+// Get enhanced standard display info
+const getStandardDisplayInfo = (standardCode: string) => {
+  const customStd = getCustomStandardByCode(standardCode);
+  
+  if (customStd) {
+    return {
+      name: customStd.name,
+      code: customStd.code,
+      appCategory: customStd.appCategory,
+      maxScore: customStd.maxScore,
+      isCustom: true
+    };
+  }
+  
+  return {
+    name: getCleanStandardName(standardCode),
+    code: standardCode,
+    appCategory: null,
+    maxScore: null,
+    isCustom: false
+  };
 };
 
 const exportGradebook = () => {
@@ -1011,6 +1198,12 @@ onMounted(() => {
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
+.export-buttons {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
 .export-btn {
   background: linear-gradient(135deg, #059669, #047857);
   color: white;
@@ -1026,6 +1219,14 @@ onMounted(() => {
 .export-btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(5, 150, 105, 0.3);
+}
+
+.export-btn.aeries-btn {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+}
+
+.export-btn.aeries-btn:hover {
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.3);
 }
 
 .loading {
@@ -1064,6 +1265,61 @@ onMounted(() => {
   border-radius: 8px;
   cursor: pointer;
   margin-top: 15px;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 12px;
+  max-width: 1000px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 1px solid #dee2e6;
+  background: #f8f9fa;
+  border-radius: 12px 12px 0 0;
+}
+
+.modal-header h2 {
+  margin: 0;
+  color: #495057;
+}
+
+.close-button {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #6c757d;
+  padding: 0.25rem;
+}
+
+.close-button:hover {
+  color: #495057;
+}
+
+.modal-body {
+  padding: 0;
 }
 
 .class-group {
@@ -1748,5 +2004,180 @@ onMounted(() => {
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
+}
+
+/* Standard metadata badges */
+.standard-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 4px 0;
+}
+
+.app-category-badge {
+  background: #e3f2fd;
+  color: #1565c0;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  text-align: center;
+}
+
+.max-score-badge {
+  background: #fff3cd;
+  color: #856404;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* App Category Filter Styles */
+.app-category-filters {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.filter-label {
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+.category-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.category-filter-btn {
+  padding: 0.5rem 1rem;
+  border: 2px solid #e5e7eb;
+  background: white;
+  color: #374151;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.category-filter-btn:hover {
+  border-color: #3b82f6;
+  color: #3b82f6;
+}
+
+.category-filter-btn.active {
+  background: #3b82f6;
+  color: white;
+  border-color: #3b82f6;
+}
+
+/* Sticky Header Styles */
+.gradebook-table-wrapper {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  overflow-x: auto;
+  margin-bottom: 2rem;
+  max-height: 70vh; /* Limit height to enable sticky behavior */
+  overflow-y: auto;
+  position: relative;
+}
+
+.gradebook-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.sticky-header th {
+  background: #f8f9fa;
+  border-bottom: 2px solid #dee2e6;
+  padding: 1rem 0.5rem;
+  text-align: center;
+  font-weight: 600;
+  color: #495057;
+  white-space: nowrap;
+  vertical-align: top;
+}
+
+.student-name-col {
+  min-width: 200px;
+  text-align: left !important;
+  position: sticky;
+  left: 0;
+  background: #f8f9fa;
+  z-index: 11;
+}
+
+.assessment-col,
+.standard-col {
+  min-width: 120px;
+  max-width: 150px;
+}
+
+.average-col,
+.mastery-col {
+  min-width: 80px;
+  background: #f8f9fa;
+  position: sticky;
+  right: 0;
+  z-index: 11;
+}
+
+/* Student row styles for sticky columns */
+.student-row td.student-name-cell {
+  position: sticky;
+  left: 0;
+  background: white;
+  z-index: 9;
+  border-right: 1px solid #dee2e6;
+}
+
+.student-row td.average-cell,
+.student-row td.mastery-cell {
+  position: sticky;
+  right: 0;
+  background: white;
+  z-index: 9;
+  border-left: 1px solid #dee2e6;
+}
+
+.student-row {
+  border-bottom: 1px solid #dee2e6;
+}
+
+.student-row td {
+  padding: 0.75rem 0.5rem;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.student-info {
+  text-align: left;
+  line-height: 1.4;
+}
+
+.student-info strong {
+  display: block;
+  color: #495057;
+}
+
+.student-info small {
+  color: #6c757d;
+  font-size: 0.8rem;
 }
 </style>
