@@ -21,25 +21,34 @@ export interface Student {
 
 export interface Goal {
   id: string; // Document ID in Firestore
-  studentUid: string; // Single identifier - Firebase Auth UID only
-  category: 'HW' | 'Assign' | 'ESA' | 'SA' | 'PA' | 'Other';
-  areaOfNeed: string;
-  goalNumber: string;
-  baseline: string;
-  goalText: string;
-  standard: string;
-  gradeLevel: number; // Extracted from standard (e.g., 7 for 7.EE.4a)
-  startDate: string;
-  endDate: string;
-  personResponsible: string;
-  purposeOfGoal?: string;
-  objectives: Objective[];
-  progressReports: ProgressReport[];
-  currentProgress: string;
-  isActive: boolean;
-  isMet: boolean;
-  createdAt: any;
-  updatedAt: any;
+  studentUid?: string; // DEPRECATED: Use assignedStudents instead (kept for backward compatibility)
+  assignedStudents: string[]; // Array of student UIDs assigned to this goal
+  goalTitle: string; // Title/name of the goal
+  areaOfNeed: string; // Area of need (e.g., "Math Computation", "Reading Comprehension")
+  baseline: string; // Baseline performance description
+  goalText: string; // The actual goal statement
+  iepDate?: string; // DEPRECATED: IEP dates are now tracked per student individually
+  assignedAssessments: string[]; // Array of assessment IDs connected to this goal
+  
+  // Optional fields for enhanced functionality
+  standard?: string; // Related academic standard
+  gradeLevel?: number; // Grade level for the goal
+  startDate?: string; // Goal start date
+  personResponsible?: string; // Person responsible for the goal
+  purposeOfGoal?: string; // Purpose or rationale
+  objectives?: Objective[]; // Sub-objectives
+  progressReports?: ProgressReport[]; // Progress tracking
+  currentProgress?: string; // Current progress status
+  
+  // Status tracking
+  isActive: boolean; // Whether goal is currently active
+  isMet: boolean; // Whether goal has been met
+  isArchived: boolean; // Whether goal has been archived
+  
+  // Metadata
+  createdBy: string; // Teacher/admin UID who created the goal
+  createdAt: any; // Timestamp
+  updatedAt: any; // Timestamp
 }
 
 export interface Objective {
@@ -108,7 +117,7 @@ export interface FractionAnswer {
 export interface AssessmentQuestion {
   id: string;
   questionText: string;
-  questionType: 'multiple-choice' | 'short-answer' | 'essay' | 'true-false' | 'fill-blank' | 'matching' | 'fraction' | 'rank-order' | 'checkbox' | 'horizontal-ordering';
+  questionType: 'multiple-choice' | 'short-answer' | 'essay' | 'true-false' | 'fill-blank' | 'matching' | 'fraction' | 'rank-order' | 'checkbox' | 'horizontal-ordering' | 'algebra-tiles';
   standard?: string; // Standards for this specific question (can be multiple, separated by ';')
   standards?: string[]; // Array of individual standards (parsed from standard field)
   options?: string[]; // For multiple choice
@@ -134,6 +143,7 @@ export interface AssessmentQuestion {
   points: number;
   explanation?: string;
   hints?: string[];
+  requiresPhoto?: boolean; // Whether student must upload a photo of their work
 }
 
 export interface AssessmentResult {

@@ -9,10 +9,13 @@ import {
   query, 
   where,
   orderBy,
+  limit,
+  startAfter,
   serverTimestamp,
   arrayUnion,
   arrayRemove,
-  writeBatch
+  writeBatch,
+  Timestamp
 } from 'firebase/firestore';
 import { db } from './config';
 import type { 
@@ -124,11 +127,13 @@ export const getGoalsByStudent = async (studentSeisId: string) => {
   }
 };
 
-export const getGoalsByCategory = async (category: Goal['category']) => {
+// Note: Goals no longer have a 'category' field. Use assessments' category field instead.
+// This function has been deprecated. Use goalServices.ts for goal-related operations.
+/*
+export const getGoalsByCategory = async (category: string) => {
   try {
     const q = query(
       collection(db, 'goals'), 
-      where('category', '==', category),
       where('isActive', '==', true),
       orderBy('gradeLevel', 'asc')
     );
@@ -138,10 +143,11 @@ export const getGoalsByCategory = async (category: Goal['category']) => {
       ...doc.data()
     })) as Goal[];
   } catch (error) {
-    console.error('Error getting goals by category:', error);
+    console.error('Error getting goals:', error);
     throw error;
   }
 };
+*/
 
 export const updateGoalProgress = async (goalId: string, progressData: Partial<Goal>) => {
   try {
@@ -318,31 +324,37 @@ export const getAssessmentsByStudent = async (studentUid: string) => {
     const assignedAssessmentIds = assignmentsSnapshot.docs.map(doc => doc.data().assessmentId);
     console.log(`📋 Student has ${assignedAssessmentIds.length} assigned assessments:`, assignedAssessmentIds);
     
-    // Fetch the actual assessment documents
-    const assessments: Assessment[] = [];
-    for (const assessmentId of assignedAssessmentIds) {
+    // Fetch assessments in parallel using Promise.all for better performance
+    const assessmentPromises = assignedAssessmentIds.map(async (assessmentId) => {
       try {
         const assessmentDoc = await getDoc(doc(db, 'assessments', assessmentId));
         if (assessmentDoc.exists()) {
-          assessments.push({
+          return {
             id: assessmentDoc.id,
             ...assessmentDoc.data()
-          } as Assessment);
+          } as Assessment;
         } else {
           console.warn('Assessment not found:', assessmentId);
+          return null;
         }
       } catch (error) {
         console.error('Error fetching assessment:', assessmentId, error);
+        return null;
       }
-    }
+    });
+    
+    // Wait for all assessments to load in parallel
+    const assessmentResults = await Promise.all(assessmentPromises);
+    const assessments = assessmentResults.filter((a): a is Assessment => a !== null);
     
     // Sort by creation date
-    assessments.sort((a, b) => 
-      new Date(b.createdAt?.seconds || b.createdAt || 0).getTime() - 
-      new Date(a.createdAt?.seconds || a.createdAt || 0).getTime()
-    );
+    assessments.sort((a, b) => {
+      const aTime = a.createdAt?.seconds || (a.createdAt ? new Date(a.createdAt).getTime() / 1000 : 0);
+      const bTime = b.createdAt?.seconds || (b.createdAt ? new Date(b.createdAt).getTime() / 1000 : 0);
+      return bTime - aTime;
+    });
     
-    console.log(`📝 Found ${assessments.length} assessments for student ${studentUid}`);
+    console.log(`📝 Found ${assessments.length} assessments for student ${studentUid} (including PA assessments)`);
     return assessments;
   } catch (error) {
     console.error('Error getting assessments by student:', error);
@@ -350,13 +362,39 @@ export const getAssessmentsByStudent = async (studentUid: string) => {
   }
 };
 
+// Helper function to remove undefined values from objects (Firestore doesn't allow undefined)
+function removeUndefined<T extends Record<string, any>>(obj: T): T {
+  const cleaned: any = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) {
+      if (Array.isArray(value)) {
+        // Recursively clean arrays
+        cleaned[key] = value.map(item => 
+          typeof item === 'object' && item !== null && !(item instanceof Date) 
+            ? removeUndefined(item) 
+            : item
+        );
+      } else if (typeof value === 'object' && value !== null && !(value instanceof Date) && !(value instanceof Timestamp)) {
+        // Recursively clean nested objects
+        cleaned[key] = removeUndefined(value);
+      } else {
+        cleaned[key] = value;
+      }
+    }
+  }
+  return cleaned as T;
+}
+
 // Assessment Result Services
 export const saveAssessmentResult = async (resultData: Omit<AssessmentResult, 'id' | 'completedAt'>) => {
   try {
-    const docRef = await addDoc(collection(db, 'assessmentResults'), {
+    // Remove undefined values before saving (Firestore doesn't allow undefined)
+    const cleanedData = removeUndefined({
       ...resultData,
       completedAt: serverTimestamp()
     });
+    
+    const docRef = await addDoc(collection(db, 'assessmentResults'), cleanedData);
     return docRef.id;
   } catch (error) {
     console.error('Error saving assessment result:', error);
@@ -385,13 +423,29 @@ export const createManualAssessmentResult = async (resultData: Omit<AssessmentRe
   }
 };
 
-export const getAssessmentResultsByStudent = async (studentUid: string) => {
+export const getAssessmentResultsByStudent = async (
+  studentUid: string,
+  options?: {
+    limit?: number;
+    startAfter?: any; // For pagination
+  }
+) => {
   try {
-    // SIMPLIFIED: Single query using only studentUid
-    const q = query(
+    // Use indexed query with orderBy for better performance
+    // Limit results to prevent timeout (default to 100 most recent)
+    const limitCount = options?.limit || 100;
+    
+    let q = query(
       collection(db, 'assessmentResults'), 
-      where('studentUid', '==', studentUid)
+      where('studentUid', '==', studentUid),
+      orderBy('completedAt', 'desc'),
+      limit(limitCount)
     );
+    
+    // Add pagination cursor if provided
+    if (options?.startAfter) {
+      q = query(q, startAfter(options.startAfter));
+    }
     
     const snapshot = await getDocs(q);
     const assessmentResults = snapshot.docs.map(doc => ({
@@ -399,14 +453,33 @@ export const getAssessmentResultsByStudent = async (studentUid: string) => {
       ...doc.data()
     })) as AssessmentResult[];
     
-    // Sort by completion date
-    assessmentResults.sort((a, b) => 
-      new Date(b.completedAt?.seconds || b.completedAt || 0).getTime() - 
-      new Date(a.completedAt?.seconds || a.completedAt || 0).getTime()
-    );
-    
     return assessmentResults;
-  } catch (error) {
+  } catch (error: any) {
+    // If index error, fall back to simpler query without orderBy
+    if (error.code === 'failed-precondition' || error.message?.includes('index')) {
+      console.warn('Index not found, using fallback query without orderBy');
+      const q = query(
+        collection(db, 'assessmentResults'), 
+        where('studentUid', '==', studentUid),
+        limit(options?.limit || 100)
+      );
+      
+      const snapshot = await getDocs(q);
+      const assessmentResults = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as AssessmentResult[];
+      
+      // Sort in JavaScript as fallback
+      assessmentResults.sort((a, b) => {
+        const aTime = a.completedAt?.seconds || (a.completedAt ? new Date(a.completedAt).getTime() / 1000 : 0);
+        const bTime = b.completedAt?.seconds || (b.completedAt ? new Date(b.completedAt).getTime() / 1000 : 0);
+        return bTime - aTime;
+      });
+      
+      return assessmentResults;
+    }
+    
     console.error('Error getting assessment results by student:', error);
     throw error;
   }
@@ -523,7 +596,8 @@ export async function deleteAssessment(assessmentId: string): Promise<void> {
 export async function getAssessmentResults(assessmentId: string): Promise<any[]> {
   try {
     const q = query(
-      collection(db, 'assessmentResults'),      where('assessmentId', '==', assessmentId)
+      collection(db, 'assessmentResults'),
+      where('assessmentId', '==', assessmentId)
     );
     const snapshot = await getDocs(q);
     const results = snapshot.docs.map(doc => ({
@@ -541,6 +615,156 @@ export async function getAssessmentResults(assessmentId: string): Promise<any[]>
     return results;
   } catch (error) {
     console.error('Error getting assessment results:', error);
+    throw error;
+  }
+}
+
+/**
+ * Regrade all assessment results when an assessment is updated
+ * This re-checks answers against updated questions (including new acceptable answers)
+ */
+export async function regradeAssessmentResults(assessmentId: string, updatedAssessment: Assessment): Promise<number> {
+  try {
+    console.log(`🔄 Regrading assessment results for assessment: ${assessmentId}`);
+    
+    // Get all results for this assessment
+    const results = await getAssessmentResults(assessmentId);
+    
+    if (results.length === 0) {
+      console.log('📝 No results found to regrade');
+      return 0;
+    }
+    
+    console.log(`📊 Found ${results.length} results to regrade`);
+    
+    // Import answer comparison utilities
+    const { areAnswersEquivalent } = await import('@/utils/answerUtils');
+    
+    let regradedCount = 0;
+    const batch = writeBatch(db);
+    let operationCount = 0;
+    const batches: ReturnType<typeof writeBatch>[] = [batch];
+    
+    // Process each result
+    for (const result of results) {
+      let scoreChanged = false;
+      const updatedResponses = result.responses?.map((response: any) => {
+        // Find the question in the updated assessment
+        const question = updatedAssessment.questions?.find(q => q.id === response.questionId);
+        
+        if (!question) {
+          // Question not found - keep original response
+          return response;
+        }
+        
+        // Re-check the answer
+        let isCorrect = false;
+        const userAnswer = response.studentAnswer || '';
+        
+        // Use the same grading logic as AssessmentTaking.vue
+        if (question.questionType === 'multiple-choice') {
+          isCorrect = userAnswer === question.correctAnswer;
+          
+          // Check acceptable answers
+          if (!isCorrect && question.acceptableAnswers && question.acceptableAnswers.length > 0) {
+            for (const acceptableAnswer of question.acceptableAnswers) {
+              if (userAnswer === acceptableAnswer || userAnswer.toString() === acceptableAnswer.toString()) {
+                isCorrect = true;
+                break;
+              }
+            }
+          }
+        } else if (question.questionType === 'short-answer' || question.questionType === 'essay') {
+          // Use enhanced answer comparison
+          if (typeof userAnswer === 'string' && typeof question.correctAnswer === 'string') {
+            const trimmedUserAnswer = userAnswer.trim();
+            const trimmedCorrectAnswer = question.correctAnswer.trim();
+            
+            isCorrect = areAnswersEquivalent(trimmedUserAnswer, trimmedCorrectAnswer);
+            
+            // Check acceptable answers if available
+            if (!isCorrect && question.acceptableAnswers && question.acceptableAnswers.length > 0) {
+              for (const acceptableAnswer of question.acceptableAnswers) {
+                const trimmedAcceptableAnswer = acceptableAnswer.trim();
+                if (areAnswersEquivalent(trimmedUserAnswer, trimmedAcceptableAnswer)) {
+                  isCorrect = true;
+                  break;
+                }
+              }
+            }
+          }
+        } else if (question.questionType === 'rank-order' && Array.isArray(userAnswer)) {
+          // Check if items are in correct order
+          if (question.correctOrder && Array.isArray(question.correctOrder)) {
+            isCorrect = userAnswer.length === question.correctOrder.length &&
+                       userAnswer.every((item, index) => item === question.correctOrder![index]);
+          }
+        } else if (question.questionType === 'checkbox' && Array.isArray(userAnswer)) {
+          // Check if selected answers match all correct answers
+          if (question.correctAnswers && Array.isArray(question.correctAnswers)) {
+            isCorrect = userAnswer.length === question.correctAnswers.length &&
+                       userAnswer.every(answer => question.correctAnswers!.includes(answer)) &&
+                       question.correctAnswers.every(answer => userAnswer.includes(answer));
+          }
+        }
+        
+        // Update points earned
+        const pointsEarned = isCorrect ? question.points : 0;
+        const wasCorrect = response.isCorrect;
+        const oldPoints = response.pointsEarned || 0;
+        
+        // Check if this response changed
+        if (isCorrect !== wasCorrect || pointsEarned !== oldPoints) {
+          scoreChanged = true;
+          console.log(`📝 Question ${response.questionId}: ${wasCorrect ? '✅' : '❌'} → ${isCorrect ? '✅' : '❌'} (${oldPoints} → ${pointsEarned} points)`);
+        }
+        
+        return {
+          ...response,
+          isCorrect,
+          pointsEarned
+        };
+      }) || [];
+      
+      // Recalculate total score if any response changed
+      if (scoreChanged) {
+        const totalEarned = updatedResponses.reduce((sum: number, r: any) => sum + (r.pointsEarned || 0), 0);
+        const totalPossible = updatedAssessment.totalPoints || 0;
+        const percentage = totalPossible > 0 ? Math.round((totalEarned / totalPossible) * 100) : 0;
+        
+        const resultRef = doc(db, 'assessmentResults', result.id);
+        
+        // Check if we need a new batch (Firestore limit is 500 operations)
+        if (operationCount >= 450) {
+          batches.push(writeBatch(db));
+          operationCount = 0;
+        }
+        
+        batches[batches.length - 1].update(resultRef, {
+          responses: updatedResponses,
+          score: totalEarned,
+          percentage: percentage,
+          regradedAt: serverTimestamp(),
+          regradedBy: 'system'
+        });
+        
+        operationCount++;
+        regradedCount++;
+        
+        console.log(`✅ Regraded result ${result.id}: ${result.score}/${result.totalPoints} (${result.percentage}%) → ${totalEarned}/${totalPossible} (${percentage}%)`);
+      }
+    }
+    
+    // Commit all batches
+    console.log(`💾 Committing ${batches.length} batch(es) with ${regradedCount} updated results...`);
+    for (const batchToCommit of batches) {
+      await batchToCommit.commit();
+    }
+    
+    console.log(`✅ Successfully regraded ${regradedCount} assessment result(s)`);
+    return regradedCount;
+  } catch (error) {
+    console.error('❌ Error regrading assessment results:', error);
     throw error;
   }
 }

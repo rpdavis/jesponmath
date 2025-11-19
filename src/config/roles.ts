@@ -167,8 +167,11 @@ export const NAVIGATION_ITEMS: Record<UserRole, Array<{
     { path: '/progress', label: 'Progress Tracking', icon: '📈', permission: PERMISSIONS.VIEW_STUDENT_RESULTS },
     { path: '/admin/migration', label: 'Database Migration', icon: '🔄', permission: PERMISSIONS.MANAGE_SYSTEM },
     { path: '/admin/csv-migration', label: 'CSV Import', icon: '📊', permission: PERMISSIONS.MANAGE_SYSTEM },
+    { path: '/admin/category-migration', label: 'Add Category to Results', icon: '🏷️', permission: PERMISSIONS.MANAGE_SYSTEM },
     { path: '/admin/standards', label: 'Manage Standards', icon: '📏', permission: PERMISSIONS.MANAGE_SYSTEM },
     { path: '/admin/aeries-export', label: 'Export to Aeries', icon: '📤' },
+    { path: '/admin/standard-assessment-export', label: 'Export Standard Assessments', icon: '📊' },
+    { path: '/admin/debug-goal-questions', label: 'Debug Goal Questions', icon: '🔍', permission: PERMISSIONS.MANAGE_SYSTEM },
     { path: '/admin/system', label: 'System Settings', icon: '⚙️', permission: PERMISSIONS.MANAGE_SYSTEM }
   ],
   
@@ -180,7 +183,8 @@ export const NAVIGATION_ITEMS: Record<UserRole, Array<{
     { path: '/gradebook', label: 'Gradebook', icon: '📊' },
     { path: '/assessments', label: 'My Assessments', icon: '📝' },
     { path: '/progress', label: 'Student Progress', icon: '📈', permission: PERMISSIONS.VIEW_STUDENT_RESULTS },
-    { path: '/admin/aeries-export', label: 'Export to Aeries', icon: '📤' }
+    { path: '/admin/aeries-export', label: 'Export to Aeries', icon: '📤' },
+    { path: '/admin/standard-assessment-export', label: 'Export Standard Assessments', icon: '📊' }
   ],
   
   [ROLES.STUDENT]: [

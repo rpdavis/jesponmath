@@ -6,17 +6,21 @@ This guide walks you through setting up Google OAuth2 and Google Classroom API i
 
 ### Enable APIs in Google Cloud Console
 
-Visit [Google Cloud Console API Library](https://console.cloud.google.com/apis/library?project=mathgamesmrd) and enable:
+Visit [Google Cloud Console API Library](https://console.cloud.google.com/apis/library?project=jepsonmath) and enable:
 
 1. **Google Classroom API** ✅ (You mentioned this is done)
    - API ID: `classroom.googleapis.com`
    - Required for: Importing student rosters
 
-2. **Google People API**
+2. **Google Sheets API** ✅ (Required for Standard Assessment export sync)
+   - API ID: `sheets.googleapis.com`
+   - Required for: Syncing Standard Assessment data to Google Sheets
+
+3. **Google People API**
    - API ID: `people.googleapis.com` 
    - Required for: User profile information
 
-3. **Admin SDK API** (Optional but recommended)
+4. **Admin SDK API** (Optional but recommended)
    - API ID: `admin.googleapis.com`
    - Required for: Advanced user management
 
@@ -24,7 +28,7 @@ Visit [Google Cloud Console API Library](https://console.cloud.google.com/apis/l
 
 ### 1. Configure OAuth Consent Screen
 
-Go to: [OAuth Consent Screen](https://console.cloud.google.com/apis/credentials/consent?project=mathgamesmrd)
+Go to: [OAuth Consent Screen](https://console.cloud.google.com/apis/credentials/consent?project=jepsonmath)
 
 **App Information:**
 - App name: `Math Games MRD`
@@ -50,11 +54,12 @@ https://www.googleapis.com/auth/userinfo.profile
 https://www.googleapis.com/auth/classroom.courses.readonly
 https://www.googleapis.com/auth/classroom.rosters.readonly
 https://www.googleapis.com/auth/classroom.profile.emails
+https://www.googleapis.com/auth/spreadsheets
 ```
 
 ### 2. Create OAuth2 Credentials
 
-Go to: [Credentials](https://console.cloud.google.com/apis/credentials?project=mathgamesmrd)
+Go to: [Credentials](https://console.cloud.google.com/apis/credentials?project=jepsonmath)
 
 1. Click **+ CREATE CREDENTIALS** → **OAuth 2.0 Client ID**
 2. Application type: **Web application**
@@ -211,8 +216,8 @@ If you encounter issues:
 ---
 
 **Your Project Details:**
-- Project ID: `mathgamesmrd`
-- Project Number: `712458807273`
-- Web API Key: `AIzaSyDcPqNOgLkPeB60t_Y0k_zkseX2Gnp2n7c`
-- Hosting URL: `https://mathgamesmrd.web.app`
+- Project ID: `jepsonmath` (lowercase)
+- Project Number: `277621705197`
+- Auth Domain: `jepsonmath.firebaseapp.com`
+- Hosting URL: Check your Firebase Hosting settings
 - Functions Region: `us-west1`

@@ -24,7 +24,6 @@ function extractGradeFromCourse(courseName) {
 // ORIGINAL FUNCTIONS (restored)
 // Create user with proper authentication
 exports.createUser = (0, https_1.onCall)(async (request) => {
-    var _a;
     const { auth: authContext, data } = request;
     // Verify the caller is authenticated and authorized
     if (!authContext) {
@@ -33,38 +32,75 @@ exports.createUser = (0, https_1.onCall)(async (request) => {
     // Get the calling user's data to check permissions
     const callerDoc = await db.collection('users').doc(authContext.uid).get();
     const callerData = callerDoc.data();
-    if (!callerData || callerData.userType !== 'teacher') {
-        throw new https_1.HttpsError('permission-denied', 'Only teachers can create user accounts');
+    if (!callerData) {
+        throw new https_1.HttpsError('permission-denied', 'User data not found');
     }
-    // Check if teacher has admin permissions
-    const hasAdminPermission = (_a = callerData.permissions) === null || _a === void 0 ? void 0 : _a.some((p) => p.resource === 'students' && p.actions.includes('admin'));
-    if (!hasAdminPermission && callerData.role !== 'administrator') {
-        throw new https_1.HttpsError('permission-denied', 'Insufficient permissions to create users');
+    // Allow both teachers and admins to create student accounts
+    const isTeacher = callerData.role === 'teacher';
+    const isAdmin = callerData.role === 'admin';
+    if (!isTeacher && !isAdmin) {
+        throw new https_1.HttpsError('permission-denied', 'Only teachers and admins can create student accounts');
+    }
+    // Teachers can only create student accounts, admins can create any type
+    if (isTeacher && data.userType !== 'student') {
+        throw new https_1.HttpsError('permission-denied', 'Teachers can only create student accounts');
     }
     const { email, password, userType, firstName, lastName, additionalData } = data;
     try {
-        // Create Firebase Auth user
-        const userRecord = await auth.createUser({
+        let userRecord;
+        let uid;
+        // Check if user already exists in Firebase Auth
+        try {
+            userRecord = await auth.getUserByEmail(email);
+            console.log('📌 Firebase Auth user already exists:', userRecord.uid);
+            uid = userRecord.uid;
+        }
+        catch (getUserError) {
+            // User doesn't exist, create new one
+            if (getUserError.code === 'auth/user-not-found') {
+                console.log('➕ Creating new Firebase Auth user...');
+                userRecord = await auth.createUser({
+                    email,
+                    password: password || generateRandomPassword(),
+                    displayName: `${firstName} ${lastName}`,
+                    emailVerified: false
+                });
+                uid = userRecord.uid;
+                console.log('✅ Created Firebase Auth user:', uid);
+            }
+            else {
+                throw getUserError;
+            }
+        }
+        // Create base user document in users collection
+        const baseUserData = {
+            uid,
             email,
-            password: password || generateRandomPassword(),
             displayName: `${firstName} ${lastName}`,
-            emailVerified: false
-        });
-        // Create user document in Firestore
-        const userData = Object.assign({ firebaseUid: userRecord.uid, email,
-            userType,
-            firstName,
-            lastName, isActive: true, createdAt: new Date(), updatedAt: new Date(), lastLogin: null }, additionalData);
-        await db.collection('users').doc(userRecord.uid).set(userData);
+            role: (additionalData === null || additionalData === void 0 ? void 0 : additionalData.role) || userType,
+            isActive: true,
+            createdAt: new Date(),
+            updatedAt: new Date()
+        };
+        await db.collection('users').doc(uid).set(baseUserData);
+        console.log('✅ Created users collection document');
+        // If creating a student, also create students collection document
+        if (userType === 'student') {
+            const studentData = Object.assign({ uid,
+                email, displayName: `${firstName} ${lastName}`, firstName,
+                lastName, role: 'student', isActive: true, createdAt: new Date(), updatedAt: new Date() }, additionalData);
+            await db.collection('students').doc(uid).set(studentData);
+            console.log('✅ Created students collection document');
+        }
         return {
             success: true,
-            uid: userRecord.uid,
+            uid,
             message: `${userType} account created successfully`
         };
     }
     catch (error) {
-        console.error('Error creating user:', error);
-        throw new https_1.HttpsError('internal', `Failed to create ${userType} account`);
+        console.error('❌ Error creating user:', error);
+        throw new https_1.HttpsError('internal', `Failed to create ${userType} account: ${error}`);
     }
 });
 // Update user data

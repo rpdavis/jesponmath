@@ -9,6 +9,10 @@ import AssessmentTaking from '@/components/assessments/AssessmentTaking.vue'
 import ProgressTracking from '@/components/ProgressTracking.vue'
 import StudentManagement from '@/components/StudentManagement.vue'
 import AssessmentManagement from '@/components/AssessmentManagement.vue'
+import GoalManagement from '@/components/management/GoalManagement.vue'
+import ProgressAssessment from '@/components/ProgressAssessment.vue'
+import ProgressAssessmentGradebook from '@/components/ProgressAssessmentGradebook.vue'
+import ProgressAssessmentManagement from '@/components/management/ProgressAssessmentManagement.vue'
 import UserManagement from '@/components/admin/UserManagement.vue'
 import TeacherManagement from '@/components/admin/TeacherManagement.vue'
 import AdminFixer from '@/components/admin/AdminFixer.vue'
@@ -17,8 +21,23 @@ import CSVMigration from '@/components/admin/CSVMigration.vue'
 import StandardsManager from '@/components/admin/StandardsManager.vue'
 import AcademicPeriodManager from '@/components/admin/AcademicPeriodManager.vue'
 import AeriesGradeExport from '@/components/admin/AeriesGradeExport.vue'
+import StandardAssessmentExport from '@/components/admin/StandardAssessmentExport.vue'
+import CategoryMigration from '@/components/admin/CategoryMigration.vue'
+import GoalImporter from '@/components/admin/GoalImporter.vue'
+import GoalFixer from '@/components/admin/GoalFixer.vue'
+import StudentTeacherFixer from '@/components/admin/StudentTeacherFixer.vue'
+import GoalQuestionDebugger from '@/components/admin/GoalQuestionDebugger.vue'
+import SystemSettings from '@/components/admin/SystemSettings.vue'
+import BackupExport from '@/components/admin/BackupExport.vue'
+import MathDiagnostic from '@/components/diagnostics/MathDiagnostic.vue'
+import AdaptiveMathDiagnostic from '@/components/diagnostics/AdaptiveMathDiagnostic.vue'
+import MathFactsDiagnostic from '@/components/diagnostics/MathFactsDiagnostic.vue'
+import FoundationalFluency from '@/components/diagnostics/FoundationalFluency.vue'
+import FoundationalFluencyManagement from '@/components/diagnostics/FoundationalFluencyManagement.vue'
+import FoundationalFluencyResults from '@/components/diagnostics/FoundationalFluencyResults.vue'
+import FoundationalFluencyPrintable from '@/components/diagnostics/FoundationalFluencyPrintable.vue'
 import Gradebook from '@/components/Gradebook.vue'
-import { authGuard, guestGuard, teacherGuard, adminGuard, studentGuard } from './guards'
+import { authGuard, guestGuard, teacherGuard, adminGuard, studentGuard} from './guards'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -94,6 +113,126 @@ const router = createRouter({
       component: Gradebook,
       beforeEnter: [authGuard, teacherGuard]
     },
+    {
+      path: '/goals',
+      name: 'goal-management',
+      component: GoalManagement,
+      beforeEnter: [authGuard, teacherGuard]
+    },
+    {
+      path: '/progress-assessment',
+      name: 'progress-assessment',
+      component: ProgressAssessment,
+      beforeEnter: [authGuard, teacherGuard]
+    },
+    {
+      path: '/progress-assessment-gradebook',
+      name: 'progress-assessment-gradebook',
+      component: ProgressAssessmentGradebook,
+      beforeEnter: [authGuard, teacherGuard]
+    },
+    {
+      path: '/progress-assessment-management',
+      name: 'progress-assessment-management',
+      component: ProgressAssessmentManagement,
+      beforeEnter: [authGuard, teacherGuard]
+    },
+    {
+      path: '/diagnostic/math',
+      name: 'math-diagnostic',
+      component: MathDiagnostic,
+      beforeEnter: [authGuard, teacherGuard]
+    },
+    {
+      path: '/diagnostic/math/adaptive',
+      name: 'adaptive-math-diagnostic',
+      component: AdaptiveMathDiagnostic,
+      beforeEnter: [authGuard, teacherGuard]
+    },
+    {
+      path: '/diagnostic/math-facts',
+      name: 'math-facts-diagnostic',
+      component: MathFactsDiagnostic,
+      beforeEnter: [authGuard] // Allow students to access when assigned
+    },
+    {
+      path: '/fluency/initial-diagnostic',
+      name: 'fluency-initial-diagnostic',
+      component: () => import('@/components/diagnostics/MathFluencyInitialDiagnostic.vue'),
+      beforeEnter: [authGuard] // Teachers can assign/administer, students can take when assigned
+    },
+    {
+      path: '/fluency/paper-assessment',
+      name: 'fluency-paper-assessment',
+      component: () => import('@/components/diagnostics/MathFluencyPaperAssessment.vue'),
+      beforeEnter: [authGuard, teacherGuard] // Teachers only - generate paper assessments
+    },
+    {
+      path: '/fluency/score-entry',
+      name: 'fluency-score-entry',
+      component: () => import('@/components/diagnostics/MathFluencyScoreEntry.vue'),
+      beforeEnter: [authGuard, teacherGuard] // Teachers only - enter assessment scores
+    },
+    {
+      path: '/fluency/daily-practice',
+      name: 'fluency-daily-practice',
+      component: () => import('@/components/diagnostics/MathFluencyDailyPractice.vue'),
+      beforeEnter: [authGuard] // Students access for daily practice
+    },
+    {
+      path: '/fluency/student/:studentUid',
+      name: 'fluency-student-detail',
+      component: () => import('@/components/diagnostics/MathFluencyStudentDetail.vue'),
+      beforeEnter: [authGuard, teacherGuard] // Teachers view individual student
+    },
+    {
+      path: '/fluency/my-progress',
+      name: 'fluency-my-progress',
+      component: () => import('@/components/diagnostics/MathFluencyStudentProgress.vue'),
+      beforeEnter: [authGuard] // Students view their own progress
+    },
+    {
+      path: '/fluency/dashboard',
+      name: 'fluency-dashboard',
+      component: () => import('@/components/diagnostics/MathFluencyDashboard.vue'),
+      beforeEnter: [authGuard, teacherGuard] // Teachers view class overview
+    },
+    {
+      path: '/diagnostic/foundational-fluency',
+      name: 'foundational-fluency',
+      component: FoundationalFluency,
+      beforeEnter: [authGuard] // Teachers practice/assign, students take when assigned
+    },
+    {
+      path: '/diagnostic/foundational-fluency-manage',
+      name: 'foundational-fluency-manage',
+      component: FoundationalFluencyManagement,
+      beforeEnter: [authGuard, teacherGuard] // Teachers only
+    },
+    {
+      path: '/diagnostic/foundational-fluency-results',
+      name: 'foundational-fluency-results',
+      component: FoundationalFluencyResults,
+      beforeEnter: [authGuard, teacherGuard] // Teachers only
+    },
+    {
+      path: '/diagnostic/foundational-fluency-print',
+      name: 'foundational-fluency-print',
+      component: FoundationalFluencyPrintable,
+      beforeEnter: [authGuard, teacherGuard] // Teachers only
+    },
+    {
+      path: '/diagnostic/foundational',
+      name: 'foundational-diagnostic',
+      component: () => import('@/components/diagnostics/FoundationalDiagnostic.vue'),
+      beforeEnter: [authGuard] // Allow students to access when assigned
+    },
+    {
+      path: '/diagnostic/results',
+      name: 'diagnostic-results',
+      component: () => import('@/components/diagnostics/DiagnosticResults.vue'),
+      beforeEnter: [authGuard, teacherGuard]
+    },
     
     // Student routes (can also be accessed by teachers/admins)
     {
@@ -141,6 +280,30 @@ const router = createRouter({
       beforeEnter: [authGuard, adminGuard]
     },
     {
+      path: '/admin/import-goals',
+      name: 'goal-import',
+      component: GoalImporter,
+      beforeEnter: [authGuard, adminGuard]
+    },
+    {
+      path: '/admin/fix-goals',
+      name: 'goal-fixer',
+      component: GoalFixer,
+      beforeEnter: [authGuard, adminGuard]
+    },
+    {
+      path: '/admin/fix-student-teachers',
+      name: 'student-teacher-fixer',
+      component: StudentTeacherFixer,
+      beforeEnter: [authGuard, adminGuard]
+    },
+    {
+      path: '/admin/debug-goal-questions',
+      name: 'goal-question-debugger',
+      component: GoalQuestionDebugger,
+      beforeEnter: [authGuard, adminGuard]
+    },
+    {
       path: '/admin/standards',
       name: 'standards-manager',
       component: StandardsManager,
@@ -157,6 +320,30 @@ const router = createRouter({
       name: 'aeries-export',
       component: AeriesGradeExport,
       beforeEnter: [authGuard, teacherGuard] // Both teachers and admins can export grades
+    },
+    {
+      path: '/admin/standard-assessment-export',
+      name: 'standard-assessment-export',
+      component: StandardAssessmentExport,
+      beforeEnter: [authGuard, teacherGuard] // Both teachers and admins can export
+    },
+    {
+      path: '/admin/category-migration',
+      name: 'category-migration',
+      component: CategoryMigration,
+      beforeEnter: [authGuard, adminGuard] // Admin only for database migrations
+    },
+    {
+      path: '/admin/system',
+      name: 'system-settings',
+      component: SystemSettings,
+      beforeEnter: [authGuard, adminGuard]
+    },
+    {
+      path: '/admin/backup',
+      name: 'backup-export',
+      component: BackupExport,
+      beforeEnter: [authGuard, adminGuard]
     },
     
     // Fallback redirect

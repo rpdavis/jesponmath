@@ -66,6 +66,10 @@
               <span class="warning-icon">⏱️</span>
               <strong>Time Limit: {{ assessment.timeLimit }} minutes</strong>
             </div>
+            <div class="progress-info">
+              <span class="info-icon">💾</span>
+              <span>Your progress will be saved automatically as you work</span>
+            </div>
             <button @click="startAssessment" class="start-button">
               <span class="button-icon">▶️</span>
               Start Assessment
@@ -249,6 +253,18 @@
                   :key="currentQuestion.id"
                   v-model="answers[currentQuestion.id] as string"
                   placeholder="Enter your answer..."
+                />
+              </div>
+
+              <!-- Algebra Tiles -->
+              <div v-else-if="currentQuestion.questionType === 'algebra-tiles'" class="algebra-tiles-question">
+                <div class="algebra-instructions">
+                  <p>Use the algebra tiles below to build the expression. Click on a tile type to select it, then click on the grid to place it.</p>
+                </div>
+                <AlgebraTiles
+                  :key="currentQuestion.id"
+                  v-model="answers[currentQuestion.id] as string"
+                  :showEvaluation="true"
                 />
               </div>
 
@@ -440,17 +456,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '@/stores/authStore';
 import { getAssessment, saveAssessmentResult, getAssessmentResultsByStudent } from '@/firebase/iepServices';
-import { doc, updateDoc, arrayUnion, serverTimestamp } from 'firebase/firestore';
+import { doc, updateDoc, arrayUnion, serverTimestamp, setDoc, getDoc } from 'firebase/firestore';
 import { db, storage } from '@/firebase/config';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import CameraCapture from '@/components/CameraCapture.vue';
 import FractionInput from '@/components/FractionInput.vue';
 import HorizontalOrderingInput from '@/components/HorizontalOrderingInput.vue';
 import RichTextAnswerInput from '@/components/RichTextAnswerInput.vue';
+import AlgebraTiles from '@/components/AlgebraTiles.vue';
 import type { Assessment, AssessmentQuestion, FractionAnswer } from '@/types/iep';
 import { checkFractionAnswer, type Fraction } from '@/utils/fractionUtils';
 import { parseStandards, formatStandardsForDisplay } from '@/utils/standardsUtils';
@@ -511,6 +528,17 @@ const loadAssessment = async () => {
     if (data) {
       assessment.value = data;
       
+      // Check if any questions require photo upload
+      const hasPhotoRequirement = data.questions?.some(q => q.requiresPhoto)
+      if (hasPhotoRequirement && !data.allowFileUpload) {
+        // Automatically enable file uploads for assessments with photo requirements
+        data.allowFileUpload = true
+        data.requireFileUpload = true
+        data.fileUploadInstructions = data.fileUploadInstructions || 'Upload photos of your work for all questions that require it. Make sure your work is clear and legible.'
+        assessment.value = data
+        console.log('📷 Photo upload enabled - questions require showing work')
+      }
+      
       // Check for existing results to determine if this is a retake
       if (authStore.currentUser?.uid) {
         const studentId = authStore.currentUser.uid || authStore.currentUser.googleId || authStore.currentUser.seisId;
@@ -566,10 +594,35 @@ const loadAssessment = async () => {
   }
 };
 
-const startAssessment = () => {
+const startAssessment = async () => {
+  // Check for saved progress before starting
+  if (assessment.value?.id && authStore.currentUser?.uid) {
+    const savedProgress = await loadSavedProgress();
+    if (savedProgress) {
+      const resumeConfirm = confirm(
+        `Found saved progress: ${Object.keys(savedProgress.answers).length}/${assessment.value.questions?.length || 0} questions answered.\n\nWould you like to resume where you left off?`
+      );
+      
+      if (resumeConfirm) {
+        // Restore saved progress
+        answers.value = savedProgress.answers;
+        currentQuestionIndex.value = savedProgress.currentQuestionIndex;
+        if (savedProgress.startTime) {
+          startTime.value = new Date(savedProgress.startTime);
+        }
+        console.log('✅ Resumed from saved progress');
+      } else {
+        // Start fresh - clear saved progress
+        await clearSavedProgress();
+      }
+    }
+  }
+  
   started.value = true;
   showingInstructions.value = false;
-  startTime.value = new Date();
+  if (!startTime.value) {
+    startTime.value = new Date();
+  }
   
   // Start timer if time limit exists
   if (assessment.value?.timeLimit) {
@@ -588,7 +641,12 @@ const hideInstructions = () => {
   showingInstructions.value = false;
 };
 
-const nextQuestion = () => {
+const nextQuestion = async () => {
+  // Auto-save progress before moving to next question
+  if (started.value && assessment.value?.id) {
+    await saveProgress();
+  }
+  
   if (currentQuestionIndex.value < (assessment.value?.questions?.length || 0) - 1) {
     currentQuestionIndex.value++;
   } else {
@@ -597,7 +655,12 @@ const nextQuestion = () => {
   }
 };
 
-const previousQuestion = () => {
+const previousQuestion = async () => {
+  // Auto-save progress before moving to previous question
+  if (started.value && assessment.value?.id) {
+    await saveProgress();
+  }
+  
   if (onFinalScreen.value) {
     onFinalScreen.value = false;
     // Go back to last question
@@ -607,7 +670,12 @@ const previousQuestion = () => {
   }
 };
 
-const goToQuestion = (index: number) => {
+const goToQuestion = async (index: number) => {
+  // Auto-save progress before jumping to a question
+  if (started.value && assessment.value?.id) {
+    await saveProgress();
+  }
+  
   currentQuestionIndex.value = index;
 };
 
@@ -770,13 +838,75 @@ const submitAssessment = async () => {
         }
       } else if (question.questionType === 'horizontal-ordering') {
         // For horizontal ordering questions, check if items are in correct order
-        if (question.correctHorizontalOrder && Array.isArray(userAnswer)) {
-          const userOrder = userAnswer as string[];
+        if (question.correctHorizontalOrder) {
+          // Handle both array and comma-separated string formats
+          let userOrder: string[] = [];
+          
+          if (Array.isArray(userAnswer)) {
+            userOrder = userAnswer as string[];
+          } else if (typeof userAnswer === 'string') {
+            // If it's a comma-separated string, split it into an array
+            // Handle cases like "$-17$,-24,$|-45|$,$|53|$"
+            userOrder = userAnswer.split(',').map(item => item.trim()).filter(item => item.length > 0);
+          } else {
+            isCorrect = false;
+          }
+          
           const correctOrder = question.correctHorizontalOrder;
           
-          // Check if arrays are same length and in same order
-          isCorrect = userOrder.length === correctOrder.length &&
-                     userOrder.every((item, index) => item === correctOrder[index]);
+          // Check if arrays are same length
+          if (userOrder.length !== correctOrder.length) {
+            isCorrect = false;
+            console.log('📊 Horizontal Ordering: Length mismatch', {
+              userLength: userOrder.length,
+              correctLength: correctOrder.length,
+              userOrder,
+              correctOrder
+            });
+          } else {
+            // Compare each item using enhanced matching (handles equivalent values, whitespace, LaTeX, etc.)
+            isCorrect = userOrder.every((userItem, index) => {
+              const correctItem = correctOrder[index];
+              
+              // First try exact match (handles LaTeX strings like "$\\frac{1}{2}$")
+              if (userItem === correctItem) {
+                return true;
+              }
+              
+              // Normalize LaTeX formatting first (remove $ wrappers, etc.)
+              let normalizedUser = userItem.trim();
+              let normalizedCorrect = correctItem.trim();
+              
+              // Strip LaTeX formatting if present
+              normalizedUser = normalizedUser.replace(/^\$\$?(.*?)\$\$?$/, '$1');
+              normalizedCorrect = normalizedCorrect.replace(/^\$\$?(.*?)\$\$?$/, '$1');
+              
+              // Try normalized comparison after stripping LaTeX
+              if (normalizedUser === normalizedCorrect) {
+                return true;
+              }
+              
+              // Try enhanced comparison (handles fractions, decimals, LaTeX expressions, etc.)
+              // This will handle cases like:
+              // - "$\\frac{1}{2}$" vs "$\\frac{2}{4}$" (equivalent fractions)
+              // - "$0.5$" vs "$\\frac{1}{2}$" (decimal vs fraction)
+              // - "$\\frac{1}{2}$" vs "1/2" (LaTeX vs plain text)
+              // - "$-17$" vs "-17" (LaTeX vs plain text)
+              // - "$|-45|$" vs "|-45|" (LaTeX vs plain text)
+              return areAnswersEquivalent(normalizedUser, normalizedCorrect);
+            });
+          }
+          
+          console.log('📊 Horizontal Ordering Check:', {
+            userOrder,
+            correctOrder,
+            isCorrect,
+            matchDetails: userOrder.map((item, idx) => ({
+              user: item,
+              correct: correctOrder[idx],
+              matches: item === correctOrder[idx] || areAnswersEquivalent(item.trim(), correctOrder[idx].trim())
+            }))
+          });
         }
       } else {
         // For other question types (short-answer, essay, etc.), use enhanced comparison
@@ -831,15 +961,33 @@ const submitAssessment = async () => {
         correctAnswers++;
       }
       
-      responses.push({
+      // Build response object, only including standard if it exists
+      // For horizontal ordering, ensure answer is saved as array, not comma-separated string
+      let answerToSave: string | string[] | Fraction = userAnswer || '';
+      if (question.questionType === 'horizontal-ordering') {
+        if (typeof answerToSave === 'string' && answerToSave.includes(',')) {
+          // Convert comma-separated string back to array
+          answerToSave = answerToSave.split(',').map(item => item.trim()).filter(item => item.length > 0);
+        } else if (!Array.isArray(answerToSave)) {
+          // Ensure it's an array for horizontal ordering
+          answerToSave = Array.isArray(userAnswer) ? userAnswer : [];
+        }
+      }
+      
+      const response: any = {
         questionId: question.id,
-        studentAnswer: userAnswer,
+        studentAnswer: answerToSave, // Ensure it's never undefined
         isCorrect: isCorrect,
         pointsEarned: pointsEarned,
-        // Cache the standard for performance
-        cachedStandard: question.standard,
         standardSyncedAt: new Date()
-      });
+      };
+      
+      // Only add cachedStandard if it exists (avoid undefined)
+      if (question.standard) {
+        response.cachedStandard = question.standard;
+      }
+      
+      responses.push(response);
     });
     
     const score = responses.reduce((sum, response) => sum + response.pointsEarned, 0);
@@ -888,6 +1036,7 @@ const submitAssessment = async () => {
         score: Math.max(existingResult.score || 0, score), // Keep best score
         percentage: Math.max(existingResult.percentage || 0, percentage),
         timeSpent: timeSpent, // Latest time
+        completedAt: new Date(), // Update completion date
         previousAttempts: [...(existingResult.previousAttempts || []), newAttempt],
         attemptNumber: attemptNumber.value,
         isRetake: true,
@@ -904,22 +1053,44 @@ const submitAssessment = async () => {
         assessmentId: assessment.value?.id || '',
         studentSeisId: authStore.currentUser?.uid || authStore.currentUser?.googleId || authStore.currentUser?.seisId || '',
         studentUid: authStore.currentUser?.uid || '',
-        goalId: assessment.value?.goalId || '',
         responses: responses,
         score: score,
         totalPoints: totalPoints,
         percentage: percentage,
         timeSpent: timeSpent,
+        completedAt: new Date(),
         gradedBy: 'auto-graded',
         feedback: '',
         accommodationsUsed: [],
         uploadedFiles: uploadedFileData,
+        
+        // Cached fields for faster queries and reporting
+        assessmentCategory: assessment.value?.category || 'Other',
         
         // Retake tracking
         attemptNumber: attemptNumber.value,
         isRetake: isRetake.value,
         previousAttempts: []
       };
+      
+      // Only add goalId if it exists (avoid undefined)
+      if (assessment.value?.goalId) {
+        resultData.goalId = assessment.value.goalId;
+      }
+      
+      // Cache student's course info from their profile (if available) for grouping/reporting
+      if (authStore.currentUser?.courseId) {
+        resultData.studentCourseId = authStore.currentUser.courseId;
+      }
+      if (authStore.currentUser?.courseName) {
+        resultData.studentCourseName = authStore.currentUser.courseName;
+      }
+      if (authStore.currentUser?.section) {
+        resultData.studentSection = authStore.currentUser.section;
+      }
+      if (authStore.currentUser?.period) {
+        resultData.studentPeriod = authStore.currentUser.period;
+      }
       
       console.log(`📝 ${isRetake.value ? 'Separate mode - creating new result for retake' : 'First attempt - creating new result'}`);
     }
@@ -930,6 +1101,9 @@ const submitAssessment = async () => {
     const resultId = await saveAssessmentResult(resultData);
     
     console.log('✅ Assessment result saved successfully!', resultId);
+    
+    // Clear saved progress after successful submission
+    await clearSavedProgress();
     
     // Update student's completedAssessments array
     if (authStore.currentUser?.uid) {
@@ -1232,6 +1406,97 @@ const setHorizontalOrderingAnswer = (questionId: string, value: string[]) => {
 onUnmounted(() => {
   if (timerInterval) {
     clearInterval(timerInterval);
+  }
+});
+
+// Progress persistence functions
+const saveProgress = async () => {
+  if (!assessment.value?.id || !authStore.currentUser?.uid || !started.value) return;
+  
+  try {
+    const progressId = `${authStore.currentUser.uid}_${assessment.value.id}`;
+    const progressRef = doc(db, 'assessmentProgress', progressId);
+    
+    await setDoc(progressRef, {
+      studentUid: authStore.currentUser.uid,
+      assessmentId: assessment.value.id,
+      answers: answers.value,
+      currentQuestionIndex: currentQuestionIndex.value,
+      startTime: startTime.value?.getTime() || Date.now(),
+      lastSaved: new Date(),
+      uploadedFiles: uploadedFiles.value.map(f => ({ name: f.name, size: f.size })), // Store file metadata only
+      inProgress: true
+    }, { merge: true });
+    
+    console.log('💾 Progress auto-saved');
+  } catch (error) {
+    console.error('Error saving progress:', error);
+    // Don't block the assessment if save fails
+  }
+};
+
+const loadSavedProgress = async () => {
+  if (!assessment.value?.id || !authStore.currentUser?.uid) return null;
+  
+  try {
+    const progressId = `${authStore.currentUser.uid}_${assessment.value.id}`;
+    const progressRef = doc(db, 'assessmentProgress', progressId);
+    const progressDoc = await getDoc(progressRef);
+    
+    if (progressDoc.exists()) {
+      const data = progressDoc.data();
+      
+      // Only return progress if assessment is still in progress
+      if (data.inProgress && data.answers && Object.keys(data.answers).length > 0) {
+        console.log('📂 Found saved progress:', Object.keys(data.answers).length, 'answers');
+        return {
+          answers: data.answers,
+          currentQuestionIndex: data.currentQuestionIndex || 0,
+          startTime: data.startTime
+        };
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error loading saved progress:', error);
+    return null;
+  }
+};
+
+const clearSavedProgress = async () => {
+  if (!assessment.value?.id || !authStore.currentUser?.uid) return;
+  
+  try {
+    const progressId = `${authStore.currentUser.uid}_${assessment.value.id}`;
+    const progressRef = doc(db, 'assessmentProgress', progressId);
+    await setDoc(progressRef, {
+      inProgress: false,
+      clearedAt: new Date()
+    }, { merge: true });
+    
+    console.log('🗑️ Progress cleared');
+  } catch (error) {
+    console.error('Error clearing progress:', error);
+  }
+};
+
+// Auto-save progress when answers change (debounced)
+let saveTimeout: ReturnType<typeof setTimeout> | null = null;
+watch(answers, () => {
+  if (started.value && assessment.value?.id) {
+    // Debounce saves to avoid too many writes
+    if (saveTimeout) clearTimeout(saveTimeout);
+    saveTimeout = setTimeout(() => {
+      saveProgress();
+    }, 2000); // Save 2 seconds after last change
+  }
+}, { deep: true });
+
+// Auto-save when question index changes
+watch(currentQuestionIndex, () => {
+  if (started.value && assessment.value?.id) {
+    saveProgress();
   }
 });
 
@@ -1673,6 +1938,40 @@ onMounted(() => {
   height: 6px;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.progress-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 15px 0;
+  padding: 10px;
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+  border-radius: 6px;
+  color: #166534;
+  font-size: 0.9rem;
+}
+
+.info-icon {
+  font-size: 1rem;
+}
+
+.auto-save-indicator {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.75rem;
+  color: #059669;
+  margin-left: auto;
+}
+
+.save-icon {
+  font-size: 0.875rem;
+}
+
+.save-text {
+  font-weight: 500;
 }
 
 .progress-compact-inline .progress-fill {
@@ -2616,5 +2915,22 @@ onMounted(() => {
   .checkbox-text {
     font-size: 0.9rem;
   }
+}
+.algebra-tiles-question {
+  margin-top: 1rem;
+}
+
+.algebra-instructions {
+  background: #e7f3ff;
+  border-left: 4px solid #007bff;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  border-radius: 4px;
+}
+
+.algebra-instructions p {
+  margin: 0;
+  color: #004085;
+  font-weight: 500;
 }
 </style>

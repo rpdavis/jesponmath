@@ -98,6 +98,25 @@ onUnmounted(() => {
                 <router-link to="/" class="nav-link" @click="closeMenu">
                   🏠 Dashboard
                 </router-link>
+                
+                <!-- Math Fluency Links (Teacher) -->
+                <template v-if="authStore.isTeacher">
+                  <div class="nav-section-header">Math Fluency</div>
+                  <router-link to="/fluency/dashboard" class="nav-link highlighted" @click="closeMenu">
+                    📊 Fluency Dashboard
+                  </router-link>
+                  <router-link to="/fluency/initial-diagnostic" class="nav-link" @click="closeMenu">
+                    🔢 Initial Diagnostic
+                  </router-link>
+                  <router-link to="/fluency/paper-assessment" class="nav-link" @click="closeMenu">
+                    📄 Generate Probes
+                  </router-link>
+                  <router-link to="/fluency/score-entry" class="nav-link" @click="closeMenu">
+                    📝 Enter Scores
+                  </router-link>
+                  <div class="nav-divider"></div>
+                </template>
+                
                 <router-link v-if="authStore.isTeacher" to="/assessment/create" class="nav-link" @click="closeMenu">
                   ➕ Create Assessment
                 </router-link>
@@ -107,9 +126,34 @@ onUnmounted(() => {
                 <router-link v-if="authStore.isTeacher" to="/manage-assessments" class="nav-link" @click="closeMenu">
                   📋 Manage Assessments
                 </router-link>
+                <router-link v-if="authStore.isTeacher" to="/gradebook" class="nav-link" @click="closeMenu">
+                  📊 Gradebook
+                </router-link>
+                <router-link v-if="authStore.isTeacher" to="/assessments" class="nav-link" @click="closeMenu">
+                  📝 My Assessments
+                </router-link>
                 <router-link v-if="authStore.isTeacher" to="/progress" class="nav-link" @click="closeMenu">
                   📈 Student Progress
                 </router-link>
+                <router-link v-if="authStore.isTeacher" to="/admin/aeries-export" class="nav-link" @click="closeMenu">
+                  📤 Export to Aeries
+                </router-link>
+                <router-link v-if="authStore.isTeacher" to="/admin/standard-assessment-export" class="nav-link" @click="closeMenu">
+                  📊 Export Standard Assessments
+                </router-link>
+                
+                <!-- Math Fluency Links (Student) -->
+                <template v-if="authStore.isStudent">
+                  <div class="nav-section-header">Math Fluency</div>
+                  <router-link to="/fluency/daily-practice" class="nav-link highlighted" @click="closeMenu">
+                    🔢 Daily Practice
+                  </router-link>
+                  <router-link to="/fluency/my-progress" class="nav-link highlighted" @click="closeMenu">
+                    📊 My Progress
+                  </router-link>
+                  <div class="nav-divider"></div>
+                </template>
+                
                 <router-link v-if="authStore.isStudent" to="/assessments" class="nav-link" @click="closeMenu">
                   📝 My Assessments
                 </router-link>
@@ -307,6 +351,26 @@ onUnmounted(() => {
   height: 1px;
   background: #e5e7eb;
   margin: 8px 0;
+}
+
+.nav-section-header {
+  padding: 8px 16px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #9ca3af;
+  letter-spacing: 0.05em;
+  margin-top: 8px;
+}
+
+.nav-link.highlighted {
+  background: #ecfdf5;
+  border-left: 3px solid #10b981;
+  font-weight: 600;
+}
+
+.nav-link.highlighted:hover {
+  background: #d1fae5;
 }
 
 .logout-link {

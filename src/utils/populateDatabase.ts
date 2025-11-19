@@ -47,22 +47,25 @@ export async function populateStudentsAndGoals() {
       
       for (const goalData of studentData.goals) {
         const goal: Omit<Goal, 'id' | 'createdAt' | 'updatedAt'> = {
-          studentUid: 'system-generated', // Will be updated when real students are imported
-          category: 'SA',
+          studentUid: 'system-generated', // DEPRECATED: kept for backward compatibility
+          assignedStudents: [], // Will be populated when real students are imported
+          goalTitle: goalData.goalNumber || 'Untitled Goal',
           areaOfNeed: goalData.areaOfNeed,
-          goalNumber: goalData.goalNumber,
           baseline: goalData.baseline,
           goalText: goalData.goal,
+          iepDate: '', // Would need to be extracted from goal text
+          assignedAssessments: [],
           standard: goalData.standard,
           gradeLevel: extractGradeFromStandard(goalData.standard),
           startDate: new Date().toISOString().split('T')[0], // Today's date
-          endDate: '', // Would need to be extracted from goal text
           personResponsible: studentData.caseManager,
           objectives: [],
           progressReports: [],
           currentProgress: goalData.baseline,
           isActive: true,
-          isMet: false
+          isMet: false,
+          isArchived: false,
+          createdBy: 'system'
         };
 
         const goalId = await createGoal(goal);

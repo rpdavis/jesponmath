@@ -14,18 +14,25 @@
         v-for="(item, index) in orderedItems" 
         :key="`ordered-${index}`"
         class="ordered-item"
-        :class="{ 'drag-over': dragOverIndex === index }"
+        :class="{ 
+          'drag-over': dragOverIndex === index,
+          'dragging': draggedItem === item && draggedIndex === index
+        }"
+        draggable="true"
+        @dragstart="handleDragStart(item, index, 'ordered')"
         @dragover.prevent="handleDragOver(index)"
         @drop="handleDrop(index)"
         @dragleave="handleDragLeave"
+        @dragend="handleDragEnd"
       >
         <div class="item-content" v-html="renderLatexInText(item)"></div>
         <div class="item-number">{{ index + 1 }}</div>
+        <div class="drag-handle">⋮⋮</div>
       </div>
       
       <!-- Empty slots for remaining items -->
       <div 
-        v-for="n in (maxItems - orderedItems.length)" 
+        v-for="n in (props.items.length - orderedItems.length)" 
         :key="`empty-${n}`"
         class="empty-slot"
         :class="{ 'drag-over': dragOverIndex === (orderedItems.length + n - 1) }"
@@ -49,7 +56,7 @@
           :key="`available-${index}`"
           class="available-item"
           draggable="true"
-          @dragstart="handleDragStart(item, index)"
+          @dragstart="handleDragStart(item, index, 'available')"
           @dragend="handleDragEnd"
         >
           <div class="item-content" v-html="renderLatexInText(item)"></div>
@@ -97,6 +104,7 @@ const orderedItems = ref<string[]>([]);
 const availableItems = ref<string[]>([]);
 const draggedItem = ref<string | null>(null);
 const draggedIndex = ref<number>(-1);
+const draggedSource = ref<'ordered' | 'available'>('available');
 const dragOverIndex = ref<number>(-1);
 
 // Initialize items
@@ -116,14 +124,25 @@ const initializeItems = () => {
 const isComplete = computed(() => orderedItems.value.length === props.items.length);
 
 // Methods
-const handleDragStart = (item: string, index: number) => {
+const handleDragStart = (item: string, index: number, source: 'ordered' | 'available' = 'available') => {
   draggedItem.value = item;
   draggedIndex.value = index;
+  draggedSource.value = source;
+  
+  // Add visual feedback
+  if (source === 'ordered') {
+    // Item is being dragged from ordered area
+    const event = window.event as DragEvent;
+    if (event && event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'move';
+    }
+  }
 };
 
 const handleDragEnd = () => {
   draggedItem.value = null;
   draggedIndex.value = -1;
+  draggedSource.value = 'available';
   dragOverIndex.value = -1;
 };
 
@@ -138,11 +157,21 @@ const handleDragLeave = () => {
 const handleDrop = (targetIndex: number) => {
   if (!draggedItem.value) return;
   
+  // Don't do anything if dropping on the same position
+  if (draggedSource.value === 'ordered' && draggedIndex.value === targetIndex) {
+    handleDragEnd();
+    return;
+  }
+  
   // Remove item from current position
-  if (draggedIndex.value >= 0 && draggedIndex.value < orderedItems.value.length) {
-    // Moving within ordered items
+  if (draggedSource.value === 'ordered' && draggedIndex.value >= 0 && draggedIndex.value < orderedItems.value.length) {
+    // Moving within ordered items - remove from old position first
     orderedItems.value.splice(draggedIndex.value, 1);
-  } else {
+    // Adjust target index if moving forward (item was removed before target)
+    if (draggedIndex.value < targetIndex) {
+      targetIndex--;
+    }
+  } else if (draggedSource.value === 'available') {
     // Moving from available items
     const availableIndex = availableItems.value.indexOf(draggedItem.value);
     if (availableIndex >= 0) {
@@ -277,6 +306,33 @@ defineExpose({
   font-size: 0.8rem;
   font-weight: bold;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  z-index: 2;
+}
+
+.drag-handle {
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #6b7280;
+  font-size: 0.75rem;
+  cursor: grab;
+  user-select: none;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+
+.ordered-item:hover .drag-handle {
+  opacity: 1;
+}
+
+.ordered-item.dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+}
+
+.ordered-item.dragging .drag-handle {
+  opacity: 1;
 }
 
 .empty-slot {

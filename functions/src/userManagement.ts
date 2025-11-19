@@ -38,54 +38,92 @@ export const createUser = onCall(async (request) => {
   const callerDoc = await db.collection('users').doc(authContext.uid).get();
   const callerData = callerDoc.data();
   
-  if (!callerData || callerData.userType !== 'teacher') {
-    throw new HttpsError('permission-denied', 'Only teachers can create user accounts');
+  if (!callerData) {
+    throw new HttpsError('permission-denied', 'User data not found');
   }
   
-  // Check if teacher has admin permissions
-  const hasAdminPermission = callerData.permissions?.some(
-    (p: any) => p.resource === 'students' && p.actions.includes('admin')
-  );
+  // Allow both teachers and admins to create student accounts
+  const isTeacher = callerData.role === 'teacher';
+  const isAdmin = callerData.role === 'admin';
   
-  if (!hasAdminPermission && callerData.role !== 'administrator') {
-    throw new HttpsError('permission-denied', 'Insufficient permissions to create users');
+  if (!isTeacher && !isAdmin) {
+    throw new HttpsError('permission-denied', 'Only teachers and admins can create student accounts');
+  }
+  
+  // Teachers can only create student accounts, admins can create any type
+  if (isTeacher && data.userType !== 'student') {
+    throw new HttpsError('permission-denied', 'Teachers can only create student accounts');
   }
   
   const { email, password, userType, firstName, lastName, additionalData } = data;
   
   try {
-    // Create Firebase Auth user
-    const userRecord = await auth.createUser({
-      email,
-      password: password || generateRandomPassword(),
-      displayName: `${firstName} ${lastName}`,
-      emailVerified: false
-    });
+    let userRecord;
+    let uid: string;
     
-    // Create user document in Firestore
-    const userData = {
-      firebaseUid: userRecord.uid,
+    // Check if user already exists in Firebase Auth
+    try {
+      userRecord = await auth.getUserByEmail(email);
+      console.log('📌 Firebase Auth user already exists:', userRecord.uid);
+      uid = userRecord.uid;
+    } catch (getUserError: any) {
+      // User doesn't exist, create new one
+      if (getUserError.code === 'auth/user-not-found') {
+        console.log('➕ Creating new Firebase Auth user...');
+        userRecord = await auth.createUser({
+          email,
+          password: password || generateRandomPassword(),
+          displayName: `${firstName} ${lastName}`,
+          emailVerified: false
+        });
+        uid = userRecord.uid;
+        console.log('✅ Created Firebase Auth user:', uid);
+      } else {
+        throw getUserError;
+      }
+    }
+    
+    // Create base user document in users collection
+    const baseUserData = {
+      uid,
       email,
-      userType,
-      firstName,
-      lastName,
+      displayName: `${firstName} ${lastName}`,
+      role: additionalData?.role || userType,
       isActive: true,
       createdAt: new Date(),
-      updatedAt: new Date(),
-      lastLogin: null,
-      ...additionalData
+      updatedAt: new Date()
     };
     
-    await db.collection('users').doc(userRecord.uid).set(userData);
+    await db.collection('users').doc(uid).set(baseUserData);
+    console.log('✅ Created users collection document');
+    
+    // If creating a student, also create students collection document
+    if (userType === 'student') {
+      const studentData = {
+        uid,
+        email,
+        displayName: `${firstName} ${lastName}`,
+        firstName,
+        lastName,
+        role: 'student',
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        ...additionalData
+      };
+      
+      await db.collection('students').doc(uid).set(studentData);
+      console.log('✅ Created students collection document');
+    }
     
     return {
       success: true,
-      uid: userRecord.uid,
+      uid,
       message: `${userType} account created successfully`
     };
   } catch (error) {
-    console.error('Error creating user:', error);
-    throw new HttpsError('internal', `Failed to create ${userType} account`);
+    console.error('❌ Error creating user:', error);
+    throw new HttpsError('internal', `Failed to create ${userType} account: ${error}`);
   }
 });
 

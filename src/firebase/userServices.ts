@@ -220,21 +220,37 @@ export async function getAllTeachers(filters?: UserSearchFilters): Promise<Teach
 // ==================== STUDENT SERVICES ====================
 
 export async function createStudent(studentData: CreateStudentData, password?: string): Promise<Student> {
+  console.log('🔍🔍🔍 createStudent called with:', {
+    email: studentData.email,
+    hasPassword: !!password,
+    passwordType: typeof password,
+    passwordValue: password
+  });
+  
   // Validate data (only email required)
   const errors = validateStudentData(studentData);
   if (errors.length > 0) {
     throw new Error(`Validation failed: ${errors.join(', ')}`);
   }
 
-  // Check if email already exists in teachers collection
-  const teachersQuery = query(
-    collection(db, COLLECTIONS.TEACHERS),
-    where('email', '==', studentData.email)
-  );
-  const teachersSnapshot = await getDocs(teachersQuery);
-  
-  if (!teachersSnapshot.empty) {
-    throw new Error(`Email ${studentData.email} already exists as a teacher. Cannot create student with same email.`);
+  // Skip teacher email check for Google Classroom imports (no password)
+  // The Cloud Function will handle all validation
+  if (password) {
+    // Only check for duplicate teacher email when manually creating with password
+    try {
+      const teachersQuery = query(
+        collection(db, COLLECTIONS.TEACHERS),
+        where('email', '==', studentData.email)
+      );
+      const teachersSnapshot = await getDocs(teachersQuery);
+      
+      if (!teachersSnapshot.empty) {
+        throw new Error(`Email ${studentData.email} already exists as a teacher. Cannot create student with same email.`);
+      }
+    } catch (checkError) {
+      // If permission denied, skip this check (teacher creating student)
+      console.log('⚠️ Could not check for duplicate teacher email (may not have permission)');
+    }
   }
 
   // Check for duplicate SSID only if SSID is provided
@@ -267,34 +283,90 @@ export async function createStudent(studentData: CreateStudentData, password?: s
         throw authError;
       }
     } else {
-      // Google Classroom import - try to create auth user, but continue without if disabled
+      // Google Classroom import - use Cloud Function to create auth account
+      // This allows teachers to create student accounts via backend
+      console.log('📝 Google Classroom import - calling Cloud Function to create student account...');
+      
       try {
-        const tempPassword = Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-12);
-        userCredential = await createUserWithEmailAndPassword(auth, studentData.email, tempPassword);
-        uid = userCredential.user.uid;
-        console.log('✅ Created Firebase Auth user with temporary password for Google Classroom import');
+        const { getFunctions, httpsCallable } = await import('firebase/functions');
+        const { app } = await import('./config');
+        const functions = getFunctions(app, 'us-west1');
+        const createUser = httpsCallable(functions, 'createUser');
         
-        // Update Firebase Auth profile
-        await updateProfile(userCredential.user, {
-          displayName: studentData.displayName || `${studentData.firstName} ${studentData.lastName}`
+        const tempPassword = Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-12);
+        
+        const result = await createUser({
+          email: studentData.email,
+          password: tempPassword,
+          userType: 'student',
+          firstName: studentData.firstName,
+          lastName: studentData.lastName,
+          additionalData: {
+            role: ROLES.STUDENT,
+            grade: studentData.grade || '',
+            schoolOfAttendance: studentData.schoolOfAttendance || '',
+            seisId: studentData.seisId || '',
+            aeriesId: studentData.aeriesId || '',
+            caseManager: studentData.caseManager || '',
+            hasIEP: studentData.hasIEP || false,
+            has504: studentData.has504 || false,
+            accommodations: studentData.accommodations || [],
+            googleId: studentData.googleId,
+            courseId: studentData.courseId,
+            courseName: studentData.courseName,
+            section: studentData.section,
+            assignedTeacher: studentData.assignedTeacher
+          }
         });
         
-        // Sign out immediately to prevent auto-login during import
-        await signOut(auth);
-        console.log('🔄 Signed out after creation to prevent auto-login');
-      } catch (authError: any) {
-        if (authError.code === 'auth/operation-not-allowed') {
-          // Email/password auth is disabled - create student record without Auth user
-          // Generate a unique ID for the student record
-          uid = 'import_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-          console.log('⚠️ Email/password auth disabled - creating student record without Auth user. UID:', uid);
-          console.log('💡 Student will be able to sign in with Google OAuth when they first log in');
-        } else {
-          throw authError;
-        }
+        const resultData = result.data as any;
+        uid = resultData.uid;
+        console.log('✅ Student created successfully via Cloud Function!');
+        console.log('✅ UID:', uid);
+        console.log('✅ Cloud Function created both Auth and Firestore records');
+        
+        // Cloud Function already created everything, so return the student object
+        const createdStudent = {
+          uid,
+          email: studentData.email,
+          displayName: studentData.displayName || `${studentData.firstName} ${studentData.lastName}`,
+          firstName: studentData.firstName,
+          lastName: studentData.lastName,
+          role: ROLES.STUDENT,
+          isActive: true,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          grade: studentData.grade || '',
+          schoolOfAttendance: studentData.schoolOfAttendance || '',
+          seisId: studentData.seisId,
+          aeriesId: studentData.aeriesId,
+          caseManager: studentData.caseManager || '',
+          hasIEP: studentData.hasIEP || false,
+          has504: studentData.has504 || false,
+          accommodations: studentData.accommodations || [],
+          assignedAssessments: [],
+          completedAssessments: [],
+          currentGoals: [],
+          googleId: studentData.googleId,
+          courseId: studentData.courseId,
+          courseName: studentData.courseName,
+          section: studentData.section,
+          assignedTeacher: studentData.assignedTeacher
+        } as Student;
+        
+        console.log('✅ Student creation completed for:', createdStudent.email);
+        return createdStudent;
+        
+      } catch (cloudFunctionError: any) {
+        console.error('❌ Cloud Function error:', cloudFunctionError);
+        console.error('❌ Error code:', cloudFunctionError.code);
+        console.error('❌ Error message:', cloudFunctionError.message);
+        console.error('❌ Error details:', cloudFunctionError.details);
+        throw new Error(`Failed to create student account via Cloud Function: ${cloudFunctionError.message}`);
       }
     }
 
+    // This code only runs for manual student creation (with password)
     // Create base user record for users collection
     const baseUser: BaseUser = {
       uid,
@@ -349,21 +421,44 @@ export async function createStudent(studentData: CreateStudentData, password?: s
     });
     
     // Create both users and students records
-    const batch = writeBatch(db);
+    // NOTE: Using sequential writes instead of batch to avoid permission issues with batch writes
+    // Batch writes have limitations with security rules evaluation for new documents
     
-    // Add to users collection
+    console.log('🔍 About to create user document with data:', {
+      uid,
+      email: baseUser.email,
+      role: baseUser.role,
+      displayName: baseUser.displayName
+    });
+    
+    // Add to users collection first
     const userDocRef = doc(db, COLLECTIONS.USERS, uid);
-    batch.set(userDocRef, baseUser);
-    console.log('📝 Added to batch - users collection:', uid);
+    try {
+      await setDoc(userDocRef, baseUser);
+      console.log('✅ Created users collection record:', uid);
+    } catch (error: any) {
+      console.error('❌ Error creating users document:', error);
+      console.error('❌ Error code:', error.code);
+      console.error('❌ Error message:', error.message);
+      throw error;
+    }
     
-    // Add to students collection  
+    // Add to students collection
     const studentDocRef = doc(db, COLLECTIONS.STUDENTS, uid);
-    batch.set(studentDocRef, student);
-    console.log('📝 Added to batch - students collection:', uid);
-    
-    // Commit the batch
-    await batch.commit();
-    console.log('✅ Created both users and students records');
+    try {
+      await setDoc(studentDocRef, student);
+      console.log('✅ Created students collection record:', uid);
+    } catch (error: any) {
+      console.error('❌ Error creating students document:', error);
+      console.error('❌ Deleting users document due to failure...');
+      // Clean up the users document if students creation fails
+      try {
+        await deleteDoc(userDocRef);
+      } catch (cleanupError) {
+        console.error('❌ Error cleaning up users document:', cleanupError);
+      }
+      throw error;
+    }
     console.log('🔍 Student record created with Google metadata:', {
       googleId: student.googleId,
       courseId: student.courseId,

@@ -38,6 +38,12 @@ export interface AppUser {
   createdAt: any;
   lastLogin: any;
   isDemo?: boolean;
+  // Course/class information (for students)
+  courseId?: string;
+  courseName?: string;
+  section?: string;
+  period?: string;
+  className?: string;
 }
 
 export const useAuthStore = defineStore('auth', () => {
@@ -99,7 +105,13 @@ export const useAuthStore = defineStore('auth', () => {
               isActive: userData.isActive !== false,
               createdAt: userData.createdAt,
               lastLogin: userData.lastLogin,
-              isDemo: userData.isDemo
+              isDemo: userData.isDemo,
+              // Course/class info for students
+              courseId: (detailedProfile as Student)?.courseId,
+              courseName: (detailedProfile as Student)?.courseName,
+              section: (detailedProfile as Student)?.section,
+              period: (detailedProfile as Student)?.period,
+              className: (detailedProfile as Student)?.className
             };
             
             // Update last login

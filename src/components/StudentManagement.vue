@@ -115,8 +115,8 @@
               <td>
                 <span class="grade-badge">{{ student.grade }}</span>
               </td>
-              <td>{{ student.courseName || student.className || '-' }}</td>
-              <td>{{ student.section || student.period || '-' }}</td>
+              <td>{{ getStudentClassName(student) }}</td>
+              <td>{{ getStudentPeriod(student) || '-' }}</td>
               <td>{{ student.googleId || '-' }}</td>
               <td>{{ student.schoolOfAttendance || '-' }}</td>
               <td>{{ student.caseManager || '-' }}</td>
@@ -460,6 +460,7 @@ import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/authStore';
 import { usePermissions } from '@/composables/usePermissions';
 import { getAllStudents, getStudentsByTeacher, createStudent, updateStudent, deleteStudent as deleteStudentService, getStudentBySSID, getStudentByEmail } from '@/firebase/userServices';
+import { getStudentClassName, getStudentPeriod } from '@/utils/studentGroupingUtils';
 import GoogleClassroomImport from './GoogleClassroomImport.vue';
 import type { Student as FirebaseStudent, CreateStudentData } from '@/types/users';
 import type { Student } from '@/types/iep';
@@ -603,21 +604,43 @@ const saveStudent = async () => {
     error.value = '';
     
     if (editingStudent.value) {
-      // Update existing student
-      await updateStudent(editingStudent.value.uid, {
+      // Update existing student - include ALL form fields
+      const updateData: any = {
         firstName: studentForm.value.firstName,
         lastName: studentForm.value.lastName,
+        displayName: `${studentForm.value.firstName} ${studentForm.value.lastName}`.trim(),
         email: studentForm.value.email,
-
         seisId: studentForm.value.seisId,
         aeriesId: studentForm.value.aeriesId,
+        districtId: studentForm.value.districtId,
         grade: studentForm.value.grade,
+        birthdate: studentForm.value.birthdate,
         schoolOfAttendance: studentForm.value.schoolOfAttendance,
         caseManager: studentForm.value.caseManager,
+        iepDate: studentForm.value.iepDate,
         hasIEP: studentForm.value.hasIEP,
         has504: studentForm.value.has504,
-        isActive: studentForm.value.eligibilityStatus === 'Active'
+        isActive: studentForm.value.eligibilityStatus === 'Active',
+        
+        // Class and period information
+        className: studentForm.value.className,
+        period: studentForm.value.period,
+        courseId: studentForm.value.courseId,
+        
+        // Google Classroom specific fields
+        googleId: studentForm.value.googleId,
+        courseName: studentForm.value.courseName,
+        section: studentForm.value.section
+      };
+      
+      // Remove undefined values (but keep empty strings as they represent cleared fields)
+      Object.keys(updateData).forEach(key => {
+        if (updateData[key] === undefined) {
+          delete updateData[key];
+        }
       });
+      
+      await updateStudent(editingStudent.value.uid, updateData);
       success.value = 'Student updated successfully!';
     } else {
       // Create new student

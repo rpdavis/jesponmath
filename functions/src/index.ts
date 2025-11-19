@@ -16,3 +16,5 @@ export {
   beforeUserSignedInHandler,
   cleanupDuplicateUsers
 } from './userManagement';
+
+export { generateWithGemini } from './geminiProxy';

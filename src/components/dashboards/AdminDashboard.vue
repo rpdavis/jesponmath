@@ -43,7 +43,14 @@
     <!-- Quick Actions -->
     <div class="actions-section">
       <h2>Quick Actions</h2>
-      <div class="actions-grid">
+      
+      <!-- User Management Section -->
+      <div class="action-category">
+        <h3 class="category-header">
+          <span class="category-icon">👥</span>
+          User Management
+        </h3>
+        <div class="actions-grid">
         <div class="action-card" @click="router.push('/admin/users')">
           <div class="action-icon">👥</div>
           <h3>Manage Users</h3>
@@ -64,7 +71,16 @@
           <p>Student enrollment with SSID, SEIS, and Aeries ID</p>
           <div class="action-button">Manage Students →</div>
         </div>
+        </div>
+      </div>
 
+      <!-- Content Management Section -->
+      <div class="action-category">
+        <h3 class="category-header">
+          <span class="category-icon">📚</span>
+          Content Management
+        </h3>
+        <div class="actions-grid">
         <div class="action-card" @click="router.push('/assessment/create')">
           <div class="action-icon">➕</div>
           <h3>Create Assessment</h3>
@@ -86,6 +102,94 @@
           <div class="action-button">Manage Standards →</div>
         </div>
 
+        <div class="action-card" @click="router.push('/goals')">
+          <div class="action-icon">🎯</div>
+          <h3>Manage Goals</h3>
+          <p>Create and manage IEP goals, assign progress assessments</p>
+          <div class="action-button">Manage Goals →</div>
+        </div>
+
+        <div class="action-card" @click="router.push('/admin/import-goals')">
+          <div class="action-icon">📥</div>
+          <h3>Import Goals from CSV</h3>
+          <p>Bulk import IEP goals from CSV files (32 students, 176 goals)</p>
+          <div class="action-button">Import Goals →</div>
+        </div>
+        </div>
+      </div>
+
+      <!-- Diagnostics & Assessments Section -->
+      <div class="action-category">
+        <h3 class="category-header">
+          <span class="category-icon">🧮</span>
+          Diagnostics & Assessments
+        </h3>
+        <div class="actions-grid">
+        <div class="action-card" @click="router.push('/progress-assessment')">
+          <div class="action-icon">📈</div>
+          <h3>Progress Assessment Tracking</h3>
+          <p>Track student progress on IEP goals through assessments</p>
+          <div class="action-button">View Progress →</div>
+        </div>
+
+        <div class="action-card" @click="router.push('/diagnostic/math')">
+          <div class="action-icon">🧮</div>
+          <h3>Math Diagnostic (Print)</h3>
+          <p>Generate printable math diagnostics based on student IEP goals</p>
+          <div class="action-button">Create Diagnostic →</div>
+        </div>
+
+        <div class="action-card featured" @click="router.push('/diagnostic/math/adaptive')">
+          <div class="action-icon">⚡</div>
+          <h3>Adaptive Math Diagnostic</h3>
+          <p>Real-time adaptive test that adjusts difficulty based on performance</p>
+          <div class="action-button">Start Adaptive Test →</div>
+        </div>
+
+        <div class="action-card featured" @click="router.push('/diagnostic/math-facts')">
+          <div class="action-icon">⚡</div>
+          <h3>Math Facts Fluency Test</h3>
+          <p>Timed assessment for addition, subtraction, multiplication, and division facts</p>
+          <div class="action-button">Start Fluency Test →</div>
+        </div>
+
+        <div class="action-card featured" @click="router.push('/diagnostic/foundational-fluency')">
+          <div class="action-icon">🎯</div>
+          <h3>Foundational Fluency</h3>
+          <p>Research-based practice and assessment: Subitizing, Making 5/10, Symbolic fluency</p>
+          <div class="action-button">Start Foundational Skills →</div>
+        </div>
+
+    <div class="action-card featured" @click="router.push('/diagnostic/foundational')">
+      <div class="action-icon">📊</div>
+      <h3>Foundational Diagnostic</h3>
+      <p>Comprehensive 4th-6th grade readiness + student goals (20 MC + 5 SA)</p>
+      <div class="action-button">Start Diagnostic →</div>
+    </div>
+
+    <div class="action-card" @click="router.push('/diagnostic/results')">
+      <div class="action-icon">📋</div>
+      <h3>Diagnostic Results</h3>
+      <p>View and analyze all diagnostic test results</p>
+      <div class="action-button">View Results →</div>
+    </div>
+        </div>
+      </div>
+
+      <!-- Data Management Section -->
+      <div class="action-category">
+        <h3 class="category-header">
+          <span class="category-icon">💾</span>
+          Data Management
+        </h3>
+        <div class="actions-grid">
+        <div class="action-card" @click="router.push('/admin/migration')">
+          <div class="action-icon">🔄</div>
+          <h3>Database Migration</h3>
+          <p>Migrate and transform database data</p>
+          <div class="action-button">Database Migration →</div>
+        </div>
+
         <div class="action-card" @click="router.push('/admin/csv-migration')">
           <div class="action-icon">📊</div>
           <h3>CSV Import</h3>
@@ -93,11 +197,34 @@
           <div class="action-button">CSV Import →</div>
         </div>
 
+        <div class="action-card" @click="router.push('/admin/aeries-export')">
+          <div class="action-icon">📤</div>
+          <h3>Export to Aeries</h3>
+          <p>Export grades and assessment data to Aeries SIS</p>
+          <div class="action-button">Export to Aeries →</div>
+        </div>
+
         <div class="action-card" @click="router.push('/admin/periods')">
           <div class="action-icon">📅</div>
           <h3>Academic Periods</h3>
           <p>Configure quarters, semesters, or trimesters</p>
           <div class="action-button">Manage Periods →</div>
+        </div>
+        </div>
+      </div>
+
+      <!-- System Tools Section -->
+      <div class="action-category">
+        <h3 class="category-header">
+          <span class="category-icon">⚙️</span>
+          System Tools
+        </h3>
+        <div class="actions-grid">
+        <div class="action-card" @click="router.push('/progress')">
+          <div class="action-icon">📈</div>
+          <h3>Analytics & Reports</h3>
+          <p>View system-wide analytics and reports</p>
+          <div class="action-button">View Analytics →</div>
         </div>
 
         <div class="action-card" @click="router.push('/admin/system')">
@@ -120,7 +247,47 @@
           <p>System backup and data export tools</p>
           <div class="action-button">Backup Tools →</div>
         </div>
+        </div>
+      </div>
 
+      <!-- Data Fixes & Maintenance Section -->
+      <div class="action-category">
+        <h3 class="category-header">
+          <span class="category-icon">🔧</span>
+          Data Fixes & Maintenance
+        </h3>
+        <div class="actions-grid">
+        <div class="action-card" @click="router.push('/admin/fix-student-teachers')">
+          <div class="action-icon">👥</div>
+          <h3>Fix Student-Teacher Links</h3>
+          <p>Ensure all students are assigned to their teacher</p>
+          <div class="action-button">Fix Links →</div>
+        </div>
+
+        <div class="action-card" @click="router.push('/admin/fix-goals')">
+          <div class="action-icon">🔧</div>
+          <h3>Fix Imported Goals</h3>
+          <p>Fix teacher assignments and remove duplicate goals</p>
+          <div class="action-button">Fix Goals →</div>
+        </div>
+
+        <div class="action-card" @click="router.push('/admin/debug-goal-questions')">
+          <div class="action-icon">🔍</div>
+          <h3>Debug Goal Questions</h3>
+          <p>Debug and fix issues with goal questions</p>
+          <div class="action-button">Debug Questions →</div>
+        </div>
+        </div>
+      </div>
+
+      <!-- Debug Tools Section (Collapsible) -->
+      <div class="action-category">
+        <h3 class="category-header category-toggle" @click="showDebugTools = !showDebugTools">
+          <span class="category-icon">🐛</span>
+          Debug Tools
+          <span class="toggle-icon">{{ showDebugTools ? '▼' : '▶' }}</span>
+        </h3>
+        <div v-show="showDebugTools" class="actions-grid">
         <div class="action-card debug-card" @click="showRoleFixer = true">
           <div class="action-icon">🔧</div>
           <h3>Role Fixer (Debug)</h3>
@@ -154,6 +321,7 @@
           <h3>Migrate Admin</h3>
           <p>Move admin record to new admin collection</p>
           <div class="action-button">Migrate →</div>
+        </div>
         </div>
       </div>
     </div>
@@ -238,6 +406,7 @@ const systemStats = ref({
 });
 
 const showRoleFixer = ref(false);
+const showDebugTools = ref(false);
 
 const recentActivity = ref([
   {
@@ -486,6 +655,41 @@ onMounted(() => {
   font-size: 0.9rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+}
+
+.action-category {
+  margin-bottom: 40px;
+}
+
+.category-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #1f2937;
+  font-size: 1.3rem;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.category-icon {
+  font-size: 1.5rem;
+}
+
+.category-toggle {
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.2s;
+}
+
+.category-toggle:hover {
+  color: #dc2626;
+}
+
+.toggle-icon {
+  margin-left: auto;
+  font-size: 0.9rem;
+  color: #6b7280;
 }
 
 .actions-grid {

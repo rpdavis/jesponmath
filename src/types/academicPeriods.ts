@@ -169,7 +169,25 @@ export function filterAssessmentsByPeriod(assessments: any[], period: AcademicPe
 
 export function filterResultsByPeriod(results: any[], period: AcademicPeriod): any[] {
   return results.filter(result => {
-    const completedAt = result.completedAt?.toDate?.() || new Date(result.completedAt);
-    return completedAt >= period.startDate && completedAt <= period.endDate;
+    // Try to get completedAt, fall back to createdAt or include if no date exists
+    let dateToCheck: Date;
+    
+    if (result.completedAt) {
+      dateToCheck = result.completedAt?.toDate?.() || new Date(result.completedAt);
+    } else if (result.createdAt) {
+      dateToCheck = result.createdAt?.toDate?.() || new Date(result.createdAt);
+    } else {
+      // If no date field exists, include it to avoid hiding results
+      console.warn('Result missing both completedAt and createdAt:', result.id);
+      return true;
+    }
+    
+    // Check if date is valid
+    if (isNaN(dateToCheck.getTime())) {
+      console.warn('Invalid date in result:', result.id, dateToCheck);
+      return true; // Include invalid dates to avoid hiding results
+    }
+    
+    return dateToCheck >= period.startDate && dateToCheck <= period.endDate;
   });
 }

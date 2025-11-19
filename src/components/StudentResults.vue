@@ -3,6 +3,7 @@
     <div class="results-header">
       <h1>📊 My Results</h1>
       <p>View your assessment results and progress</p>
+      <p class="info-note">💡 Note: Progress Assessments (PA) are managed separately and not shown here.</p>
       <div v-if="currentPeriodInfo" class="period-indicator">
         📅 Showing {{ currentPeriodInfo.name }} ({{ currentPeriodInfo.dateRange }})
       </div>
@@ -378,15 +379,24 @@ const loadResults = async () => {
       return;
     }
     
-    // Load results, assessments, and custom standards
+    // Load results, assessments, and custom standards (including PA assessments)
     const [results, assessmentsList, allCustomStandards] = await Promise.all([
       getAssessmentResultsByStudent(studentId),
       getAssessmentsByStudent(studentId),
       getAllCustomStandards()
     ]);
     
-    assessmentResults.value = results;
     assessments.value = assessmentsList;
+    
+    // Filter results to only include results for assigned assessments (including PA)
+    const validResults = results.filter(result => {
+      const assessment = assessmentsList.find(a => a.id === result.assessmentId);
+      return assessment !== undefined; // Include if assessment exists (could be PA or regular)
+    });
+    assessmentResults.value = validResults;
+    
+    console.log(`📊 Loaded ${results.length} results, ${validResults.length} valid (including PA)`);
+    
     customStandards.value = allCustomStandards;
   } catch (err) {
     console.error('Error loading results:', err);
@@ -529,15 +539,21 @@ const getStudentStandardScore = (standard: string) => {
   let percentage = 0;
   
   if (scoringMethod === 'keepTop') {
-    // Keep Top Score: Take highest scoring attempts up to maxScore
+    // Keep Top Score: Show the BEST performance out of maxScore possible
     questionAttempts.sort((a, b) => b.score - a.score);
-    const limitedAttempts = maxScore && maxScore > 0 ? 
-      questionAttempts.slice(0, maxScore) : 
-      questionAttempts;
     
-    correct = limitedAttempts.filter(attempt => attempt.isCorrect).length;
-    total = limitedAttempts.length;
-    percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
+    if (maxScore && maxScore > 0) {
+      // Take top maxScore questions (best performance)
+      const topAttempts = questionAttempts.slice(0, maxScore);
+      correct = topAttempts.filter(attempt => attempt.isCorrect).length;
+      total = maxScore;  // Use maxScore as fixed denominator
+      percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
+    } else {
+      // No max score set - use all attempts
+      correct = questionAttempts.filter(attempt => attempt.isCorrect).length;
+      total = questionAttempts.length;
+      percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
+    }
     
   } else if (scoringMethod === 'average') {
     // Average Scores: Calculate average percentage across all attempts
@@ -814,6 +830,13 @@ onMounted(() => {
   margin: 0;
   color: #7f8c8d;
   font-size: 1.1rem;
+}
+
+.info-note {
+  margin: 0.5rem 0;
+  color: #6b7280;
+  font-size: 0.9rem;
+  font-style: italic;
 }
 
 .period-indicator {

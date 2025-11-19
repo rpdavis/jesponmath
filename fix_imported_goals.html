@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fix Imported Goals</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 1000px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #2c3e50;
+    }
+    button {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      font-size: 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-right: 10px;
+    }
+    button:hover {
+      background: #45a049;
+    }
+    button.danger {
+      background: #f44336;
+    }
+    button.danger:hover {
+      background: #da190b;
+    }
+    .output {
+      margin-top: 20px;
+      padding: 15px;
+      background: #f9f9f9;
+      border-radius: 4px;
+      max-height: 500px;
+      overflow-y: auto;
+      font-family: monospace;
+      font-size: 14px;
+      white-space: pre-wrap;
+    }
+    .loading {
+      color: #666;
+    }
+    .success {
+      color: #4CAF50;
+    }
+    .error {
+      color: #f44336;
+    }
+    .warning {
+      color: #ff9800;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔧 Fix Imported Goals</h1>
+    <p>This tool will:</p>
+    <ul>
+      <li>✅ Verify student connections (district ID → student UID)</li>
+      <li>✅ Fix createdBy field (assign goals to the correct teacher)</li>
+      <li>✅ Remove duplicate goals</li>
+    </ul>
+    
+    <div style="margin-top: 20px;">
+      <button onclick="analyzeGoals()">1️⃣ Analyze Issues</button>
+      <button onclick="fixTeacherAssignments()">2️⃣ Fix Teacher Assignments</button>
+      <button onclick="removeDuplicates()" class="danger">3️⃣ Remove Duplicates</button>
+    </div>
+    
+    <div id="output" class="output"></div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+    import { getFirestore, collection, getDocs, doc, updateDoc, deleteDoc, query, where } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+
+    // Your Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyBMx5rKpl8bWLMiCKL3uqPSjqpM-4Y2khs",
+      authDomain: "jepsonmath.firebaseapp.com",
+      projectId: "jepsonmath",
+      storageBucket: "jepsonmath.firebasestorage.app",
+      messagingSenderId: "390530044469",
+      appId: "1:390530044469:web:0e59baef5936b09c88af69"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    function log(message, type = 'normal') {
+      const output = document.getElementById('output');
+      const className = type === 'error' ? 'error' : type === 'success' ? 'success' : type === 'warning' ? 'warning' : '';
+      output.innerHTML += `<div class="${className}">${message}</div>`;
+      output.scrollTop = output.scrollHeight;
+    }
+
+    window.analyzeGoals = async function() {
+      document.getElementById('output').innerHTML = '';
+      log('🔍 Analyzing imported goals...', 'normal');
+      
+      try {
+        // Load all data
+        const [goalsSnap, studentsSnap, usersSnap] = await Promise.all([
+          getDocs(collection(db, 'goals')),
+          getDocs(collection(db, 'students')),
+          getDocs(collection(db, 'users'))
+        ]);
+
+        const goals = goalsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const students = studentsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const users = usersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        log(`\n📊 Found:`, 'normal');
+        log(`  - ${goals.length} goals`, 'normal');
+        log(`  - ${students.length} students`, 'normal');
+        log(`  - ${users.length} users`, 'normal');
+
+        // Create student lookup by UID and by district ID
+        const studentByUid = new Map();
+        const studentByDistrictId = new Map();
+        students.forEach(s => {
+          studentByUid.set(s.uid, s);
+          if (s.email) {
+            const match = s.email.match(/s-(\d+)@/);
+            if (match) {
+              studentByDistrictId.set(match[1], s);
+            }
+          }
+        });
+
+        // Find teacher for each student
+        const teacherMap = new Map();
+        students.forEach(s => {
+          if (s.teacherUid) {
+            teacherMap.set(s.uid, s.teacherUid);
+          }
+        });
+
+        log(`\n🔍 Analyzing Issues:`, 'warning');
+
+        // Check for goals with invalid student connections
+        let invalidConnections = 0;
+        let missingTeacher = 0;
+        let orphanedGoals = 0;
+
+        goals.forEach(goal => {
+          if (goal.assignedStudents && goal.assignedStudents.length > 0) {
+            goal.assignedStudents.forEach(uid => {
+              if (!studentByUid.has(uid)) {
+                invalidConnections++;
+                log(`  ⚠️  Goal "${goal.goalTitle}" → Invalid student UID: ${uid}`, 'warning');
+              } else if (!teacherMap.has(uid)) {
+                missingTeacher++;
+              }
+            });
+          } else if (goal.studentUid) {
+            if (!studentByUid.has(goal.studentUid)) {
+              invalidConnections++;
+            } else if (!teacherMap.has(goal.studentUid)) {
+              missingTeacher++;
+            }
+          } else {
+            orphanedGoals++;
+          }
+        });
+
+        // Check for duplicates (same title + same student)
+        const goalSignatures = new Map();
+        let duplicateCount = 0;
+        goals.forEach(goal => {
+          const students = goal.assignedStudents || [goal.studentUid].filter(Boolean);
+          students.forEach(uid => {
+            const signature = `${goal.goalTitle}|${uid}`;
+            if (goalSignatures.has(signature)) {
+              goalSignatures.get(signature).push(goal.id);
+              duplicateCount++;
+            } else {
+              goalSignatures.set(signature, [goal.id]);
+            }
+          });
+        });
+
+        log(`\n📋 Issues Found:`, invalidConnections > 0 || missingTeacher > 0 || duplicateCount > 0 ? 'error' : 'success');
+        log(`  - ${invalidConnections} goals with invalid student connections`, invalidConnections > 0 ? 'error' : 'success');
+        log(`  - ${missingTeacher} goals with students missing teacher assignment`, missingTeacher > 0 ? 'warning' : 'success');
+        log(`  - ${orphanedGoals} goals with no students assigned`, orphanedGoals > 0 ? 'warning' : 'success');
+        log(`  - ${duplicateCount} duplicate goals found`, duplicateCount > 0 ? 'error' : 'success');
+
+        // Show duplicates
+        if (duplicateCount > 0) {
+          log(`\n📦 Duplicate Goals:`, 'warning');
+          goalSignatures.forEach((ids, signature) => {
+            if (ids.length > 1) {
+              const [title, uid] = signature.split('|');
+              const student = studentByUid.get(uid);
+              const studentName = student ? `${student.firstName} ${student.lastName}` : 'Unknown';
+              log(`  "${title}" for ${studentName}: ${ids.length} copies`, 'warning');
+            }
+          });
+        }
+
+        log(`\n✅ Analysis complete!`, 'success');
+        
+      } catch (error) {
+        log(`\n❌ Error: ${error.message}`, 'error');
+        console.error(error);
+      }
+    };
+
+    window.fixTeacherAssignments = async function() {
+      if (!confirm('This will update the createdBy field on goals to match the teacher who owns the assigned students. Continue?')) {
+        return;
+      }
+
+      document.getElementById('output').innerHTML = '';
+      log('🔧 Fixing teacher assignments...', 'normal');
+      
+      try {
+        const [goalsSnap, studentsSnap] = await Promise.all([
+          getDocs(collection(db, 'goals')),
+          getDocs(collection(db, 'students'))
+        ]);
+
+        const goals = goalsSnap.docs;
+        const students = studentsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        // Create student lookup
+        const studentByUid = new Map();
+        students.forEach(s => studentByUid.set(s.uid, s));
+
+        let updated = 0;
+        let skipped = 0;
+
+        for (const goalDoc of goals) {
+          const goal = goalDoc.data();
+          const studentUids = goal.assignedStudents || [goal.studentUid].filter(Boolean);
+          
+          if (studentUids.length === 0) {
+            skipped++;
+            continue;
+          }
+
+          // Get the teacher UID from the first assigned student
+          const firstStudent = studentByUid.get(studentUids[0]);
+          if (!firstStudent || !firstStudent.teacherUid) {
+            skipped++;
+            log(`  ⚠️  Skipped "${goal.goalTitle}" - no teacher found for student`, 'warning');
+            continue;
+          }
+
+          // Update the goal's createdBy field
+          await updateDoc(doc(db, 'goals', goalDoc.id), {
+            createdBy: firstStudent.teacherUid
+          });
+
+          updated++;
+          log(`  ✅ Updated "${goal.goalTitle}" → Teacher UID: ${firstStudent.teacherUid}`, 'success');
+        }
+
+        log(`\n✅ Fixed ${updated} goals, skipped ${skipped}`, 'success');
+        
+      } catch (error) {
+        log(`\n❌ Error: ${error.message}`, 'error');
+        console.error(error);
+      }
+    };
+
+    window.removeDuplicates = async function() {
+      if (!confirm('⚠️ This will DELETE duplicate goals, keeping only the most recent one for each student. This cannot be undone. Continue?')) {
+        return;
+      }
+
+      document.getElementById('output').innerHTML = '';
+      log('🗑️  Removing duplicate goals...', 'normal');
+      
+      try {
+        const goalsSnap = await getDocs(collection(db, 'goals'));
+        const goals = goalsSnap.docs.map(doc => ({ id: doc.id, ...doc.data(), docRef: doc.ref }));
+
+        // Group by signature (title + student)
+        const goalGroups = new Map();
+        
+        goals.forEach(goal => {
+          const students = goal.assignedStudents || [goal.studentUid].filter(Boolean);
+          students.forEach(uid => {
+            const signature = `${goal.goalTitle}|${uid}`;
+            if (!goalGroups.has(signature)) {
+              goalGroups.set(signature, []);
+            }
+            goalGroups.get(signature).push(goal);
+          });
+        });
+
+        let deleted = 0;
+
+        // For each group with duplicates, keep the newest and delete the rest
+        for (const [signature, groupGoals] of goalGroups) {
+          if (groupGoals.length <= 1) continue;
+
+          // Sort by createdAt (newest first)
+          groupGoals.sort((a, b) => {
+            const aTime = a.createdAt?.toMillis?.() || 0;
+            const bTime = b.createdAt?.toMillis?.() || 0;
+            return bTime - aTime;
+          });
+
+          // Keep the first (newest), delete the rest
+          const [keep, ...toDelete] = groupGoals;
+          
+          log(`  🔍 Found ${groupGoals.length} copies of "${keep.goalTitle}"`, 'warning');
+          log(`     Keeping: ${keep.id} (${new Date(keep.createdAt?.toMillis?.() || 0).toLocaleString()})`, 'success');
+
+          for (const goal of toDelete) {
+            await deleteDoc(doc(db, 'goals', goal.id));
+            deleted++;
+            log(`     ❌ Deleted: ${goal.id}`, 'error');
+          }
+        }
+
+        log(`\n✅ Removed ${deleted} duplicate goals`, 'success');
+        
+      } catch (error) {
+        log(`\n❌ Error: ${error.message}`, 'error');
+        console.error(error);
+      }
+    };
+  </script>
+</body>
+</html>
+

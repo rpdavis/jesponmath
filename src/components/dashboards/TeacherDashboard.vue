@@ -85,6 +85,97 @@
           <p>View student grades organized by class and period</p>
           <div class="action-button">View Gradebook →</div>
         </div>
+
+        <div class="action-card featured" @click="router.push('/goals')">
+          <div class="action-icon">🎯</div>
+          <h3>Manage Goals</h3>
+          <p>Create and manage IEP goals, assign progress assessments</p>
+          <div class="action-button">Manage Goals →</div>
+        </div>
+
+        <div class="action-card featured" @click="router.push('/progress-assessment-management')">
+          <div class="action-icon">📋</div>
+          <h3>Progress Assessment Management</h3>
+          <p>Manage PA by class - edit, delete, and assign assessments</p>
+          <div class="action-button">Manage PAs →</div>
+        </div>
+
+        <div class="action-card featured" @click="router.push('/progress-assessment-gradebook')">
+          <div class="action-icon">📊</div>
+          <h3>Progress Assessment Gradebook</h3>
+          <p>View PA results and track IEP goal progress by student, goal, or assessment</p>
+          <div class="action-button">View PA Gradebook →</div>
+        </div>
+
+        <div class="action-card" @click="router.push('/diagnostic/math')">
+          <div class="action-icon">🧮</div>
+          <h3>Math Diagnostic (Print)</h3>
+          <p>Generate printable math diagnostics based on student IEP goals</p>
+          <div class="action-button">Create Diagnostic →</div>
+        </div>
+
+        <div class="action-card featured" @click="router.push('/diagnostic/math/adaptive')">
+          <div class="action-icon">⚡</div>
+          <h3>Adaptive Math Diagnostic</h3>
+          <p>Real-time adaptive test that adjusts difficulty based on performance</p>
+          <div class="action-button">Start Adaptive Test →</div>
+        </div>
+
+        <div class="action-card featured" @click="router.push('/diagnostic/math-facts')">
+          <div class="action-icon">⚡</div>
+          <h3>Math Facts Fluency Test</h3>
+          <p>Timed assessment for addition, subtraction, multiplication, and division facts</p>
+          <div class="action-button">Start Fluency Test →</div>
+        </div>
+
+        <div class="action-card featured" @click="router.push('/diagnostic/foundational-fluency-manage')">
+          <div class="action-icon">🎯</div>
+          <h3>Foundational Fluency Management</h3>
+          <p>Assign and manage: Subitizing, Making 5/10, Symbolic fluency assessments</p>
+          <div class="action-button">Manage Assessments →</div>
+        </div>
+
+        <div class="action-card featured highlighted large" @click="router.push('/fluency/dashboard')">
+          <div class="action-icon">📊</div>
+          <h3>Math Fluency Dashboard</h3>
+          <p>Class overview - monitor student progress, proficiency levels, and practice consistency</p>
+          <div class="action-button">View Fluency Dashboard →</div>
+        </div>
+
+        <div class="action-card highlighted" @click="router.push('/fluency/initial-diagnostic')">
+          <div class="action-icon">🔢</div>
+          <h3>Initial Diagnostic</h3>
+          <p>Baseline assessment - test all facts to establish proficiency levels (assign to students)</p>
+          <div class="action-button">Assign/Start Diagnostic →</div>
+        </div>
+
+        <div class="action-card highlighted" @click="router.push('/fluency/paper-assessment')">
+          <div class="action-icon">📄</div>
+          <h3>Generate Friday Probes</h3>
+          <p>Create 1-minute paper assessments for weekly fluency checks</p>
+          <div class="action-button">Generate PDFs →</div>
+        </div>
+
+        <div class="action-card highlighted" @click="router.push('/fluency/score-entry')">
+          <div class="action-icon">📝</div>
+          <h3>Enter Fluency Scores</h3>
+          <p>Input results from paper fluency checks - tracks CPM and proficiency</p>
+          <div class="action-button">Enter Scores →</div>
+        </div>
+
+    <div class="action-card featured" @click="router.push('/diagnostic/foundational')">
+      <div class="action-icon">📊</div>
+      <h3>Foundational Diagnostic</h3>
+      <p>Comprehensive 4th-6th grade readiness + student goals (20 MC + 5 SA)</p>
+      <div class="action-button">Start Diagnostic →</div>
+    </div>
+
+    <div class="action-card" @click="router.push('/diagnostic/results')">
+      <div class="action-icon">📋</div>
+      <h3>Diagnostic Results</h3>
+      <p>View and analyze all diagnostic test results</p>
+      <div class="action-button">View Results →</div>
+    </div>
       </div>
     </div>
 

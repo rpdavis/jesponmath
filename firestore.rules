@@ -22,6 +22,11 @@ service cloud.firestore {
       return isAuthenticated() && getUserData().role == 'student';
     }
     
+    // Simpler check without database read - for batch operations
+    function isAuthenticatedUser() {
+      return request.auth != null;
+    }
+    
     // Base users collection (authentication data)
     match /users/{userId} {
       // Users can read their own data
@@ -31,14 +36,17 @@ service cloud.firestore {
       // Teachers can read basic user data for their students
       allow read: if isTeacher();
       
-      // Allow creating new student user records
-      allow create: if isTeacher() && request.resource.data.role == 'student';
-      // Only admins can create non-student users or modify roles
+      // ANY authenticated user can create student records (simplified for batch operations)
+      // Security is enforced by checking the role field
+      allow create: if isAuthenticatedUser() && request.resource.data.role == 'student';
+      // Admins can create any user
       allow create: if isAdmin();
       
       // Allow users to update their own profile (but not their role)
       allow update: if isAuthenticated() && request.auth.uid == userId && 
                        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'uid']));
+      // Teachers can update student profiles
+      allow update: if isTeacher() && resource.data.role == 'student';
       // Admins can update any user data
       allow update: if isAdmin();
       
@@ -66,16 +74,27 @@ service cloud.firestore {
       // Teachers and admins can read student data
       allow read: if isTeacher() || isAdmin();
       
-      // Only teachers and admins can write student data
-      allow write: if isTeacher() || isAdmin();
+      // ANY authenticated user can create students (simplified for batch operations)
+      allow create: if isAuthenticatedUser();
+      // Students can update their own completedAssessments and updatedAt fields
+      allow update: if isStudent() && 
+                       request.auth.uid == studentId &&
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['completedAssessments', 'updatedAt']);
+      // Teachers and admins can update student data
+      allow update: if isTeacher() || isAdmin();
+      // Only admins can delete students
+      allow delete: if isAdmin();
     }
     
     // Goals collection
     match /goals/{goalId} {
       // Teachers and admins can read/write goals
       allow read, write: if isTeacher() || isAdmin();
-      // Students can read their own goals
-      allow read: if isStudent() && resource.data.studentUid == request.auth.uid;
+      // Students can read their own goals (check both old and new structure)
+      allow read: if isStudent() && (
+        resource.data.studentUid == request.auth.uid ||
+        (resource.data.assignedStudents != null && request.auth.uid in resource.data.assignedStudents)
+      );
     }
     
     // Assessments collection
@@ -145,6 +164,152 @@ service cloud.firestore {
     // User profiles (legacy - for compatibility)
     match /userProfiles/{document} {
       allow read, write: if isAuthenticated();
+    }
+    
+    // Diagnostic progress tracking (for resume functionality)
+    match /diagnosticProgress/{progressId} {
+      // Students can read/write their own progress
+      // Teachers and admins can read all progress
+      allow read: if isAuthenticated() && (
+        resource.data.studentUid == request.auth.uid ||
+        isTeacher() ||
+        isAdmin()
+      );
+      allow write: if isAuthenticated() && (
+        request.resource.data.studentUid == request.auth.uid ||
+        isTeacher() ||
+        isAdmin()
+      );
+    }
+    
+    // Assessment progress tracking (for resume functionality - ESA, Standard Assessments, etc.)
+    match /assessmentProgress/{progressId} {
+      // Students can read/write their own progress
+      // Teachers and admins can read all progress
+      allow read: if isAuthenticated() && (
+        resource.data.studentUid == request.auth.uid ||
+        isTeacher() ||
+        isAdmin()
+      );
+      allow write: if isAuthenticated() && (
+        request.resource.data.studentUid == request.auth.uid ||
+        isTeacher() ||
+        isAdmin()
+      );
+    }
+    
+    // Diagnostic real-time results (for teacher viewing during test)
+    match /diagnosticResults/{resultId} {
+      // Students can write their own results
+      // Teachers and admins can read all results
+      allow read: if isAuthenticated() && (isTeacher() || isAdmin());
+      allow write: if isAuthenticated() && (
+        request.resource.data.studentUid == request.auth.uid ||
+        isTeacher() ||
+        isAdmin()
+      );
+    }
+    
+    // Diagnostic assignments (for assigning diagnostics to students)
+    match /diagnosticAssignments/{assignmentId} {
+      // Students can read their own assignments
+      // Teachers and admins can read all assignments
+      allow read: if isAuthenticated() && (
+        resource.data.studentUid == request.auth.uid ||
+        isTeacher() ||
+        isAdmin()
+      );
+      // Teachers and admins can create/update/delete assignments
+      allow write: if isAuthenticated() && (isTeacher() || isAdmin());
+      // Students can update their own assignments (limited fields for status tracking)
+      allow update: if isAuthenticated() && 
+                       resource.data.studentUid == request.auth.uid &&
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'isComplete', 'score', 'startedAt', 'completedAt', 'updatedAt']);
+    }
+    
+    // Math Fluency Progress - ongoing proficiency tracking per student/operation
+    match /mathFluencyProgress/{progressId} {
+      allow read: if isAuthenticated() && (
+        resource.data.studentUid == request.auth.uid ||
+        isTeacher() ||
+        isAdmin()
+      );
+      
+      allow create: if isAuthenticated() && (isTeacher() || isAdmin());
+      
+      allow update: if isAuthenticated() && (
+        resource.data.studentUid == request.auth.uid ||
+        isTeacher() ||
+        isAdmin()
+      );
+      
+      allow delete: if isAuthenticated() && isAdmin();
+    }
+    
+    // Math Fluency Assessments - weekly fluency checks and initial diagnostics
+    match /mathFluencyAssessments/{assessmentId} {
+      allow read: if isAuthenticated() && (
+        resource.data.studentUid == request.auth.uid ||
+        isTeacher() ||
+        isAdmin()
+      );
+      
+      allow create: if isAuthenticated() && (isTeacher() || isAdmin());
+      
+      allow update, delete: if isAuthenticated() && (
+        resource.data.teacherUid == request.auth.uid ||
+        isAdmin()
+      );
+    }
+    
+    // Math Fluency Practice Sessions - daily practice logs
+    match /mathFluencyPracticeSessions/{sessionId} {
+      allow read: if isAuthenticated() && (
+        resource.data.studentUid == request.auth.uid ||
+        isTeacher() ||
+        isAdmin()
+      );
+      
+      allow create: if isAuthenticated() && (
+        request.resource.data.studentUid == request.auth.uid ||
+        isTeacher() ||
+        isAdmin()
+      );
+      
+      allow update: if isAuthenticated() && (
+        resource.data.studentUid == request.auth.uid ||
+        isAdmin()
+      );
+      
+      allow delete: if isAuthenticated() && isAdmin();
+    }
+    
+    // Math Fluency Diagnostic Progress - for resumable diagnostics
+    match /mathFluencyDiagnosticProgress/{progressId} {
+      // Students can read their own progress, teachers can read all
+      allow read: if isAuthenticated() && (
+        resource.data.studentUid == request.auth.uid ||
+        isTeacher() ||
+        isAdmin()
+      );
+      
+      // Students can create their own progress documents
+      allow create: if isAuthenticated() && 
+        request.resource.data.studentUid == request.auth.uid;
+      
+      // Students can update their own progress, teachers can update all
+      allow update: if isAuthenticated() && (
+        resource.data.studentUid == request.auth.uid ||
+        isTeacher() ||
+        isAdmin()
+      );
+      
+      // Students and teachers can delete progress
+      allow delete: if isAuthenticated() && (
+        resource.data.studentUid == request.auth.uid ||
+        isTeacher() ||
+        isAdmin()
+      );
     }
     
     // REMOVED: Development rule for security

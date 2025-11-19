@@ -252,19 +252,25 @@ const loadAssessments = async () => {
     loading.value = true;
     error.value = '';
     
-    // Load assigned assessments and results
+    // Load assigned assessments and results (including PA assessments)
     const [assessments, results] = await Promise.all([
       getAssessmentsByStudent(studentId),
       getAssessmentResultsByStudent(studentId)
     ]);
     
     assignedAssessments.value = assessments;
-    assessmentResults.value = results;
+    
+    // Filter results to only include results for assigned assessments
+    const validResults = results.filter(result => {
+      const assessment = assessments.find(a => a.id === result.assessmentId);
+      return assessment !== undefined; // Include if assessment exists (could be PA or regular)
+    });
+    assessmentResults.value = validResults;
     
     // Debug logging
-    console.log('📝 Loaded assigned assessments:', assessments.length);
-    console.log('✅ Loaded assessment results:', results.length);
-    console.log('📋 Assessment results with IDs:', results.map(r => ({ id: r.id, assessmentId: r.assessmentId })));
+    console.log('📝 Loaded assigned assessments (including PA):', assessments.length);
+    console.log('✅ Loaded assessment results:', validResults.length);
+    console.log('📋 Assessment results with IDs:', validResults.map(r => ({ id: r.id, assessmentId: r.assessmentId })));
   } catch (err) {
     console.error('Error loading assessments:', err);
     error.value = 'Failed to load assessments. Please try again.';

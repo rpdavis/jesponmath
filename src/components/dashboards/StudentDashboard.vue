@@ -40,6 +40,30 @@
       </div>
     </div>
 
+    <!-- Quick Access - Daily Practice -->
+    <div class="quick-access-section">
+      <h2>📚 Daily Practice</h2>
+      <div class="quick-access-grid">
+        <div class="quick-access-card fluency" @click="router.push('/fluency/daily-practice')">
+          <div class="quick-icon">🔢</div>
+          <div class="quick-content">
+            <h3>Math Facts Practice</h3>
+            <p>10-12 minutes · Build automaticity with daily practice</p>
+          </div>
+          <div class="quick-button">Start Practice →</div>
+        </div>
+        
+        <div class="quick-access-card progress" @click="router.push('/fluency/my-progress')">
+          <div class="quick-icon">📊</div>
+          <div class="quick-content">
+            <h3>My Progress</h3>
+            <p>View your fluency stats, streak, and unlock status</p>
+          </div>
+          <div class="quick-button">View Progress →</div>
+        </div>
+      </div>
+    </div>
+
     <!-- Pending Assessments - Priority Section -->
     <div v-if="pendingAssessments.length > 0" class="pending-section">
       <div class="section-header">
@@ -211,6 +235,33 @@ const urgentAssessments = computed(() => {
 
 // Methods
 const startAssessment = (assessment: any) => {
+  // Handle fluency diagnostic assignments
+  if (assessment.isDiagnostic && assessment.diagnosticType === 'math-fluency-initial') {
+    // Navigate to fluency diagnostic with assignment ID
+    router.push(`/fluency/initial-diagnostic?assignment=${assessment.id}&operation=${assessment.operation}`);
+    return;
+  }
+  
+  // Handle daily practice assignments
+  if (assessment.isDiagnostic && assessment.diagnosticType === 'math-fluency-practice') {
+    router.push(`/fluency/daily-practice?assignment=${assessment.id}`);
+    return;
+  }
+  
+  // Handle other diagnostic assignments
+  if (assessment.isDiagnostic) {
+    // Route to the appropriate diagnostic page based on type
+    if (assessment.diagnosticType === 'foundational') {
+      router.push(`/diagnostic/foundational?assignment=${assessment.id}`);
+    } else if (assessment.diagnosticType === 'math-facts') {
+      router.push(`/diagnostic/math-facts?assignment=${assessment.id}`);
+    } else {
+      router.push(`/diagnostic/math`);
+    }
+    return;
+  }
+  
+  // Regular assessment
   router.push(`/assessment/${assessment.id}`);
 };
 
@@ -277,37 +328,88 @@ const loadStudentData = async () => {
       console.log('Student UID:', authStore.currentUser.uid);
       console.log('Student ID for queries:', studentId);
       
-      // Load assigned assessments and results
-      const [assignedAssessments, completedResults] = await Promise.all([
+      // Load assigned assessments, results, and diagnostic assignments
+      const { collection, query, where, getDocs } = await import('firebase/firestore');
+      const { db } = await import('@/firebase/config');
+      
+      const [assignedAssessments, completedResults, diagnosticAssignmentsSnapshot] = await Promise.all([
         getAssessmentsByStudent(studentId),
-        getAssessmentResultsByStudent(studentId)
+        getAssessmentResultsByStudent(studentId),
+        getDocs(query(collection(db, 'diagnosticAssignments'), where('studentUid', '==', studentId)))
       ]);
       
-      console.log('📝 Assigned assessments:', assignedAssessments.length);
-      console.log('✅ Completed results:', completedResults.length);
-      console.log('🔍 Debug - Assigned assessments:', assignedAssessments.map(a => ({ id: a.id, title: a.title })));
-      console.log('🔍 Debug - Completed results:', completedResults.map(r => ({ id: r.id, assessmentId: r.assessmentId })));
+      // Filter results to only include results for assigned assessments (including PA)
+      const validResults = completedResults.filter(result => {
+        const assessment = assignedAssessments.find(a => a.id === result.assessmentId);
+        return assessment !== undefined; // Include if assessment exists (could be PA or regular)
+      });
       
-      // Calculate average score
-      const averageScore = completedResults.length > 0 
-        ? Math.round(completedResults.reduce((sum, result) => sum + result.percentage, 0) / completedResults.length)
+      // Convert diagnostic assignments to assessment-like format for display
+      const diagnosticAssignments = diagnosticAssignmentsSnapshot.docs.map(doc => {
+        const data = doc.data();
+        
+        // Customize display based on diagnostic type
+        let title = data.title || 'Diagnostic'
+        let timeEstimate = null
+        
+        if (data.diagnosticType === 'math-fluency-initial') {
+          title = data.title || `${data.operation || 'Math'} Fluency Diagnostic`
+          timeEstimate = 40  // 40 minutes
+        } else if (data.diagnosticType === 'math-fluency-practice') {
+          title = data.title || 'Daily Math Facts Practice'
+          timeEstimate = 12  // 10-12 minutes
+        }
+        
+        return {
+          id: doc.id,
+          title,
+          standard: 'Fluency' + (data.operation ? ` - ${data.operation}` : ''),
+          gradeLevel: '7',
+          timeLimit: timeEstimate,
+          assignedAt: data.assignedAt,
+          status: data.status,
+          isComplete: data.isComplete,
+          isDiagnostic: true,
+          diagnosticType: data.diagnosticType,
+          operation: data.operation  // Pass operation for routing
+        };
+      });
+      
+      // Merge regular assessments (including PA) and diagnostics
+      const allAssignments = [...assignedAssessments, ...diagnosticAssignments];
+      
+      console.log('📝 Assigned assessments (including PA):', assignedAssessments.length);
+      console.log('📊 Diagnostic assignments:', diagnosticAssignments.length);
+      console.log('✅ Completed results (including PA):', validResults.length);
+      console.log('🔍 Debug - Assigned assessments:', assignedAssessments.map(a => ({ id: a.id, title: a.title, category: a.category })));
+      console.log('🔍 Debug - Diagnostic assignments:', diagnosticAssignments.map(a => ({ id: a.id, title: a.title })));
+      console.log('🔍 Debug - Completed results:', validResults.map(r => ({ id: r.id, assessmentId: r.assessmentId })));
+      
+      // Calculate average score (including PA results)
+      const averageScore = validResults.length > 0 
+        ? Math.round(validResults.reduce((sum, result) => sum + result.percentage, 0) / validResults.length)
         : 0;
       
-      // Update stats
+      // Update stats (including PA)
       studentStats.value = {
-        assignedAssessments: assignedAssessments.length,
-        completedAssessments: completedResults.length,
-        pendingAssessments: assignedAssessments.length - completedResults.length,
+        assignedAssessments: allAssignments.length,
+        completedAssessments: validResults.length,
+        pendingAssessments: allAssignments.length - validResults.length,
         averageScore: averageScore
       };
       
-      // Update arrays for display
-      const pendingFiltered = assignedAssessments.filter(assessment => {
-        return !completedResults.some(result => result.assessmentId === assessment.id);
+      // Update arrays for display - filter out completed ones (including PA results)
+      const pendingFiltered = allAssignments.filter((assessment: any) => {
+        // For diagnostics, check the isComplete flag
+        if (assessment.isDiagnostic) {
+          return !assessment.isComplete;
+        }
+        // For regular assessments, check results (including PA results)
+        return !validResults.some(result => result.assessmentId === assessment.id);
       });
       
       pendingAssessments.value = pendingFiltered;
-      recentResults.value = completedResults.slice(0, 5); // Show last 5 results
+      recentResults.value = validResults.slice(0, 5); // Show last 5 results (including PA)
       
       console.log('📋 Pending assessments after filter:', pendingFiltered.length);
       console.log('📋 Pending assessments details:', pendingFiltered.map(a => ({ id: a.id, title: a.title })));
@@ -387,6 +489,85 @@ onMounted(() => {
 
 .view-all-link:hover {
   text-decoration: underline;
+}
+
+.quick-access-section {
+  margin-bottom: 50px;
+}
+
+.quick-access-section h2 {
+  color: #1f2937;
+  font-size: 1.5rem;
+  margin-bottom: 25px;
+}
+
+.quick-access-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.quick-access-card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  border: 2px solid transparent;
+}
+
+.quick-access-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+}
+
+.quick-access-card.fluency {
+  border-color: #10b981;
+  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+}
+
+.quick-access-card.progress {
+  border-color: #007bff;
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+}
+
+.quick-access-card.progress .quick-button {
+  background: #007bff;
+}
+
+.quick-icon {
+  font-size: 3rem;
+  flex-shrink: 0;
+}
+
+.quick-content {
+  flex: 1;
+}
+
+.quick-content h3 {
+  margin: 0 0 5px 0;
+  color: #1f2937;
+  font-size: 1.2rem;
+}
+
+.quick-content p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.quick-button {
+  padding: 8px 16px;
+  background: #10b981;
+  color: white;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  white-space: nowrap;
 }
 
 .stats-grid {

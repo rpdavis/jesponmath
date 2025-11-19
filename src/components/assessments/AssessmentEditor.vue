@@ -66,7 +66,7 @@
           
           <div class="form-group">
             <label for="category">Category *</label>
-            <select id="category" v-model="assessment.category" required class="form-select">
+            <select id="category" v-model="assessment.category" required class="form-select" @change="onCategoryChange">
               <option value="">Select Category</option>
               <option value="HW">Home Work (HW)</option>
               <option value="Assign">Assignment (Assign)</option>
@@ -99,6 +99,58 @@
                 placeholder="30"
               >
               <span v-if="!noTimeLimit" class="time-unit">minutes</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Goal Connection (for Progress Assessments) -->
+        <div v-if="assessment.category === 'PA'" class="form-section goal-connection">
+          <h3>🎯 Goal Connection</h3>
+          <p class="section-description">Connect this progress assessment to an IEP goal for tracking student progress.</p>
+          
+          <div class="form-group">
+            <label for="goalSelect">Connect to Goal</label>
+            <select id="goalSelect" v-model="assessment.goalId" class="form-select">
+              <option value="">No goal connection (standalone assessment)</option>
+              <option v-for="goal in availableGoals" :key="goal.id" :value="goal.id">
+                {{ goal.goalTitle }} - {{ goal.assignedStudents?.length > 0 ? goal.assignedStudents.map(uid => getStudentName(uid)).join(', ') : (goal.studentUid ? getStudentName(goal.studentUid) : 'No students') }} ({{ goal.areaOfNeed }})
+              </option>
+            </select>
+            <small class="form-help">
+              Progress assessments can be connected to IEP goals for automatic progress tracking.
+              <router-link to="/goals" target="_blank">Manage Goals →</router-link>
+            </small>
+          </div>
+          
+          <div v-if="assessment.goalId" class="connected-goal-info">
+            <div class="goal-card">
+              <h4>📋 Connected Goal Details</h4>
+              <div v-if="selectedGoalDetails" class="goal-details">
+                <div class="detail-row">
+                  <strong>Students:</strong> 
+                  <span v-if="selectedGoalDetails.assignedStudents?.length">
+                    {{ selectedGoalDetails.assignedStudents.map(uid => getStudentName(uid)).join(', ') }}
+                  </span>
+                  <span v-else-if="selectedGoalDetails.studentUid">
+                    {{ getStudentName(selectedGoalDetails.studentUid) }}
+                  </span>
+                  <span v-else>
+                    No students assigned
+                  </span>
+                </div>
+                <div class="detail-row">
+                  <strong>Area of Need:</strong> {{ selectedGoalDetails.areaOfNeed }}
+                </div>
+                <div class="detail-row">
+                  <strong>Baseline:</strong> {{ selectedGoalDetails.baseline }}
+                </div>
+                <div class="detail-row">
+                  <strong>Goal:</strong> {{ selectedGoalDetails.goalText }}
+                </div>
+                <div class="detail-row">
+                  <strong>IEP Date:</strong> {{ formatDate(selectedGoalDetails.iepDate) }}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -461,7 +513,7 @@
                       v-model="selectedStudents"
                     >
                     <span>{{ student.firstName }} {{ student.lastName }}</span>
-                    <small>{{ student.courseName || student.className || 'No class' }} - {{ student.section || student.period || 'No period' }}</small>
+                    <small>{{ getStudentClassName(student) }} - {{ getStudentPeriod(student) || 'No period' }}</small>
                   </label>
                 </div>
               </div>
@@ -928,6 +980,7 @@
                         :show-preview="false"
                         placeholder="e.g., $\frac{1}{2}$, $0.75$, $\frac{2}{3}$"
                         class="ordering-latex-editor"
+                        @update:modelValue="updateCorrectHorizontalOrder(question)"
                       />
                       <button 
                         type="button"
@@ -959,15 +1012,15 @@
                     </p>
                     <div class="correct-order-list">
                       <div 
-                        v-for="(item, orderIndex) in question.correctHorizontalOrder || []" 
+                        v-for="(item, orderIndex) in getCorrectOrderArray(question)" 
                         :key="orderIndex"
                         class="correct-order-item"
                       >
                         <span class="order-number">{{ orderIndex + 1 }}.</span>
-                        <select v-model="question.correctHorizontalOrder![orderIndex]" class="form-select">
+                        <select v-model="question.correctHorizontalOrder![orderIndex]" class="form-select" @change="ensureCorrectOrderLength(question)">
                           <option value="">Select item</option>
                           <option 
-                            v-for="orderingItem in question.orderingItems || []" 
+                            v-for="orderingItem in (question.orderingItems || []).filter(i => i.trim())" 
                             :key="orderingItem"
                             :value="orderingItem"
                           >{{ orderingItem }}</option>
@@ -1109,6 +1162,9 @@
         <button type="button" @click="previewAssessment" class="preview-button" :disabled="!canPreview">
           👁️ Preview
         </button>
+        <button type="button" @click="printAssessment" class="print-button" :disabled="!isEditing || !canPreview">
+          🖨️ Print
+        </button>
         <button type="submit" class="save-button" :disabled="saving || !isValid">
           {{ saving ? 'Saving...' : (isEditing ? 'Update Assessment' : 'Create Assessment') }}
         </button>
@@ -1149,12 +1205,14 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '@/stores/authStore';
 import { usePermissions } from '@/composables/usePermissions';
-import { createAssessment, getAssessment, getAssessmentByGoalId, updateAssessment, assignAssessmentToStudent, unassignAssessmentFromStudent, getCurrentlyAssignedStudents } from '@/firebase/iepServices';
+import { createAssessment, getAssessment, getAssessmentByGoalId, updateAssessment, assignAssessmentToStudent, unassignAssessmentFromStudent, getCurrentlyAssignedStudents, regradeAssessmentResults } from '@/firebase/iepServices';
 import { serverTimestamp } from 'firebase/firestore';
 import { getAllStudents, getStudentsByTeacher } from '@/firebase/userServices';
+import { getAllGoals, getGoalsByTeacher, getGoal, assignAssessmentToGoal } from '@/firebase/goalServices';
 import { hasExistingResults, migrateAssessmentResults, type MigrationResult } from '@/firebase/assessmentMigrationService';
-import type { Assessment, AssessmentQuestion } from '@/types/iep';
+import type { Assessment, AssessmentQuestion, Goal } from '@/types/iep';
 import { parseStandards, formatStandardsForDisplay } from '@/utils/standardsUtils';
+import { getStudentClassName, getStudentPeriod } from '@/utils/studentGroupingUtils';
 import type { Student as FirebaseStudent } from '@/types/users';
 import AssessmentUpdateWarning from '@/components/AssessmentUpdateWarning.vue';
 import LaTeXEditor from '@/components/LaTeXEditor.vue';
@@ -1188,6 +1246,7 @@ const studentSearchQuery = ref('');
 
 // Available options - load from database
 const availableStudents = ref<FirebaseStudent[]>([]);
+const availableGoals = ref<Goal[]>([]);
 const availableAccommodations = ref([
   'Extended time (1.5x)',
   'Extended time (2x)', 
@@ -1296,6 +1355,11 @@ const totalPoints = computed(() => {
   return assessment.value.questions.reduce((sum, q) => sum + (q.points || 0), 0);
 });
 
+const selectedGoalDetails = computed(() => {
+  if (!assessment.value.goalId) return null;
+  return availableGoals.value.find(goal => goal.id === assessment.value.goalId);
+});
+
 const isValid = computed(() => {
   return assessment.value.title.trim() && 
          assessment.value.description.trim() && 
@@ -1320,8 +1384,8 @@ const uniqueClasses = computed(() => {
   const classGroups = new Map<string, { label: string; count: number; students: FirebaseStudent[] }>();
   
   availableStudents.value.forEach(student => {
-    const className = student.courseName || student.className || 'No Class';
-    const period = student.section || student.period || 'No Period';
+    const className = getStudentClassName(student);
+    const period = getStudentPeriod(student) || 'No Period';
     const key = `${className}|${period}`;
     const label = `${className} - ${period}`;
     
@@ -1671,22 +1735,105 @@ const removeOrderingItem = (questionIndex: number, itemIndex: number) => {
   }
 };
 
+const getCorrectOrderArray = (question: AssessmentQuestion): string[] => {
+  if (!question.orderingItems) return [];
+  
+  // Use ALL ordering items (including empty ones) to determine the number of dropdowns
+  // This ensures we always show the correct number of dropdowns matching the number of items
+  const totalItems = question.orderingItems.length;
+  
+  // Ensure correctHorizontalOrder exists and has the right length
+  if (!question.correctHorizontalOrder) {
+    // Initialize with empty strings to match the length
+    question.correctHorizontalOrder = new Array(totalItems).fill('');
+  } else {
+    // Ensure length matches the total number of ordering items exactly
+    if (question.correctHorizontalOrder.length !== totalItems) {
+      // If we need more items, pad with empty strings
+      if (question.correctHorizontalOrder.length < totalItems) {
+        const needed = totalItems - question.correctHorizontalOrder.length;
+        question.correctHorizontalOrder.push(...new Array(needed).fill(''));
+      } else {
+        // If we have too many, trim to match - but preserve existing values
+        const existingValues = [...question.correctHorizontalOrder];
+        question.correctHorizontalOrder = existingValues.slice(0, totalItems);
+      }
+    }
+  }
+  
+  // Final safety check - ensure we return exactly the right length
+  if (question.correctHorizontalOrder.length !== totalItems) {
+    console.warn('getCorrectOrderArray: Length mismatch, fixing:', {
+      expected: totalItems,
+      actual: question.correctHorizontalOrder.length
+    });
+    // Force correct length
+    const existingValues = [...question.correctHorizontalOrder];
+    question.correctHorizontalOrder = new Array(totalItems).fill('').map((_, index) => {
+      return existingValues[index] || '';
+    });
+  }
+  
+  return question.correctHorizontalOrder;
+};
+
+const ensureCorrectOrderLength = (question: AssessmentQuestion) => {
+  updateCorrectHorizontalOrder(question);
+};
+
 const updateCorrectHorizontalOrder = (question: AssessmentQuestion) => {
   if (!question.orderingItems) return;
   
-  // Initialize correct horizontal order array
+  // Ensure correctHorizontalOrder has the same length as orderingItems
+  // This ensures we always have the right number of dropdowns
+  const totalItems = question.orderingItems.length;
+  
   if (!question.correctHorizontalOrder) {
-    question.correctHorizontalOrder = [...question.orderingItems].filter(item => item.trim());
+    // Initialize with empty strings to match the length
+    question.correctHorizontalOrder = new Array(totalItems).fill('');
   } else {
-    // Ensure correct order has same length as ordering items
-    const filteredItems = question.orderingItems.filter(item => item.trim());
-    question.correctHorizontalOrder = question.correctHorizontalOrder.filter(item => filteredItems.includes(item));
-    
-    // Add any new items that aren't in correct order yet
-    filteredItems.forEach(item => {
-      if (!question.correctHorizontalOrder!.includes(item)) {
-        question.correctHorizontalOrder!.push(item);
+    // First, ensure the array length matches exactly
+    if (question.correctHorizontalOrder.length !== totalItems) {
+      if (question.correctHorizontalOrder.length < totalItems) {
+        // Add empty strings for new items
+        const needed = totalItems - question.correctHorizontalOrder.length;
+        question.correctHorizontalOrder.push(...new Array(needed).fill(''));
+      } else {
+        // Trim if items were removed - but preserve existing values
+        question.correctHorizontalOrder = question.correctHorizontalOrder.slice(0, totalItems);
       }
+    }
+    
+    // Clean up: only clear entries that reference items that no longer exist in orderingItems
+    // Check against ALL items in orderingItems (including empty ones for position matching)
+    if (question.orderingItems) {
+      question.correctHorizontalOrder = question.correctHorizontalOrder.map((orderItem, index) => {
+        // If this position has a value, check if it still exists in orderingItems
+        if (orderItem && orderItem.trim()) {
+          // Check if this value still exists in orderingItems at any position
+          const stillExists = question.orderingItems!.some(item => item === orderItem);
+          if (!stillExists) {
+            // Value no longer exists, clear it
+            return '';
+          }
+        }
+        // Keep the existing value (even if empty)
+        return orderItem;
+      });
+    }
+  }
+  
+  // Final safety check: ensure length is exactly correct
+  if (question.correctHorizontalOrder.length !== totalItems) {
+    console.warn('Correct order length mismatch, fixing:', {
+      expected: totalItems,
+      actual: question.correctHorizontalOrder.length,
+      orderingItems: question.orderingItems || []
+    });
+    // Force rebuild to correct length
+    const existingValues = [...question.correctHorizontalOrder];
+    question.correctHorizontalOrder = new Array(totalItems).fill('').map((_, index) => {
+      return existingValues[index] || '';
     });
   }
 };
@@ -1959,6 +2106,8 @@ const performSave = async () => {
   error.value = '';
   success.value = '';
   
+  let savedAssessmentId = assessmentId; // For editing mode
+  
   try {
     // Update total points
     assessment.value.totalPoints = totalPoints.value;
@@ -2005,7 +2154,24 @@ const performSave = async () => {
           await unassignAssessmentFromStudent(assessmentId, studentUid);
         }
         
-        success.value = `Assessment updated and assigned to ${selectedStudents.value.length} students!`;
+        // Regrade all existing results with the updated assessment (e.g., new acceptable answers)
+        let regradedCount = 0;
+        try {
+          regradedCount = await regradeAssessmentResults(assessmentId, assessment.value as Assessment);
+          if (regradedCount > 0) {
+            console.log(`✅ Regraded ${regradedCount} assessment result(s) with updated questions`);
+          }
+        } catch (regradeError) {
+          console.warn('⚠️ Could not regrade existing results:', regradeError);
+          // Don't fail the whole operation if regrading fails
+        }
+        
+        // Set success message
+        if (regradedCount > 0) {
+          success.value = `Assessment updated and assigned to ${selectedStudents.value.length} students! ${regradedCount} existing result(s) were regraded with updated questions.`;
+        } else {
+          success.value = `Assessment updated and assigned to ${selectedStudents.value.length} students!`;
+        }
       } else {
         // CREATION MODE: Create one assessment template and assign to students
         console.log('➕ CREATION MODE: Creating assessment template');
@@ -2021,6 +2187,7 @@ const performSave = async () => {
         delete (assessmentData as any).studentUid;
         
         const newAssessmentId = await createAssessment(assessmentData);
+        savedAssessmentId = newAssessmentId; // Update for goal connection
         console.log('✅ Created assessment template:', newAssessmentId);
         
         // Assign to selected students
@@ -2044,10 +2211,36 @@ const performSave = async () => {
       
       if (isEditing.value) {
         await updateAssessment(assessmentId, templateData);
-        success.value = 'Assessment template updated successfully!';
+        
+        // Regrade all existing results with the updated assessment (e.g., new acceptable answers)
+        try {
+          const regradedCount = await regradeAssessmentResults(assessmentId, assessment.value as Assessment);
+          if (regradedCount > 0) {
+            console.log(`✅ Regraded ${regradedCount} assessment result(s) with updated questions`);
+            success.value = `Assessment template updated successfully! ${regradedCount} existing result(s) were regraded.`;
+          } else {
+            success.value = 'Assessment template updated successfully!';
+          }
+        } catch (regradeError) {
+          console.warn('⚠️ Could not regrade existing results:', regradeError);
+          success.value = 'Assessment template updated successfully!';
+          // Don't fail the whole operation if regrading fails
+        }
       } else {
-        await createAssessment(templateData);
+        const newId = await createAssessment(templateData);
+        savedAssessmentId = newId; // Update for goal connection
         success.value = 'Assessment template created successfully!';
+      }
+    }
+    
+    // Handle goal connection for Progress Assessments
+    if (assessment.value.category === 'PA' && assessment.value.goalId) {
+      try {
+        await assignAssessmentToGoal(assessment.value.goalId, savedAssessmentId);
+        console.log('✅ Connected assessment to goal:', assessment.value.goalId);
+      } catch (err) {
+        console.error('Error connecting assessment to goal:', err);
+        // Don't fail the whole operation for goal connection issues
       }
     }
     
@@ -2074,6 +2267,286 @@ Total Points: ${totalPoints.value}
 Time Limit: ${assessment.value.timeLimit || 'No limit'} minutes
 
 This would open a preview showing how students will see the assessment.`);
+};
+
+const printAssessment = () => {
+  // Create a print-friendly window
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) {
+    alert('Please allow popups to print the assessment.');
+    return;
+  }
+
+  const printContent = generatePrintHTML();
+  printWindow.document.write(printContent);
+  printWindow.document.close();
+  
+  // Wait for content to load, then trigger print
+  printWindow.onload = () => {
+    printWindow.focus();
+    printWindow.print();
+  };
+};
+
+const generatePrintHTML = (): string => {
+  const questions = assessment.value.questions;
+  const halfPoint = Math.ceil(questions.length / 2);
+  const page1Questions = questions.slice(0, halfPoint);
+  const page2Questions = questions.slice(halfPoint);
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${assessment.value.title} - Print</title>
+  <style>
+    @media print {
+      @page {
+        size: letter;
+        margin: 0.5in;
+      }
+      
+      body {
+        margin: 0;
+        padding: 0;
+      }
+      
+      .page {
+        page-break-after: always;
+        page-break-inside: avoid;
+      }
+      
+      .page:last-child {
+        page-break-after: auto;
+      }
+      
+      .question {
+        page-break-inside: avoid;
+      }
+    }
+    
+    body {
+      font-family: 'Times New Roman', Times, serif;
+      font-size: 12pt;
+      line-height: 1.4;
+      color: #000;
+    }
+    
+    .page {
+      width: 100%;
+      min-height: 10in;
+      box-sizing: border-box;
+    }
+    
+    .header {
+      text-align: center;
+      border-bottom: 2px solid #000;
+      padding-bottom: 10px;
+      margin-bottom: 20px;
+    }
+    
+    .header h1 {
+      margin: 0 0 5px 0;
+      font-size: 18pt;
+      font-weight: bold;
+    }
+    
+    .header .info {
+      font-size: 10pt;
+      margin: 5px 0;
+    }
+    
+    .student-info {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      font-size: 11pt;
+    }
+    
+    .student-info .field {
+      flex: 1;
+      border-bottom: 1px solid #000;
+      margin-right: 20px;
+    }
+    
+    .student-info .field:last-child {
+      margin-right: 0;
+    }
+    
+    .question {
+      margin-bottom: 20px;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background: #f9f9f9;
+    }
+    
+    .question-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      font-weight: bold;
+    }
+    
+    .question-number {
+      font-size: 13pt;
+    }
+    
+    .question-points {
+      font-size: 10pt;
+      color: #666;
+    }
+    
+    .question-text {
+      margin-bottom: 12px;
+      font-size: 11pt;
+      line-height: 1.6;
+    }
+    
+    .answer-space {
+      border: 1px solid #000;
+      min-height: 80px;
+      padding: 10px;
+      background: white;
+      margin-top: 10px;
+    }
+    
+    .answer-space.large {
+      min-height: 120px;
+    }
+    
+    .options {
+      margin: 10px 0;
+    }
+    
+    .option {
+      margin: 8px 0;
+      padding: 5px 0;
+      font-size: 11pt;
+    }
+    
+    .option-label {
+      display: inline-block;
+      width: 30px;
+      font-weight: bold;
+    }
+    
+    .instructions {
+      background: #e8f4f8;
+      border: 1px solid #b8d4e0;
+      padding: 12px;
+      margin-bottom: 20px;
+      border-radius: 4px;
+      font-size: 10pt;
+    }
+    
+    .footer {
+      margin-top: 30px;
+      text-align: center;
+      font-size: 10pt;
+      color: #666;
+      border-top: 1px solid #ccc;
+      padding-top: 10px;
+    }
+    
+    .standard-tag {
+      display: inline-block;
+      background: #e0e0e0;
+      padding: 2px 8px;
+      border-radius: 3px;
+      font-size: 9pt;
+      margin-top: 5px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Page 1 -->
+  <div class="page">
+    <div class="header">
+      <h1>${assessment.value.title}</h1>
+      <div class="info">Grade ${assessment.value.gradeLevel} • ${assessment.value.category || 'Assessment'}</div>
+      ${assessment.value.timeLimit ? `<div class="info">Time Limit: ${assessment.value.timeLimit} minutes</div>` : ''}
+    </div>
+    
+    <div class="student-info">
+      <div class="field">Name: _______________________</div>
+      <div class="field">Date: _______________________</div>
+      <div class="field">Score: ______ / ${totalPoints.value}</div>
+    </div>
+    
+    ${assessment.value.instructions ? `
+    <div class="instructions">
+      <strong>Instructions:</strong> ${assessment.value.instructions}
+    </div>
+    ` : ''}
+    
+    ${page1Questions.map((q, index) => `
+      <div class="question">
+        <div class="question-header">
+          <span class="question-number">${index + 1}.</span>
+          <span class="question-points">(${q.points} ${q.points === 1 ? 'point' : 'points'})</span>
+        </div>
+        <div class="question-text">${q.questionText}</div>
+        ${q.standard ? `<div class="standard-tag">Standard: ${q.standard}</div>` : ''}
+        ${q.questionType === 'multiple-choice' && q.options ? `
+          <div class="options">
+            ${q.options.map((opt, i) => `
+              <div class="option">
+                <span class="option-label">${String.fromCharCode(65 + i)})</span> ${opt}
+              </div>
+            `).join('')}
+          </div>
+        ` : ''}
+        ${q.questionType === 'short-answer' || q.questionType === 'essay' ? `
+          <div class="answer-space ${q.questionType === 'essay' ? 'large' : ''}"></div>
+        ` : ''}
+        ${q.explanation ? `<div style="margin-top: 8px; font-size: 10pt; color: #666;"><em>Note: ${q.explanation}</em></div>` : ''}
+      </div>
+    `).join('')}
+    
+    ${page2Questions.length === 0 ? `<div class="footer">Total: ${assessment.value.questions.length} Questions • ${totalPoints.value} Points</div>` : ''}
+  </div>
+  
+  ${page2Questions.length > 0 ? `
+  <!-- Page 2 -->
+  <div class="page">
+    <div class="header">
+      <h1>${assessment.value.title} (continued)</h1>
+    </div>
+    
+    ${page2Questions.map((q, index) => `
+      <div class="question">
+        <div class="question-header">
+          <span class="question-number">${halfPoint + index + 1}.</span>
+          <span class="question-points">(${q.points} ${q.points === 1 ? 'point' : 'points'})</span>
+        </div>
+        <div class="question-text">${q.questionText}</div>
+        ${q.standard ? `<div class="standard-tag">Standard: ${q.standard}</div>` : ''}
+        ${q.questionType === 'multiple-choice' && q.options ? `
+          <div class="options">
+            ${q.options.map((opt, i) => `
+              <div class="option">
+                <span class="option-label">${String.fromCharCode(65 + i)})</span> ${opt}
+              </div>
+            `).join('')}
+          </div>
+        ` : ''}
+        ${q.questionType === 'short-answer' || q.questionType === 'essay' ? `
+          <div class="answer-space ${q.questionType === 'essay' ? 'large' : ''}"></div>
+        ` : ''}
+        ${q.explanation ? `<div style="margin-top: 8px; font-size: 10pt; color: #666;"><em>Note: ${q.explanation}</em></div>` : ''}
+      </div>
+    `).join('')}
+    
+    <div class="footer">Total: ${assessment.value.questions.length} Questions • ${totalPoints.value} Points</div>
+  </div>
+  ` : ''}
+</body>
+</html>
+  `.trim();
 };
 
 const goBack = () => {
@@ -2106,6 +2579,44 @@ const loadStudents = async () => {
     error.value = 'Failed to load students. Assessments can still be created as templates.';
   } finally {
     loadingStudents.value = false;
+  }
+};
+
+// Load goals from database
+const loadGoals = async () => {
+  try {
+    if (permissions.isAdmin) {
+      // Admins can see all goals
+      availableGoals.value = await getAllGoals();
+    } else if (permissions.isTeacher && authStore.currentUser?.uid) {
+      // Teachers can see goals they created
+      availableGoals.value = await getGoalsByTeacher(authStore.currentUser.uid);
+    } else {
+      availableGoals.value = [];
+    }
+    
+    console.log(`Loaded ${availableGoals.value.length} goals for assessment connection`);
+    
+  } catch (err: any) {
+    console.error('Error loading goals for assessment:', err);
+  }
+};
+
+// Helper methods for goal functionality
+const getStudentName = (studentUid: string) => {
+  const student = availableStudents.value.find(s => s.uid === studentUid);
+  return student ? `${student.firstName} ${student.lastName}` : 'Unknown Student';
+};
+
+const formatDate = (dateString: string | undefined) => {
+  if (!dateString) return 'Not set';
+  return new Date(dateString).toLocaleDateString();
+};
+
+const onCategoryChange = () => {
+  // Load goals when Progress Assessment is selected
+  if (assessment.value.category === 'PA' && availableGoals.value.length === 0) {
+    loadGoals();
   }
 };
 
@@ -2922,6 +3433,7 @@ onMounted(() => {
 
 .cancel-button,
 .preview-button,
+.print-button,
 .save-button {
   padding: 12px 24px;
   border-radius: 8px;
@@ -2952,6 +3464,21 @@ onMounted(() => {
 }
 
 .preview-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.print-button {
+  background: #dbeafe;
+  color: #1e40af;
+  border: 2px solid #3b82f6;
+}
+
+.print-button:hover:not(:disabled) {
+  background: #bfdbfe;
+}
+
+.print-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
@@ -2990,6 +3517,64 @@ onMounted(() => {
   padding: 15px;
   margin-top: 20px;
   text-align: center;
+}
+
+/* Goal Connection Styles */
+.goal-connection {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin: 1rem 0;
+}
+
+.goal-connection h3 {
+  margin: 0 0 0.5rem 0;
+  color: #495057;
+  font-size: 1.1rem;
+}
+
+.section-description {
+  color: #6c757d;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.connected-goal-info {
+  margin-top: 1rem;
+}
+
+.goal-card {
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  padding: 1rem;
+}
+
+.goal-card h4 {
+  margin: 0 0 1rem 0;
+  color: #495057;
+  font-size: 1rem;
+}
+
+.goal-details {
+  font-size: 0.875rem;
+}
+
+.detail-row {
+  display: flex;
+  margin-bottom: 0.5rem;
+  gap: 0.5rem;
+}
+
+.detail-row strong {
+  min-width: 100px;
+  color: #495057;
+}
+
+.detail-row span {
+  flex: 1;
+  color: #6c757d;
 }
 
 @media (max-width: 768px) {

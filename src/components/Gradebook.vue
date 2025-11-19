@@ -3,6 +3,7 @@
     <div class="gradebook-header">
       <h1>📊 Gradebook</h1>
       <p>Track student progress across all assessment categories</p>
+      <p class="info-note">💡 Note: Progress Assessments (PA) and Diagnostic assessments are managed separately and not shown in this gradebook. Use <router-link to="/progress-assessment-gradebook">Progress Assessment Gradebook</router-link> for PA assessments.</p>
     </div>
 
     <!-- Academic Period Selector -->
@@ -80,7 +81,6 @@
           <option value="Assign">Assignment (Assign)</option>
           <option value="ESA">Essential Standard (ESA)</option>
           <option value="SA">Standard Assessment (SA)</option>
-          <option value="PA">Progress Assessment (PA)</option>
           <option value="Other">Other</option>
         </select>
       </div>
@@ -389,6 +389,7 @@ import { getStudentsByTeacher } from '@/firebase/userServices';
 import { getAssessmentsByTeacher, getAssessmentResults, createManualAssessmentResult } from '@/firebase/iepServices';
 import { getAllCustomStandards } from '@/firebase/standardsServices';
 import { parseStandards, groupQuestionsByStandards, getAllStandardsFromQuestions } from '@/utils/standardsUtils';
+import { groupStudentsByClassAndPeriod } from '@/utils/studentGroupingUtils';
 import type { Student } from '@/types/users';
 import type { Assessment, AssessmentResult } from '@/types/iep';
 import type { CustomStandard } from '@/types/standards';
@@ -548,44 +549,17 @@ const uniqueAppCategories = computed(() => {
   return categories.sort();
 });
 
-// Group students by class and period
+// Group students by class and period using utility function
 const filteredGroups = computed(() => {
-  const groups = new Map<string, {
-    key: string;
-    className: string;
-    period: string;
-    students: Student[];
-    assessments: Assessment[];
-    standards: string[];
-  }>();
-
-  // Group students by Google Classroom course (prioritize Google Classroom fields)
-  filteredStudents.value.forEach(student => {
-    const className = student.courseName || student.className || 'No Class';
-    const period = student.section || student.period || 'No Period';
-    const courseId = student.courseId || 'no-course';
-    const key = `${courseId}-${className}-${period}`; // Use courseId for better grouping
-    
-    if (!groups.has(key)) {
-      groups.set(key, {
-        key,
-        className,
-        period,
-        students: [],
-        assessments: filteredAssessments.value,
-        standards: uniqueStandards.value
-      });
-    }
-    
-    groups.get(key)!.students.push(student);
-  });
-
-  return Array.from(groups.values()).sort((a, b) => {
-    if (a.className !== b.className) {
-      return a.className.localeCompare(b.className);
-    }
-    return a.period.localeCompare(b.period);
-  });
+  // Use the utility function to group students
+  const baseGroups = groupStudentsByClassAndPeriod(filteredStudents.value);
+  
+  // Add gradebook-specific data (assessments and standards) to each group
+  return baseGroups.map(group => ({
+    ...group,
+    assessments: filteredAssessments.value,
+    standards: uniqueStandards.value
+  }));
 });
 
 // Methods
@@ -608,31 +582,89 @@ const loadGradebookData = async () => {
     ]);
     
     students.value = teacherStudents;
-    assessments.value = teacherAssessments;
+    
+    // Filter out Progress Assessments (PA) and Diagnostic assessments
+    // PA assessments are managed separately in Progress Assessment Management
+    // Diagnostic assessments are managed separately in Diagnostic views
+    // Use case-insensitive comparison to catch any variations
+    const filteredAssessments = teacherAssessments.filter(assessment => {
+      const category = assessment.category?.toUpperCase() || '';
+      const title = assessment.title?.toUpperCase() || '';
+      const isPA = category === 'PA';
+      const isDiagnostic = title.includes('DIAGNOSTIC') || (assessment as any).diagnosticType !== undefined;
+      
+      if (isPA) {
+        console.log(`🚫 Filtering out PA assessment from gradebook: ${assessment.id} - ${assessment.title} (category: ${assessment.category})`);
+      }
+      if (isDiagnostic) {
+        console.log(`🚫 Filtering out Diagnostic assessment from gradebook: ${assessment.id} - ${assessment.title}`);
+      }
+      
+      return !isPA && !isDiagnostic;
+    });
+    
+    assessments.value = filteredAssessments;
     customStandards.value = allCustomStandards;
     
+    const excludedPACount = teacherAssessments.filter(a => (a.category?.toUpperCase() || '') === 'PA').length;
+    const excludedDiagnosticCount = teacherAssessments.filter(a => {
+      const title = a.title?.toUpperCase() || '';
+      return title.includes('DIAGNOSTIC') || (a as any).diagnosticType !== undefined;
+    }).length;
+    const totalExcluded = teacherAssessments.length - filteredAssessments.length;
+    
     console.log('👥 Loaded students:', students.value.length);
-    console.log('📝 Loaded assessments:', assessments.value.length);
+    console.log(`📝 Loaded assessments: ${filteredAssessments.length} (${excludedPACount} PA + ${excludedDiagnosticCount} Diagnostic = ${totalExcluded} total excluded from gradebook)`);
+    
+    if (excludedPACount > 0) {
+      console.log(`🚫 PA assessments excluded from gradebook:`, teacherAssessments
+        .filter(a => (a.category?.toUpperCase() || '') === 'PA')
+        .map(a => ({ id: a.id, title: a.title, category: a.category })));
+    }
+    
+    if (excludedDiagnosticCount > 0) {
+      console.log(`🚫 Diagnostic assessments excluded from gradebook:`, teacherAssessments
+        .filter(a => {
+          const title = a.title?.toUpperCase() || '';
+          return title.includes('DIAGNOSTIC') || (a as any).diagnosticType !== undefined;
+        })
+        .map(a => ({ id: a.id, title: a.title, diagnosticType: (a as any).diagnosticType })));
+    }
     
     // Debug student UIDs
     students.value.forEach(student => {
       console.log(`👤 Student: ${student.firstName} ${student.lastName}, UID: ${student.uid}, Google ID: ${student.googleId}, Course: ${student.courseName}`);
     });
     
-    // Debug assessment IDs
-    teacherAssessments.forEach(assessment => {
+    // Debug assessment IDs (non-PA, non-Diagnostic only)
+    filteredAssessments.forEach(assessment => {
       console.log(`📝 Assessment: ${assessment.title}, ID: ${assessment.id}, CreatedBy: ${assessment.createdBy}`);
     });
     
-    // Load all assessment results for these assessments
-    const resultsPromises = teacherAssessments.map(assessment => 
+    // Load all assessment results for filtered assessments only
+    const resultsPromises = filteredAssessments.map(assessment => 
       getAssessmentResults(assessment.id)
     );
     
     const allResults = await Promise.all(resultsPromises);
-    assessmentResults.value = allResults.flat();
+    // Filter results to only include results for filtered assessments (safety check)
+    const filteredResults = allResults.flat().filter(result => {
+      const assessment = filteredAssessments.find(a => a.id === result.assessmentId);
+      if (!assessment) {
+        // Result for PA/Diagnostic assessment or deleted assessment - exclude it
+        return false;
+      }
+      // Double-check: ensure assessment is not PA or Diagnostic (safety check)
+      const category = assessment.category?.toUpperCase() || '';
+      const title = assessment.title?.toUpperCase() || '';
+      const isPA = category === 'PA';
+      const isDiagnostic = title.includes('DIAGNOSTIC') || (assessment as any).diagnosticType !== undefined;
+      return !isPA && !isDiagnostic;
+    });
     
-    console.log('📊 Loaded assessment results:', assessmentResults.value.length);
+    assessmentResults.value = filteredResults;
+    
+    console.log(`📊 Loaded assessment results: ${filteredResults.length} (filtered to non-PA, non-Diagnostic only)`);
     
     // Clear standard score cache when new data is loaded
     clearStandardScoreCache();
@@ -755,6 +787,9 @@ const getStandardScore = (studentUid: string, standard: string) => {
   const questionAttempts: { isCorrect: boolean; score: number }[] = [];
   
   // FIXED: Only count questions from assessments the student actually took
+  // For keepTop scoring, we need to track attempts by assessment
+  const attemptsByAssessment: { assessmentId: string; correct: number; total: number; percentage: number }[] = []
+  
   assessments.value.forEach(assessment => {
     // First check if student took this assessment
     const result = getStudentScore(studentUid, assessment.id);
@@ -767,6 +802,9 @@ const getStandardScore = (studentUid: string, standard: string) => {
     const assessmentStandards = parseStandards(assessment.standard);
     const assessmentCoversStandard = assessmentStandards.includes(standard);
     
+    let assessmentCorrect = 0
+    let assessmentTotal = 0
+    
     assessment.questions?.forEach(question => {
       // Check if question covers this standard (either through question-level or assessment-level standard)
       const questionStandards = parseStandards(question.standard);
@@ -776,13 +814,32 @@ const getStandardScore = (studentUid: string, standard: string) => {
         // Find the response for this specific question
         const response = result.responses?.find((r: any) => r.questionId === question.id);
         if (response) {
+          const isCorrect = response.isCorrect
+          const score = response.score || (response.isCorrect ? question.points : 0)
+          
           questionAttempts.push({
-            isCorrect: response.isCorrect,
-            score: response.score || (response.isCorrect ? question.points : 0)
+            isCorrect,
+            score
           });
+          
+          // Track for this specific assessment
+          assessmentTotal++
+          if (isCorrect) {
+            assessmentCorrect++
+          }
         }
       }
     });
+    
+    // Record this assessment's performance for this standard
+    if (assessmentTotal > 0) {
+      attemptsByAssessment.push({
+        assessmentId: assessment.id,
+        correct: assessmentCorrect,
+        total: assessmentTotal,
+        percentage: Math.round((assessmentCorrect / assessmentTotal) * 100)
+      })
+    }
   });
   
   // If no attempts, return 0/0
@@ -799,15 +856,30 @@ const getStandardScore = (studentUid: string, standard: string) => {
   let percentage = 0;
   
   if (scoringMethod === 'keepTop') {
-    // Keep Top Score: Take highest scoring attempts up to maxScore
-    questionAttempts.sort((a, b) => b.score - a.score);
-    const limitedAttempts = maxScore && maxScore > 0 ? 
-      questionAttempts.slice(0, maxScore) : 
-      questionAttempts;
-    
-    correct = limitedAttempts.filter(attempt => attempt.isCorrect).length;
-    total = limitedAttempts.length;
-    percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
+    // Keep Top Score: Show the BEST single assessment attempt
+    // Find the assessment with the highest score for this standard
+    if (attemptsByAssessment.length > 0) {
+      // Sort assessments by percentage (best first)
+      attemptsByAssessment.sort((a, b) => b.percentage - a.percentage)
+      
+      // Take the best assessment
+      const bestAttempt = attemptsByAssessment[0]
+      correct = bestAttempt.correct
+      
+      // Use maxScore as denominator if set, otherwise use actual total from that assessment
+      if (maxScore && maxScore > 0) {
+        total = maxScore
+      } else {
+        total = bestAttempt.total
+      }
+      
+      percentage = total > 0 ? Math.round((correct / total) * 100) : 0
+    } else {
+      // No attempts
+      correct = 0
+      total = maxScore || 0
+      percentage = 0
+    }
     
   } else if (scoringMethod === 'average') {
     // Average Scores: Calculate average percentage across all attempts
@@ -1115,6 +1187,22 @@ onMounted(() => {
 .gradebook-header p {
   color: #6b7280;
   font-size: 1.1rem;
+}
+
+.info-note {
+  margin: 0.5rem 0;
+  color: #6b7280;
+  font-size: 0.9rem;
+  font-style: italic;
+}
+
+.info-note a {
+  color: #2563eb;
+  text-decoration: underline;
+}
+
+.info-note a:hover {
+  color: #1d4ed8;
 }
 
 .filters-section {

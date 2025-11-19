@@ -306,6 +306,89 @@ export async function getTeacherAssignments(
   }
 }
 
+/**
+ * Get assignments for multiple students efficiently (bulk query)
+ * Groups assignments by studentUid
+ * 
+ * For teachers: Uses getTeacherAssignments and filters in memory (avoids composite index)
+ * For admins: Uses batched 'in' queries
+ */
+export async function getAssignmentsForStudents(
+  studentUids: string[],
+  teacherUid?: string
+): Promise<Record<string, AssessmentAssignment[]>> {
+  try {
+    if (studentUids.length === 0) {
+      return {}
+    }
+    
+    let allAssignments: AssessmentAssignment[]
+    
+    if (teacherUid) {
+      // For teachers: Get all their assignments, then filter by studentUid in memory
+      // This avoids needing a composite index for studentUid + assignedBy
+      const teacherAssignments = await getTeacherAssignments(teacherUid)
+      const studentUidSet = new Set(studentUids)
+      allAssignments = teacherAssignments.filter(a => studentUidSet.has(a.studentUid))
+    } else {
+      // For admins: Use batched 'in' queries (Firestore limit is 10 per query)
+      const BATCH_SIZE = 10
+      const batches: string[][] = []
+      
+      for (let i = 0; i < studentUids.length; i += BATCH_SIZE) {
+        batches.push(studentUids.slice(i, i + BATCH_SIZE))
+      }
+      
+      // Execute queries in parallel for each batch
+      const batchPromises = batches.map(async (batch) => {
+        const q = query(
+          collection(db, COLLECTIONS.ASSESSMENT_ASSIGNMENTS),
+          where('studentUid', 'in', batch)
+        )
+        
+        const snapshot = await getDocs(q)
+        return snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as AssessmentAssignment[]
+      })
+      
+      // Wait for all batches and combine results
+      const batchResults = await Promise.all(batchPromises)
+      allAssignments = batchResults.flat()
+    }
+    
+    // Group by studentUid
+    const grouped: Record<string, AssessmentAssignment[]> = {}
+    for (const assignment of allAssignments) {
+      if (!grouped[assignment.studentUid]) {
+        grouped[assignment.studentUid] = []
+      }
+      grouped[assignment.studentUid].push(assignment)
+    }
+    
+    // Sort each student's assignments
+    for (const studentUid in grouped) {
+      grouped[studentUid].sort((a, b) => {
+        if (a.dueDate && b.dueDate) {
+          return a.dueDate.seconds - b.dueDate.seconds
+        }
+        if (a.dueDate && !b.dueDate) return -1
+        if (!a.dueDate && b.dueDate) return 1
+        
+        const aTime = a.assignedAt?.seconds || 0
+        const bTime = b.assignedAt?.seconds || 0
+        return bTime - aTime // Most recent first
+      })
+    }
+    
+    return grouped
+  } catch (error) {
+    console.error('❌ Error getting assignments for students:', error)
+    throw error
+  }
+}
+
 // ==================== ASSIGNMENT UPDATES ====================
 
 /**
@@ -405,6 +488,164 @@ export async function markAssignmentCompleted(
     console.log('✅ Assignment marked as completed');
   } catch (error) {
     console.error('❌ Error marking assignment as completed:', error);
+    throw error;
+  }
+}
+
+/**
+ * Update the teacher who assigned an assessment
+ * Useful for fixing incorrect teacher assignments
+ * Also updates the assessment's createdBy field so the teacher can see it
+ */
+export async function updateAssignmentTeacher(
+  assessmentId: string,
+  studentUid: string,
+  newTeacherUid: string
+): Promise<void> {
+  try {
+    // Find the assignment
+    const q = query(
+      collection(db, COLLECTIONS.ASSESSMENT_ASSIGNMENTS),
+      where('assessmentId', '==', assessmentId),
+      where('studentUid', '==', studentUid)
+    );
+    
+    const snapshot = await getDocs(q);
+    
+    if (snapshot.empty) {
+      throw new Error('Assignment not found');
+    }
+    
+    // Update assignment and assessment in a batch
+    const batch = writeBatch(db);
+    
+    // Update the assignment
+    const assignmentDoc = snapshot.docs[0];
+    batch.update(assignmentDoc.ref, {
+      assignedBy: newTeacherUid,
+      updatedAt: serverTimestamp()
+    });
+    
+    // Also update the assessment's createdBy field so the teacher can see it
+    const assessmentRef = doc(db, 'assessments', assessmentId);
+    batch.update(assessmentRef, {
+      createdBy: newTeacherUid,
+      updatedAt: serverTimestamp()
+    });
+    
+    await batch.commit();
+    
+    console.log('✅ Assignment and assessment teacher updated successfully');
+  } catch (error) {
+    console.error('❌ Error updating assignment teacher:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get assignment by assessment and student (for finding assignment ID)
+ */
+export async function getAssignment(
+  assessmentId: string,
+  studentUid: string
+): Promise<AssessmentAssignment | null> {
+  try {
+    const q = query(
+      collection(db, COLLECTIONS.ASSESSMENT_ASSIGNMENTS),
+      where('assessmentId', '==', assessmentId),
+      where('studentUid', '==', studentUid)
+    );
+    
+    const snapshot = await getDocs(q);
+    
+    if (snapshot.empty) {
+      return null;
+    }
+    
+    return {
+      id: snapshot.docs[0].id,
+      ...snapshot.docs[0].data()
+    } as AssessmentAssignment;
+  } catch (error) {
+    console.error('❌ Error getting assignment:', error);
+    throw error;
+  }
+}
+
+/**
+ * Bulk update teacher for all assignments of an assessment
+ * Useful for fixing incorrect teacher assignments for multiple students at once
+ * Also updates the assessment's createdBy field so the teacher can see it
+ */
+export async function bulkUpdateAssignmentTeacher(
+  assessmentId: string,
+  newTeacherUid: string
+): Promise<number> {
+  try {
+    // Get all assignments for this assessment
+    const q = query(
+      collection(db, COLLECTIONS.ASSESSMENT_ASSIGNMENTS),
+      where('assessmentId', '==', assessmentId)
+    );
+    
+    const snapshot = await getDocs(q);
+    
+    if (snapshot.empty) {
+      console.log('📝 No assignments found for assessment');
+      return 0;
+    }
+    
+    // Update all assignments in batches (handle Firestore 500 operation limit)
+    const batches = [];
+    let currentBatch = writeBatch(db);
+    let operationCount = 0;
+    let updatedCount = 0;
+    
+    // First, add the assessment update to the first batch
+    const assessmentRef = doc(db, 'assessments', assessmentId);
+    currentBatch.update(assessmentRef, {
+      createdBy: newTeacherUid,
+      updatedAt: serverTimestamp()
+    });
+    operationCount++;
+    
+    snapshot.docs.forEach(assignmentDoc => {
+      currentBatch.update(assignmentDoc.ref, {
+        assignedBy: newTeacherUid,
+        updatedAt: serverTimestamp()
+      });
+      operationCount++;
+      updatedCount++;
+      
+      // Handle batch size limit (reserve 1 for assessment update)
+      if (operationCount >= 449) {
+        batches.push(currentBatch);
+        currentBatch = writeBatch(db);
+        operationCount = 0;
+      }
+    });
+    
+    // Add final batch if it has operations
+    if (operationCount > 0) {
+      batches.push(currentBatch);
+    }
+    
+    // Execute all batches
+    console.log(`🔄 Executing ${batches.length} batches to update ${updatedCount} assignments and assessment...`);
+    for (let i = 0; i < batches.length; i++) {
+      try {
+        await batches[i].commit();
+        console.log(`✅ Batch ${i + 1}/${batches.length} committed successfully`);
+      } catch (batchError) {
+        console.error(`❌ Batch ${i + 1}/${batches.length} failed:`, batchError);
+        throw new Error(`Batch commit failed: ${batchError}`);
+      }
+    }
+    
+    console.log(`✅ Updated ${updatedCount} assignment(s) and assessment to teacher ${newTeacherUid}`);
+    return updatedCount;
+  } catch (error) {
+    console.error('❌ Error bulk updating assignment teacher:', error);
     throw error;
   }
 }
