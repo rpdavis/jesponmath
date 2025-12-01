@@ -1623,6 +1623,49 @@ function createProblemProgress(num1: number, num2: number, operation: OperationT
     flaggedForReview: false, regressionCount: 0, lastRegressionDate: null
   }
 }
+
+// Advanced deduplication
+function deduplicateByProblemId(problems: ProblemProgress[]): ProblemProgress[] {
+  const seen = new Set<string>()
+  return problems.filter(p => {
+    if (seen.has(p.problemId)) return false
+    seen.add(p.problemId)
+    return true
+  })
+}
+
+function deduplicateByProblemIdAndText(problems: ProblemProgress[]): ProblemProgress[] {
+  const seenIds = new Set<string>()
+  const seenTexts = new Set<string>()
+  return problems.filter(p => {
+    const isDup = seenIds.has(p.problemId) || seenTexts.has(p.displayText)
+    if (!isDup) {
+      seenIds.add(p.problemId)
+      seenTexts.add(p.displayText)
+    }
+    return !isDup
+  })
+}
+
+function sampleRandomUnique(problems: ProblemProgress[], count: number): ProblemProgress[] {
+  if (problems.length <= count) return deduplicateByProblemIdAndText(problems)
+  
+  const shuffled = shuffleArray([...problems])
+  const sampled: ProblemProgress[] = []
+  const seenIds = new Set<string>()
+  const seenTexts = new Set<string>()
+  
+  for (const problem of shuffled) {
+    if (sampled.length >= count) break
+    if (!seenIds.has(problem.problemId) && !seenTexts.has(problem.displayText)) {
+      seenIds.add(problem.problemId)
+      seenTexts.add(problem.displayText)
+      sampled.push(problem)
+    }
+  }
+  
+  return sampled
+}
 </script>
 
 <style scoped>
