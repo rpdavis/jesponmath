@@ -21,9 +21,10 @@
 
     <!-- Main Content -->
     <div v-else class="progress-content">
-      <!-- Current Operation Card -->
+      <!-- Current Sub-Level Card -->
       <div class="current-operation-card">
-        <h3>Current Mission: {{ capitalizeOperation(currentOperation) }}</h3>
+        <h3>Current Focus: {{ currentSubLevelName }}</h3>
+        <p class="sublevel-path">{{ currentOperationName }} → {{ currentProgress?.completedSubLevels || 0 }}/{{ totalSubLevels }} Sub-Levels Complete</p>
         
         <div class="achievement-display">
           <div class="achievement-bars">
@@ -54,23 +55,35 @@
 
           <div class="total-stars">
             <div class="stars-number">{{ currentDistribution.mastered + currentDistribution.proficient }}</div>
-            <div class="stars-label">⭐ Total Stars Earned</div>
+            <div class="stars-label">⭐ Facts Learned</div>
           </div>
         </div>
 
-        <!-- Unlock Progress -->
-        <div class="unlock-section" :class="{ ready: currentProgress?.canUnlockNext }">
-          <h4>{{ nextOperationMessage }}</h4>
-          <div class="unlock-bar-large">
-            <div class="unlock-fill-large" :style="{ width: `${Math.min(100, currentProficiency)}%` }"></div>
-            <span class="unlock-text-overlay">{{ currentProficiency }}/95%</span>
+        <!-- Sub-Level Progress -->
+        <div class="sublevel-progress-section">
+          <h4>{{ currentOperationName }} Sub-Levels</h4>
+          <div class="sublevels-list">
+            <div 
+              v-for="(sublevel, index) in operationSubLevels" 
+              :key="sublevel.id"
+              class="sublevel-item"
+              :class="{
+                completed: index < getCompletedCount(),
+                current: sublevel.id === currentProgress?.currentSubLevel,
+                upcoming: index > getCompletedCount()
+              }"
+            >
+              <div class="sublevel-status">
+                <span v-if="index < getCompletedCount()">✅</span>
+                <span v-else-if="sublevel.id === currentProgress?.currentSubLevel">⏳</span>
+                <span v-else>🔒</span>
+              </div>
+              <div class="sublevel-name">{{ sublevel.name }}</div>
+              <div v-if="sublevel.id === currentProgress?.currentSubLevel" class="sublevel-percentage">
+                {{ currentProficiency }}% complete
+              </div>
+            </div>
           </div>
-          <p class="unlock-description">
-            {{ currentProgress?.canUnlockNext 
-              ? '🎉 Amazing! You\'re ready to unlock the next operation!' 
-              : `Keep going! You need ${95 - currentProficiency}% more to unlock ${nextOperationName}.` 
-            }}
-          </p>
         </div>
       </div>
 
@@ -147,6 +160,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import { getAllFluencyProgress, getPracticeSessions } from '@/services/mathFluencyServices'
 import { getNextOperation } from '@/types/mathFluency'
+import { getSubLevelConfig, getSubLevelsForOperation } from '@/config/fluencySubLevels'
 import type { MathFluencyProgress, OperationType, MathFluencyPracticeSession } from '@/types/mathFluency'
 
 const router = useRouter()
@@ -180,6 +194,32 @@ const currentDistribution = computed(() => currentProgress.value?.proficiencyDis
 })
 
 const currentProficiency = computed(() => currentProgress.value?.proficiencyPercentage || 0)
+
+const currentSubLevelName = computed(() => {
+  if (!currentProgress.value?.currentSubLevel) return 'Not Started'
+  const config = getSubLevelConfig(currentProgress.value.currentSubLevel)
+  return config?.name || currentProgress.value.currentSubLevel
+})
+
+const currentOperationName = computed(() => capitalizeOperation(currentOperation.value))
+
+const totalSubLevels = computed(() => {
+  const subLevels = getSubLevelsForOperation(currentOperation.value)
+  return subLevels.length
+})
+
+const operationSubLevels = computed(() => {
+  return getSubLevelsForOperation(currentOperation.value)
+})
+
+function getCompletedCount(): number {
+  if (!currentProgress.value?.completedSubLevels) return 0
+  // Handle both array and number formats
+  if (Array.isArray(currentProgress.value.completedSubLevels)) {
+    return currentProgress.value.completedSubLevels.length
+  }
+  return Number(currentProgress.value.completedSubLevels) || 0
+}
 
 const nextOperationName = computed(() => {
   const next = getNextOperation(currentOperation.value)

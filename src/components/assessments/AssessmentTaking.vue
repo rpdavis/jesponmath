@@ -599,22 +599,18 @@ const startAssessment = async () => {
   if (assessment.value?.id && authStore.currentUser?.uid) {
     const savedProgress = await loadSavedProgress();
     if (savedProgress) {
-      const resumeConfirm = confirm(
-        `Found saved progress: ${Object.keys(savedProgress.answers).length}/${assessment.value.questions?.length || 0} questions answered.\n\nWould you like to resume where you left off?`
+      // Inform the student they'll continue where they left off (no cancel option)
+      alert(
+        `Assessment in progress\n\nYou have answered ${Object.keys(savedProgress.answers).length} of ${assessment.value.questions?.length || 0} questions.\n\nYou will continue where you left off.`
       );
       
-      if (resumeConfirm) {
-        // Restore saved progress
-        answers.value = savedProgress.answers;
-        currentQuestionIndex.value = savedProgress.currentQuestionIndex;
-        if (savedProgress.startTime) {
-          startTime.value = new Date(savedProgress.startTime);
-        }
-        console.log('✅ Resumed from saved progress');
-      } else {
-        // Start fresh - clear saved progress
-        await clearSavedProgress();
+      // Automatically restore saved progress
+      answers.value = savedProgress.answers;
+      currentQuestionIndex.value = savedProgress.currentQuestionIndex;
+      if (savedProgress.startTime) {
+        startTime.value = new Date(savedProgress.startTime);
       }
+      console.log('✅ Resumed from saved progress');
     }
   }
   

@@ -412,15 +412,21 @@ const getStandardScoreForStudent = (
   let percentage = 0
   
   if (scoringMethod === 'keepTop') {
-    // Keep Top Score: Take highest scoring attempts up to maxScore
+    // Keep Top Score: Takes highest scoring attempts up to maxScore limit
     questionAttempts.sort((a, b) => b.score - a.score)
-    const limitedAttempts = maxScore && maxScore > 0 ? 
-      questionAttempts.slice(0, maxScore) : 
-      questionAttempts
     
-    correct = limitedAttempts.filter(attempt => attempt.isCorrect).length
-    total = limitedAttempts.length
-    percentage = total > 0 ? Math.round((correct / total) * 100) : 0
+    if (maxScore && maxScore > 0) {
+      // Take top maxScore questions (best performance)
+      const topAttempts = questionAttempts.slice(0, maxScore)
+      correct = topAttempts.filter(attempt => attempt.isCorrect).length
+      total = maxScore  // Use maxScore as fixed denominator
+      percentage = total > 0 ? Math.round((correct / total) * 100) : 0
+    } else {
+      // No max score set - use all attempts
+      correct = questionAttempts.filter(attempt => attempt.isCorrect).length
+      total = questionAttempts.length
+      percentage = total > 0 ? Math.round((correct / total) * 100) : 0
+    }
     
   } else if (scoringMethod === 'average') {
     // Average Scores: Calculate average percentage across all attempts

@@ -168,26 +168,60 @@ export function filterAssessmentsByPeriod(assessments: any[], period: AcademicPe
 }
 
 export function filterResultsByPeriod(results: any[], period: AcademicPeriod): any[] {
-  return results.filter(result => {
+  let invalidDateCount = 0;
+  let missingDateCount = 0;
+  
+  const filtered = results.filter(result => {
     // Try to get completedAt, fall back to createdAt or include if no date exists
-    let dateToCheck: Date;
+    let dateToCheck: Date | null = null;
     
-    if (result.completedAt) {
-      dateToCheck = result.completedAt?.toDate?.() || new Date(result.completedAt);
-    } else if (result.createdAt) {
-      dateToCheck = result.createdAt?.toDate?.() || new Date(result.createdAt);
-    } else {
-      // If no date field exists, include it to avoid hiding results
-      console.warn('Result missing both completedAt and createdAt:', result.id);
-      return true;
+    try {
+      if (result.completedAt) {
+        // Handle Firestore Timestamp objects or regular dates
+        if (result.completedAt?.toDate) {
+          dateToCheck = result.completedAt.toDate();
+        } else if (result.completedAt?.seconds) {
+          dateToCheck = new Date(result.completedAt.seconds * 1000);
+        } else if (typeof result.completedAt === 'number') {
+          dateToCheck = new Date(result.completedAt);
+        } else if (result.completedAt instanceof Date) {
+          dateToCheck = result.completedAt;
+        }
+      } else if (result.createdAt) {
+        // Handle Firestore Timestamp objects or regular dates
+        if (result.createdAt?.toDate) {
+          dateToCheck = result.createdAt.toDate();
+        } else if (result.createdAt?.seconds) {
+          dateToCheck = new Date(result.createdAt.seconds * 1000);
+        } else if (typeof result.createdAt === 'number') {
+          dateToCheck = new Date(result.createdAt);
+        } else if (result.createdAt instanceof Date) {
+          dateToCheck = result.createdAt;
+        }
+      }
+    } catch (e) {
+      // Error parsing date, will be caught below
+    }
+    
+    // If no valid date could be parsed
+    if (!dateToCheck) {
+      missingDateCount++;
+      return true; // Include to avoid hiding results
     }
     
     // Check if date is valid
     if (isNaN(dateToCheck.getTime())) {
-      console.warn('Invalid date in result:', result.id, dateToCheck);
+      invalidDateCount++;
       return true; // Include invalid dates to avoid hiding results
     }
     
     return dateToCheck >= period.startDate && dateToCheck <= period.endDate;
   });
+  
+  // Log summary instead of individual warnings to avoid console spam
+  if (invalidDateCount > 0 || missingDateCount > 0) {
+    console.warn(`📅 Academic period filter: ${invalidDateCount} invalid dates, ${missingDateCount} missing dates out of ${results.length} results (included in results)`);
+  }
+  
+  return filtered;
 }

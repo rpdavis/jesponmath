@@ -287,9 +287,9 @@ function generateStrategicQuestion(
 function getOperationConfig(operation: 'addition' | 'subtraction' | 'multiplication' | 'division') {
   switch (operation) {
     case 'addition':
-      return { min1: 0, max1: 20, min2: 0, max2: 20 }
+      return { min1: 1, max1: 20, min2: 1, max2: 20 } // Exclude 0 from addition
     case 'subtraction':
-      return { min1: 0, max1: 20, min2: 0, max2: 20 }
+      return { min1: 1, max1: 20, min2: 1, max2: 20 } // Exclude 0 from subtraction
     case 'multiplication':
       return { min1: 0, max1: 12, min2: 0, max2: 12 }
     case 'division':

@@ -470,6 +470,30 @@
                 </label>
               </div>
 
+              <!-- Quarter/Period Selection -->
+              <div class="quarter-selection">
+                <h4>📅 Academic Quarter</h4>
+                <div class="form-group">
+                  <label class="form-label">
+                    Which quarter is this assessment for?
+                    <span class="help-text">Controls when students can see this assessment</span>
+                  </label>
+                  <select v-model="selectedQuarter" class="form-select">
+                    <option value="auto">🔄 Auto-Detect (Current Quarter)</option>
+                    <option value="all">📚 All Year (No Quarter Restriction)</option>
+                    <option value="q1">Q1 - Quarter 1 (Aug-Oct)</option>
+                    <option value="q2">Q2 - Quarter 2 (Nov-Jan)</option>
+                    <option value="q3">Q3 - Quarter 3 (Feb-Apr)</option>
+                    <option value="q4">Q4 - Quarter 4 (May-Jul)</option>
+                  </select>
+                  <small class="form-help">
+                    <strong>Quarterly:</strong> Students see only in specific quarter (ESAs, regular assignments)<br>
+                    <strong>All Year:</strong> Students see anytime (diagnostics, tutoring, benchmarks)<br>
+                    <strong>Auto-Detect:</strong> Uses current quarter automatically
+                  </small>
+                </div>
+              </div>
+
               <!-- Class Selection (when mode is 'class') -->
               <div v-if="assignmentMode === 'class'" class="class-selection">
                 <h4>Select Classes/Periods</h4>
@@ -1206,6 +1230,7 @@ import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '@/stores/authStore';
 import { usePermissions } from '@/composables/usePermissions';
 import { createAssessment, getAssessment, getAssessmentByGoalId, updateAssessment, assignAssessmentToStudent, unassignAssessmentFromStudent, getCurrentlyAssignedStudents, regradeAssessmentResults } from '@/firebase/iepServices';
+import { getAutoDetectedAcademicPeriod } from '@/firebase/assignmentServices';
 import { serverTimestamp } from 'firebase/firestore';
 import { getAllStudents, getStudentsByTeacher } from '@/firebase/userServices';
 import { getAllGoals, getGoalsByTeacher, getGoal, assignAssessmentToGoal } from '@/firebase/goalServices';
@@ -1241,6 +1266,7 @@ const loadingStudents = ref(true);
 
 // Assignment mode and filtering
 const assignmentMode = ref('template');
+const selectedQuarter = ref('auto'); // Quarter selection: 'auto', 'q1', 'q2', 'q3', 'q4'
 const selectedClasses = ref<string[]>([]);
 const studentSearchQuery = ref('');
 
@@ -2036,6 +2062,15 @@ const loadAssessment = async () => {
         dueDateInput.value = new Date(data.dueDate.seconds * 1000).toISOString().slice(0, 16);
       }
       
+      // Initialize quarter dropdown with existing value
+      if (data.academicPeriod) {
+        selectedQuarter.value = data.academicPeriod;
+        console.log(`📅 Loaded existing academicPeriod: ${data.academicPeriod}`);
+      } else {
+        selectedQuarter.value = 'auto'; // Default for old assessments
+        console.log('📅 No academicPeriod found, defaulting to auto-detect');
+      }
+      
       // Set selected students based on current assignments (new approach)
       try {
         const currentlyAssigned = await getCurrentlyAssignedStudents(assessmentId);
@@ -2124,7 +2159,13 @@ const performSave = async () => {
         const assessmentData = {
           ...assessment.value,
           createdBy: authStore.currentUser?.uid,
-          updatedAt: serverTimestamp()
+          updatedAt: serverTimestamp(),
+          // Set academic period on the assessment
+          academicPeriod: selectedQuarter.value === 'auto' 
+            ? getAutoDetectedAcademicPeriod() 
+            : selectedQuarter.value === 'all'
+            ? 'all'
+            : selectedQuarter.value
         };
         
         // Remove any student-specific fields from template
@@ -2179,8 +2220,16 @@ const performSave = async () => {
         // Create the assessment template (without student-specific fields)
         const assessmentData = {
           ...assessment.value,
-          createdBy: authStore.currentUser?.uid || 'system'
+          createdBy: authStore.currentUser?.uid || 'system',
+          // Set academic period on the assessment
+          academicPeriod: selectedQuarter.value === 'auto' 
+            ? getAutoDetectedAcademicPeriod() 
+            : selectedQuarter.value === 'all'
+            ? 'all'
+            : selectedQuarter.value
         };
+        
+        console.log(`📅 Saving assessment with academicPeriod: ${assessmentData.academicPeriod}`);
         
         // Ensure no student-specific fields in template
         delete (assessmentData as any).studentSeisId;
@@ -2191,8 +2240,13 @@ const performSave = async () => {
         console.log('✅ Created assessment template:', newAssessmentId);
         
         // Assign to selected students
+        // Note: Quarter is now stored on the assessment itself, not individual assignments
         for (const studentUid of selectedStudents.value) {
-          await assignAssessmentToStudent(newAssessmentId, studentUid, authStore.currentUser?.uid || 'system');
+          await assignAssessmentToStudent(
+            newAssessmentId, 
+            studentUid, 
+            authStore.currentUser?.uid || 'system'
+          );
           console.log('✅ Assigned to student:', studentUid);
         }
         
@@ -2206,8 +2260,16 @@ const performSave = async () => {
       // Create template assessment (no student assigned)
       const templateData = {
         ...assessment.value,
-        createdBy: authStore.currentUser?.uid || 'system'
+        createdBy: authStore.currentUser?.uid || 'system',
+        // Set academic period on the assessment
+        academicPeriod: selectedQuarter.value === 'auto' 
+          ? getAutoDetectedAcademicPeriod() 
+          : selectedQuarter.value === 'all'
+          ? 'all'
+          : selectedQuarter.value
       };
+      
+      console.log(`📅 Saving template assessment with academicPeriod: ${templateData.academicPeriod}`);
       
       if (isEditing.value) {
         await updateAssessment(assessmentId, templateData);
@@ -3930,6 +3992,68 @@ onMounted(() => {
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 15px;
   margin-bottom: 20px;
+}
+
+/* Quarter Selection Styles */
+.quarter-selection {
+  background: #f0f9ff;
+  padding: 20px;
+  border-radius: 8px;
+  border: 2px solid #3b82f6;
+  margin: 20px 0;
+}
+
+.quarter-selection h4 {
+  color: #1e40af;
+  margin: 0 0 15px 0;
+  font-size: 1.1rem;
+}
+
+.quarter-selection .form-label {
+  display: block;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 8px;
+}
+
+.quarter-selection .help-text {
+  display: block;
+  font-size: 0.85rem;
+  color: #6b7280;
+  font-weight: normal;
+  margin-top: 4px;
+}
+
+.quarter-selection .form-select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 2px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 1rem;
+  background: white;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.quarter-selection .form-select:hover {
+  border-color: #3b82f6;
+}
+
+.quarter-selection .form-select:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.quarter-selection .form-help {
+  display: block;
+  margin-top: 10px;
+  padding: 10px;
+  background: #dbeafe;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  color: #1e40af;
+  line-height: 1.5;
 }
 
 .mode-option {

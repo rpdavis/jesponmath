@@ -715,17 +715,10 @@ async function startTest() {
     answers.value = savedProgress.answers
     currentQuestionIndex.value = savedProgress.currentQuestionIndex
     
-    const resumeConfirm = confirm(
-      `Found saved progress: ${savedProgress.answers.length}/${savedProgress.questions.length} questions completed.\n\nWould you like to resume where you left off?`
+    // Inform the student they'll continue where they left off (no cancel option)
+    alert(
+      `Assessment in progress\n\nYou have completed ${savedProgress.answers.length} of ${savedProgress.questions.length} questions.\n\nYou will continue where you left off.`
     )
-    
-    if (!resumeConfirm) {
-      // Start fresh
-      questions.value = generateMixedDiagnostic(studentGoals.value)
-      answers.value = []
-      currentQuestionIndex.value = 0
-      await clearSavedProgress()
-    }
   } else {
     // Generate new test
     questions.value = generateMixedDiagnostic(studentGoals.value)

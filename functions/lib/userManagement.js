@@ -165,7 +165,7 @@ exports.beforeUserCreatedHandler = (0, identity_1.beforeUserCreated)(async (even
         // Allow creation to continue on error
     }
 });
-// Before user signs in - merge with existing records
+// Before user signs in - merge with existing records AND enforce authorization
 exports.beforeUserSignedInHandler = (0, identity_1.beforeUserSignedIn)(async (event) => {
     console.log('🔄 beforeUserSignedIn triggered for:', event.data.email);
     const { email, uid } = event.data;
@@ -174,10 +174,21 @@ exports.beforeUserSignedInHandler = (0, identity_1.beforeUserSignedIn)(async (ev
         return;
     }
     try {
-        // Check if this email exists in students collection with different UID
+        // SECURITY: Check if this email exists in students collection
         const studentsSnapshot = await db.collection('students')
             .where('email', '==', email)
             .get();
+        // SECURITY: Check if this email exists in teachers collection
+        const teachersSnapshot = await db.collection('teachers')
+            .where('email', '==', email)
+            .get();
+        // SECURITY ENFORCEMENT: Block sign-in if email is not pre-authorized
+        if (studentsSnapshot.empty && teachersSnapshot.empty) {
+            console.log('🚫 BLOCKING unauthorized email sign-in attempt:', email);
+            throw new Error('Access denied. Your email address is not authorized for this system. Please contact your teacher or administrator to be added.');
+        }
+        console.log('✅ Email is authorized:', email);
+        // Continue with merge logic for authorized users
         if (!studentsSnapshot.empty) {
             const existingStudentDoc = studentsSnapshot.docs[0];
             const existingStudentData = existingStudentDoc.data();
@@ -221,10 +232,7 @@ exports.beforeUserSignedInHandler = (0, identity_1.beforeUserSignedIn)(async (ev
             console.log('✅ User record created/updated');
             return;
         }
-        // Check if this email exists in teachers collection
-        const teachersSnapshot = await db.collection('teachers')
-            .where('email', '==', email)
-            .get();
+        // Process teacher/admin (already checked authorization above)
         if (!teachersSnapshot.empty) {
             const existingTeacherDoc = teachersSnapshot.docs[0];
             const existingTeacherData = existingTeacherDoc.data();
@@ -242,12 +250,12 @@ exports.beforeUserSignedInHandler = (0, identity_1.beforeUserSignedIn)(async (ev
             else {
                 console.log('✅ Teacher record already has correct UID');
             }
-            // Ensure user record exists
+            // Ensure user record exists (preserve actual role: teacher or admin)
             const userRecord = {
                 uid: uid,
                 email: email,
                 displayName: existingTeacherData.displayName || `${existingTeacherData.firstName} ${existingTeacherData.lastName}`,
-                role: 'teacher',
+                role: existingTeacherData.role || 'teacher',
                 isActive: true,
                 createdAt: existingTeacherData.createdAt || new Date(),
                 lastLogin: new Date()
@@ -256,11 +264,17 @@ exports.beforeUserSignedInHandler = (0, identity_1.beforeUserSignedIn)(async (ev
             console.log('✅ User record created/updated');
             return;
         }
-        console.log('✅ New user, allowing normal sign-in flow');
+        // This should never happen due to authorization check above
+        console.error('❌ CRITICAL: User passed authorization check but no data found!');
     }
     catch (error) {
         console.error('❌ Error in beforeUserSignedIn:', error);
-        // Allow sign-in to continue on error
+        // If this is an authorization error, re-throw it to block sign-in
+        if (error.message && error.message.includes('Access denied')) {
+            throw error; // Block the sign-in
+        }
+        // For other errors, allow sign-in to continue (prevents breaking auth for technical issues)
+        console.warn('⚠️ Non-authorization error, allowing sign-in to continue');
     }
 });
 // Sync users from Google Classroom (server-side for security)

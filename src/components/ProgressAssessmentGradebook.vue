@@ -398,9 +398,11 @@ async function loadData() {
 }
 
 async function loadAllResults() {
-  const results: AssessmentResult[] = []
+  // PERFORMANCE OPTIMIZED: Load results for all students in parallel instead of sequentially
+  // This reduces total query time from N seconds to ~1 second for N students
+  const startTime = performance.now();
   
-  for (const student of students.value) {
+  const resultPromises = students.value.map(async (student) => {
     try {
       const studentResults = await getAssessmentResultsByStudent(student.uid)
       // Filter to only PA assessments
@@ -408,11 +410,19 @@ async function loadAllResults() {
         const assessment = assessments.value.find(a => a.id === r.assessmentId)
         return assessment?.category === 'PA'
       })
-      results.push(...paResults)
+      return paResults
     } catch (error) {
       console.error(`Error loading results for student ${student.uid}:`, error)
+      return []
     }
-  }
+  });
+  
+  // Wait for all student queries to complete in parallel
+  const allStudentResults = await Promise.all(resultPromises);
+  const results = allStudentResults.flat();
+  
+  const queryTime = Math.round(performance.now() - startTime);
+  console.log(`⚡ Parallel query completed in ${queryTime}ms for ${students.value.length} students (${results.length} total results)`);
   
   assessmentResults.value = results
 }

@@ -4,14 +4,16 @@
 import type { MathFactProblem, OperationType } from '@/types/mathFluency'
 
 /**
- * Generate all possible addition problems (0-20)
+ * Generate all possible addition problems (2-20)
+ * Excludes problems with 0 (e.g., 0+7) and 1 (e.g., 1+7) as they are trivial
+ * Adding 1 is just counting forward, not true addition fluency
  * Only includes one version of commutative pairs (e.g., 3+12 but not 12+3)
- * Total: ~120 unique problems (combinations where sum <= 20 and num1 <= num2)
+ * Total: ~90 unique problems (combinations where sum <= 20 and num1 <= num2)
  */
 export function generateAllAdditionProblems(): MathFactProblem[] {
   const problems: MathFactProblem[] = []
   
-  for (let num1 = 0; num1 <= 20; num1++) {
+  for (let num1 = 2; num1 <= 20; num1++) {  // Start at 2 to exclude 0 and 1
     for (let num2 = num1; num2 <= 20; num2++) {  // Start at num1 to avoid duplicates
       const sum = num1 + num2
       if (sum <= 20) {
@@ -34,19 +36,20 @@ export function generateAllAdditionProblems(): MathFactProblem[] {
 }
 
 /**
- * Generate all possible subtraction problems (0-20, no negatives)
- * Focuses on essential facts - skips trivial "subtract 0" and "subtract self" problems
- * Total: ~190 unique problems (reduced from ~231)
+ * Generate all possible subtraction problems (2-20, no negatives)
+ * Excludes problems with 0 (e.g., 0-5, 7-0) and 1 (e.g., 7-1) as they are trivial
+ * Subtracting 1 is just counting backward, not true subtraction fluency
+ * Focuses on essential facts - skips "subtract 0", "subtract 1", and "subtract self" problems
+ * Total: ~150 unique problems (reduced from ~231)
  */
 export function generateAllSubtractionProblems(): MathFactProblem[] {
   const problems: MathFactProblem[] = []
   
-  for (let minuend = 0; minuend <= 20; minuend++) {
-    for (let subtrahend = 0; subtrahend <= minuend; subtrahend++) {
+  for (let minuend = 2; minuend <= 20; minuend++) {  // Start at 2 to exclude 0 and 1
+    for (let subtrahend = 2; subtrahend <= minuend; subtrahend++) {  // Start at 2 to exclude 0 and 1
       // Skip trivial problems:
-      // - Subtracting 0 (e.g., 15-0=15) - too easy
       // - Subtracting from self (e.g., 15-15=0) - too easy
-      if (subtrahend === 0 || subtrahend === minuend) {
+      if (subtrahend === minuend) {
         continue
       }
       
@@ -249,12 +252,55 @@ function getDivisionFactFamily(divisor: number): string {
 
 /**
  * Select random problems from an array
+ * ⚠️ WARNING: This does NOT guarantee uniqueness. Use sampleRandomUnique for ProblemProgress arrays.
  */
 export function sampleRandom<T>(array: T[], count: number): T[] {
   if (array.length <= count) return [...array]
   
-  const shuffled = [...array].sort(() => Math.random() - 0.5)
+  // Use proper Fisher-Yates shuffle instead of sort(random) which is biased
+  const shuffled = [...array]
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+  }
+  
   return shuffled.slice(0, count)
+}
+
+/**
+ * Select random problems ensuring uniqueness by problemId (for ProblemProgress arrays)
+ */
+export function sampleRandomUnique(problems: Array<{ problemId: string }>, count: number): Array<{ problemId: string }> {
+  if (problems.length <= count) {
+    // Deduplicate and return
+    const seen = new Set<string>()
+    return problems.filter(p => {
+      if (seen.has(p.problemId)) return false
+      seen.add(p.problemId)
+      return true
+    })
+  }
+  
+  // Use proper Fisher-Yates shuffle
+  const shuffled = [...problems]
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+  }
+  
+  // Take first count, ensuring uniqueness
+  const sampled: Array<{ problemId: string }> = []
+  const seenIds = new Set<string>()
+  
+  for (const problem of shuffled) {
+    if (sampled.length >= count) break
+    if (!seenIds.has(problem.problemId)) {
+      seenIds.add(problem.problemId)
+      sampled.push(problem)
+    }
+  }
+  
+  return sampled
 }
 
 /**

@@ -22,8 +22,10 @@ const goHome = () => {
 };
 
 // Show navbar only for authenticated users and non-login routes
+// Hide for immersive practice sessions
 const showNavbar = computed(() => {
-  return authStore.isAuthenticated && route.path !== '/login';
+  const immersiveRoutes = ['/login', '/fluency/daily-practice'];
+  return authStore.isAuthenticated && !immersiveRoutes.includes(route.path);
 });
 
 // Menu functions

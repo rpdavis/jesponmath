@@ -76,6 +76,7 @@ export interface Assessment {
   standard?: string; // Optional - can be set per question instead
   gradeLevel: number;
   category: 'HW' | 'Assign' | 'ESA' | 'SA' | 'PA' | 'Other';
+  academicPeriod?: string; // Quarter restriction: "q1", "q2", "q3", "q4", "all" (year-long), or undefined (no restriction)
   questions: AssessmentQuestion[];
   totalPoints: number;
   timeLimit?: number; // in minutes
@@ -227,6 +228,7 @@ export interface AssessmentAssignment {
   status: 'assigned' | 'started' | 'completed' | 'overdue';
   priority?: 'low' | 'medium' | 'high';
   notes?: string; // Assignment-specific notes
+  academicPeriod?: string; // Quarter/period (e.g., "q1", "q2") - auto-detected or manually set
   
   // Completion tracking
   startedAt?: any; // When student started (Timestamp)

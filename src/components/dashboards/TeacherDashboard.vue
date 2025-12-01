@@ -142,11 +142,18 @@
           <div class="action-button">View Fluency Dashboard →</div>
         </div>
 
-        <div class="action-card highlighted" @click="router.push('/fluency/initial-diagnostic')">
-          <div class="action-icon">🔢</div>
-          <h3>Initial Diagnostic</h3>
-          <p>Baseline assessment - test all facts to establish proficiency levels (assign to students)</p>
-          <div class="action-button">Assign/Start Diagnostic →</div>
+        <div class="action-card featured highlighted large" @click="router.push('/fluency/teacher-view')">
+          <div class="action-icon">🎯</div>
+          <h3>Math Facts Breakdown</h3>
+          <p>See every student's progress on individual facts (4+6, 8×7, etc.) with color-coded status</p>
+          <div class="action-button">View Fact Breakdown →</div>
+        </div>
+
+        <div class="action-card featured highlighted" @click="router.push('/fluency/placement-diagnostic')">
+          <div class="action-icon">🎯</div>
+          <h3>Placement Diagnostic</h3>
+          <p><strong>Recommended:</strong> 80-problem test - each operation tested separately (~30 min) - identifies starting level for daily practice</p>
+          <div class="action-button">Start Placement →</div>
         </div>
 
         <div class="action-card highlighted" @click="router.push('/fluency/paper-assessment')">

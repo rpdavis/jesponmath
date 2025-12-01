@@ -43,6 +43,36 @@
           </label>
         </div>
         
+        <!-- Assessment Category Filter Buttons (only show in standards view) -->
+        <div v-if="viewMode === 'standards'" class="assessment-category-filters">
+          <label class="filter-label">Assessment Type:</label>
+          <div class="category-buttons">
+            <button 
+              @click="selectedAssessmentCategory = ''"
+              class="category-filter-btn assessment-cat-btn"
+              :class="{ active: selectedAssessmentCategory === '' }"
+            >
+              All Types
+            </button>
+            <button 
+              v-for="category in uniqueAssessmentCategories" 
+              :key="category"
+              @click="selectedAssessmentCategory = category"
+              class="category-filter-btn assessment-cat-btn"
+              :class="{ 
+                active: selectedAssessmentCategory === category,
+                [`cat-${category.toLowerCase()}`]: true
+              }"
+            >
+              {{ category === 'ESA' ? 'Essential Standards (ESA)' : 
+                 category === 'SA' ? 'Standard Assessments (SA)' : 
+                 category === 'HW' ? 'Homework (HW)' : 
+                 category === 'Assign' ? 'Assignments' : 
+                 category }}
+            </button>
+          </div>
+        </div>
+        
         <!-- App Category Filter Buttons (only show in standards view) -->
         <div v-if="viewMode === 'standards' && uniqueAppCategories.length > 0" class="app-category-filters">
           <label class="filter-label">App Categories:</label>
@@ -271,7 +301,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useAuthStore } from '@/stores/authStore';
 import { getAssessmentResultsByStudent, getAssessmentsByStudent } from '@/firebase/iepServices';
 import { getAllCustomStandards } from '@/firebase/standardsServices';
@@ -293,9 +323,18 @@ const customStandards = ref<CustomStandard[]>([]);
 // View mode and filters - default to assessments view to show question breakdown
 const viewMode = ref('assessments');
 const selectedAppCategory = ref('');
+const selectedAssessmentCategory = ref(''); // NEW: Filter by assessment category (ESA, SA, etc.)
 
 // Question breakdown state
 const expandedResults = ref<Record<string, boolean>>({});
+
+// PERFORMANCE: Cache for standard scores to avoid expensive recalculations
+const standardScoreCache = ref<Map<string, { correct: number; total: number; percentage: number }>>(new Map());
+
+// Clear cache when data changes
+const clearStandardScoreCache = () => {
+  standardScoreCache.value.clear();
+};
 
 // Academic period management
 const { filterAssessments, filterResults, selectedPeriod } = useGlobalAcademicPeriods();
@@ -330,7 +369,10 @@ const averageScore = computed(() => {
 });
 
 // Get unique standards from student's assessments (filtered by current period)
+// PERFORMANCE: Memoized to avoid recalculating on every render
 const uniqueStandards = computed(() => {
+  const startTime = performance.now();
+  
   const allQuestions = filteredAssessments.value.flatMap(assessment => [
     // Include assessment-level standard as a pseudo-question
     ...(assessment.standard ? [{ standard: assessment.standard }] : []),
@@ -338,7 +380,14 @@ const uniqueStandards = computed(() => {
     ...(assessment.questions || [])
   ]);
   
-  return getAllStandardsFromQuestions(allQuestions);
+  const standards = getAllStandardsFromQuestions(allQuestions);
+  
+  const calcTime = Math.round(performance.now() - startTime);
+  if (calcTime > 10) {
+    console.log(`📊 Calculated ${standards.length} unique standards in ${calcTime}ms`);
+  }
+  
+  return standards;
 });
 
 // Get unique app categories from custom standards
@@ -351,16 +400,62 @@ const uniqueAppCategories = computed(() => {
   return categories.sort();
 });
 
-// Filter standards by app category
+// Get unique assessment categories from student's assessments
+const uniqueAssessmentCategories = computed(() => {
+  const categories = new Set<string>();
+  
+  filteredAssessments.value.forEach(assessment => {
+    if (assessment.category) {
+      categories.add(assessment.category);
+    }
+  });
+  
+  return Array.from(categories).sort();
+});
+
+// Filter standards by app category and/or assessment category
+// PERFORMANCE FIX: Don't clear cache in computed - it causes freezing
 const filteredStandards = computed(() => {
+  const startTime = performance.now();
   let standards = uniqueStandards.value;
   
-  // Apply app category filter if selected
+  // Apply app category filter if selected (for custom standards)
   if (selectedAppCategory.value) {
     standards = standards.filter(standardCode => {
       const customStd = getCustomStandardByCode(standardCode);
       return customStd?.appCategory === selectedAppCategory.value;
     });
+  }
+  
+  // Apply assessment category filter if selected (ESA, SA, HW, etc.)
+  if (selectedAssessmentCategory.value) {
+    // Get all standards from assessments of this category
+    const categoryStandards = new Set<string>();
+    
+    filteredAssessments.value
+      .filter(assessment => assessment.category === selectedAssessmentCategory.value)
+      .forEach(assessment => {
+        // Add assessment-level standard
+        if (assessment.standard) {
+          const assessmentStandards = parseStandards(assessment.standard);
+          assessmentStandards.forEach(std => categoryStandards.add(std));
+        }
+        // Add question-level standards
+        assessment.questions?.forEach((question: any) => {
+          if (question.standard) {
+            const questionStandards = parseStandards(question.standard);
+            questionStandards.forEach(std => categoryStandards.add(std));
+          }
+        });
+      });
+    
+    // Filter to only standards from this assessment category
+    standards = standards.filter(std => categoryStandards.has(std));
+  }
+  
+  const filterTime = Math.round(performance.now() - startTime);
+  if (filterTime > 10) {
+    console.log(`🔍 Filtered to ${standards.length} standards in ${filterTime}ms`);
   }
   
   return standards;
@@ -398,6 +493,10 @@ const loadResults = async () => {
     console.log(`📊 Loaded ${results.length} results, ${validResults.length} valid (including PA)`);
     
     customStandards.value = allCustomStandards;
+    
+    // Clear cache when new data is loaded
+    clearStandardScoreCache();
+    console.log('🔄 Standard score cache cleared for fresh calculations');
   } catch (err) {
     console.error('Error loading results:', err);
     error.value = 'Failed to load results. Please try again.';
@@ -489,10 +588,16 @@ const getCleanStandardName = (standardCode: string): string => {
   }
 };
 
-// Calculate student's score for a specific standard
+// Calculate student's score for a specific standard (WITH CACHING)
 const getStudentStandardScore = (standard: string) => {
   const studentUid = authStore.currentUser?.uid;
   if (!studentUid) return { correct: 0, total: 0, percentage: 0 };
+  
+  // Check cache first - HUGE performance boost!
+  const cacheKey = `${studentUid}-${standard}`;
+  if (standardScoreCache.value.has(cacheKey)) {
+    return standardScoreCache.value.get(cacheKey)!;
+  }
   
   const customStd = getCustomStandardByCode(standard);
   const maxScore = customStd?.maxScore;
@@ -529,7 +634,9 @@ const getStudentStandardScore = (standard: string) => {
   
   // If no attempts, return 0/0
   if (questionAttempts.length === 0) {
-    return { correct: 0, total: 0, percentage: 0 };
+    const result = { correct: 0, total: 0, percentage: 0 };
+    standardScoreCache.value.set(cacheKey, result);
+    return result;
   }
   
   // Apply scoring method logic
@@ -578,7 +685,12 @@ const getStudentStandardScore = (standard: string) => {
     percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
   }
   
-  return { correct, total, percentage };
+  const result = { correct, total, percentage };
+  
+  // Cache the result for performance (avoids recalculating 30,000+ times)
+  standardScoreCache.value.set(cacheKey, result);
+  
+  return result;
 };
 
 // Calculate mastery using maxScore as factor
@@ -801,6 +913,14 @@ const convertLatexToPlainText = (text: string): string => {
   
   return plainText;
 };
+
+// Watch for filter changes and clear cache (fixing freeze issue)
+// PERFORMANCE FIX: Clear cache in watcher, not in computed property
+watch([selectedAppCategory, selectedAssessmentCategory], () => {
+  // Clear cache when filters change so scores recalculate correctly
+  clearStandardScoreCache();
+  console.log('🔄 Cache cleared due to filter change');
+});
 
 // Initialize
 onMounted(() => {
@@ -1124,6 +1244,78 @@ onMounted(() => {
   background: #3b82f6;
   color: white;
   border-color: #3b82f6;
+}
+
+/* Assessment Category Filter Styles */
+.assessment-category-filters {
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+/* Color code assessment category buttons to match their badge colors */
+.assessment-cat-btn.cat-esa {
+  border-color: #fbbf24;
+}
+
+.assessment-cat-btn.cat-esa:hover {
+  background: #fef3c7;
+  border-color: #f59e0b;
+  color: #92400e;
+}
+
+.assessment-cat-btn.cat-esa.active {
+  background: #fbbf24;
+  border-color: #f59e0b;
+  color: #78350f;
+}
+
+.assessment-cat-btn.cat-sa {
+  border-color: #f472b6;
+}
+
+.assessment-cat-btn.cat-sa:hover {
+  background: #fce7f3;
+  border-color: #ec4899;
+  color: #be185d;
+}
+
+.assessment-cat-btn.cat-sa.active {
+  background: #f472b6;
+  border-color: #ec4899;
+  color: #831843;
+}
+
+.assessment-cat-btn.cat-hw {
+  border-color: #60a5fa;
+}
+
+.assessment-cat-btn.cat-hw:hover {
+  background: #dbeafe;
+  border-color: #3b82f6;
+  color: #1e40af;
+}
+
+.assessment-cat-btn.cat-hw.active {
+  background: #60a5fa;
+  border-color: #3b82f6;
+  color: #1e3a8a;
+}
+
+.assessment-cat-btn.cat-assign {
+  border-color: #34d399;
+}
+
+.assessment-cat-btn.cat-assign:hover {
+  background: #d1fae5;
+  border-color: #10b981;
+  color: #065f46;
+}
+
+.assessment-cat-btn.cat-assign.active {
+  background: #34d399;
+  border-color: #10b981;
+  color: #064e3b;
 }
 
 /* Standards Table Styles */

@@ -64,6 +64,49 @@
       </div>
     </div>
 
+    <!-- Math Facts Fluency Progression -->
+    <div v-if="fluencyProgress.length > 0" class="fluency-progression-section">
+      <h2>🎯 Math Facts Fluency Progression</h2>
+      <div class="operation-progress-grid">
+        <div 
+          v-for="op in fluencyProgress" 
+          :key="op.operation"
+          class="operation-progress-card"
+          :class="{ 'unlocked': op.unlocked, 'completed': op.completedOperation, 'current': op.currentlyPracticing }"
+        >
+          <div class="op-header">
+            <span class="op-icon">{{ getOperationIcon(op.operation) }}</span>
+            <h3>{{ capitalizeOperation(op.operation) }}</h3>
+            <span v-if="op.completedOperation" class="completion-badge">✅</span>
+            <span v-else-if="!op.unlocked" class="locked-badge">🔒</span>
+          </div>
+          
+          <div v-if="op.currentSubLevel" class="sublevel-info">
+            <div class="sublevel-name">{{ getSubLevelName(op.currentSubLevel) }}</div>
+            <div class="proficiency-bar">
+              <div 
+                class="proficiency-fill" 
+                :style="{ width: `${op.subLevelProgress[op.currentSubLevel]?.proficiencyPercentage || 0}%` }"
+              ></div>
+            </div>
+            <div class="proficiency-text">
+              {{ op.subLevelProgress[op.currentSubLevel]?.proficiencyPercentage || 0 }}% Proficient
+              <span v-if="op.subLevelProgress[op.currentSubLevel]?.readyForAssessment" class="ready-badge">
+                ✨ Ready for Test!
+              </span>
+            </div>
+            <div class="completed-sublevels">
+              <span class="sublevel-count">{{ op.completedSubLevels.length }} / {{ getTotalSubLevels(op.operation) }} levels complete</span>
+            </div>
+          </div>
+          
+          <div v-else class="not-started">
+            <p>Complete placement diagnostic to begin</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Pending Assessments - Priority Section -->
     <div v-if="pendingAssessments.length > 0" class="pending-section">
       <div class="section-header">
@@ -209,6 +252,9 @@ import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/authStore';
 import { getAssessmentsByStudent, getAssessmentResultsByStudent } from '@/firebase/iepServices';
+import { getAllFluencyProgress } from '@/services/mathFluencyServices';
+import { getSubLevelConfig } from '@/config/fluencySubLevels';
+import type { MathFluencyProgress, OperationType, SubLevel } from '@/types/mathFluency';
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -227,6 +273,9 @@ const studentStats = ref({
 const pendingAssessments = ref<any[]>([]);
 const recentResults = ref<any[]>([]);
 
+// ⭐ NEW: Fluency progress tracking
+const fluencyProgress = ref<MathFluencyProgress[]>([]);
+
 // Computed properties
 const urgentAssessments = computed(() => {
   // Count assessments that might be overdue or high priority
@@ -235,10 +284,9 @@ const urgentAssessments = computed(() => {
 
 // Methods
 const startAssessment = (assessment: any) => {
-  // Handle fluency diagnostic assignments
-  if (assessment.isDiagnostic && assessment.diagnosticType === 'math-fluency-initial') {
-    // Navigate to fluency diagnostic with assignment ID
-    router.push(`/fluency/initial-diagnostic?assignment=${assessment.id}&operation=${assessment.operation}`);
+  // Handle placement diagnostic assignments
+  if (assessment.isDiagnostic && assessment.diagnosticType === 'math-fluency-placement') {
+    router.push(`/fluency/placement-diagnostic?assignment=${assessment.id}`);
     return;
   }
   
@@ -280,7 +328,35 @@ const getScoreClass = (percentage: number) => {
   return 'needs-improvement';
 };
 
+// ⭐ NEW: Fluency helper functions
+const capitalizeOperation = (operation: string) => {
+  return operation.charAt(0).toUpperCase() + operation.slice(1);
+};
 
+const getOperationIcon = (operation: OperationType) => {
+  const icons = {
+    addition: '➕',
+    subtraction: '➖',
+    multiplication: '✖️',
+    division: '➗'
+  };
+  return icons[operation] || '🔢';
+};
+
+const getSubLevelName = (subLevel: SubLevel) => {
+  const config = getSubLevelConfig(subLevel);
+  return config ? config.name : subLevel.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+};
+
+const getTotalSubLevels = (operation: OperationType) => {
+  const counts = {
+    addition: 3,
+    subtraction: 3,
+    multiplication: 4,
+    division: 4
+  };
+  return counts[operation] || 0;
+};
 
 const formatDate = (date: any) => {
   if (!date) return 'N/A';
@@ -328,15 +404,20 @@ const loadStudentData = async () => {
       console.log('Student UID:', authStore.currentUser.uid);
       console.log('Student ID for queries:', studentId);
       
-      // Load assigned assessments, results, and diagnostic assignments
+      // Load assigned assessments, results, diagnostic assignments, and fluency progress
       const { collection, query, where, getDocs } = await import('firebase/firestore');
       const { db } = await import('@/firebase/config');
       
-      const [assignedAssessments, completedResults, diagnosticAssignmentsSnapshot] = await Promise.all([
+      const [assignedAssessments, completedResults, diagnosticAssignmentsSnapshot, fluencyData] = await Promise.all([
         getAssessmentsByStudent(studentId),
         getAssessmentResultsByStudent(studentId),
-        getDocs(query(collection(db, 'diagnosticAssignments'), where('studentUid', '==', studentId)))
+        getDocs(query(collection(db, 'diagnosticAssignments'), where('studentUid', '==', studentId))),
+        getAllFluencyProgress(studentId)
       ]);
+      
+      // ⭐ Update fluency progress
+      fluencyProgress.value = fluencyData;
+      console.log('📊 Loaded fluency progress for', fluencyData.length, 'operations');
       
       // Filter results to only include results for assigned assessments (including PA)
       const validResults = completedResults.filter(result => {
@@ -345,35 +426,38 @@ const loadStudentData = async () => {
       });
       
       // Convert diagnostic assignments to assessment-like format for display
-      const diagnosticAssignments = diagnosticAssignmentsSnapshot.docs.map(doc => {
-        const data = doc.data();
-        
-        // Customize display based on diagnostic type
-        let title = data.title || 'Diagnostic'
-        let timeEstimate = null
-        
-        if (data.diagnosticType === 'math-fluency-initial') {
-          title = data.title || `${data.operation || 'Math'} Fluency Diagnostic`
-          timeEstimate = 40  // 40 minutes
-        } else if (data.diagnosticType === 'math-fluency-practice') {
-          title = data.title || 'Daily Math Facts Practice'
-          timeEstimate = 12  // 10-12 minutes
-        }
-        
-        return {
-          id: doc.id,
-          title,
-          standard: 'Fluency' + (data.operation ? ` - ${data.operation}` : ''),
-          gradeLevel: '7',
-          timeLimit: timeEstimate,
-          assignedAt: data.assignedAt,
-          status: data.status,
-          isComplete: data.isComplete,
-          isDiagnostic: true,
-          diagnosticType: data.diagnosticType,
-          operation: data.operation  // Pass operation for routing
-        };
-      });
+      // Filter out deprecated 'math-fluency-initial' diagnostics
+      const diagnosticAssignments = diagnosticAssignmentsSnapshot.docs
+        .filter(doc => doc.data().diagnosticType !== 'math-fluency-initial') // Skip old full diagnostics
+        .map(doc => {
+          const data = doc.data();
+          
+          // Customize display based on diagnostic type
+          let title = data.title || 'Diagnostic'
+          let timeEstimate = null
+          
+          if (data.diagnosticType === 'math-fluency-placement') {
+            title = data.title || 'Math Fluency Placement Diagnostic'
+            timeEstimate = 30  // 30 minutes (80 problems with breaks)
+          } else if (data.diagnosticType === 'math-fluency-practice') {
+            title = data.title || 'Daily Math Facts Practice'
+            timeEstimate = 12  // 10-12 minutes
+          }
+          
+          return {
+            id: doc.id,
+            title,
+            standard: 'Fluency' + (data.operation ? ` - ${data.operation}` : ''),
+            gradeLevel: '7',
+            timeLimit: timeEstimate,
+            assignedAt: data.assignedAt,
+            status: data.status,
+            isComplete: data.isComplete,
+            isDiagnostic: true,
+            diagnosticType: data.diagnosticType,
+            operation: data.operation  // Pass operation for routing
+          };
+        });
       
       // Merge regular assessments (including PA) and diagnostics
       const allAssignments = [...assignedAssessments, ...diagnosticAssignments];
@@ -937,7 +1021,157 @@ onMounted(() => {
   .assessment-actions {
     flex-direction: column;
   }
-  
+}
 
+/* ============================================================================
+   FLUENCY PROGRESSION SECTION
+   ============================================================================ */
+.fluency-progression-section {
+  margin-bottom: 40px;
+}
+
+.fluency-progression-section h2 {
+  color: #1f2937;
+  font-size: 1.75rem;
+  margin-bottom: 20px;
+}
+
+.operation-progress-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.operation-progress-card {
+  background: white;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 20px;
+  transition: all 0.3s ease;
+}
+
+.operation-progress-card.current {
+  border-color: #3b82f6;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+}
+
+.operation-progress-card.completed {
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  border-color: #22c55e;
+}
+
+.operation-progress-card:not(.unlocked) {
+  opacity: 0.6;
+  filter: grayscale(0.3);
+}
+
+.op-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 15px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #f3f4f6;
+}
+
+.op-icon {
+  font-size: 1.5rem;
+}
+
+.op-header h3 {
+  flex: 1;
+  color: #1f2937;
+  font-size: 1.25rem;
+  margin: 0;
+}
+
+.completion-badge {
+  background: #22c55e;
+  color: white;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+}
+
+.locked-badge {
+  font-size: 1.25rem;
+  opacity: 0.5;
+}
+
+.sublevel-info {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sublevel-name {
+  font-weight: 600;
+  color: #3b82f6;
+  font-size: 1rem;
+}
+
+.proficiency-bar {
+  width: 100%;
+  height: 8px;
+  background: #e5e7eb;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.proficiency-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6 0%, #60a5fa 100%);
+  transition: width 0.5s ease;
+  border-radius: 4px;
+}
+
+.proficiency-text {
+  font-size: 0.875rem;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ready-badge {
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  color: white;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.9; transform: scale(1.05); }
+}
+
+.completed-sublevels {
+  margin-top: 5px;
+}
+
+.sublevel-count {
+  font-size: 0.875rem;
+  color: #9ca3af;
+  font-style: italic;
+}
+
+.not-started {
+  color: #9ca3af;
+  font-style: italic;
+  text-align: center;
+  padding: 20px;
+}
+
+.not-started p {
+  margin: 0;
 }
 </style>

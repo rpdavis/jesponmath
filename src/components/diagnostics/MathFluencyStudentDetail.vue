@@ -16,10 +16,18 @@
 
     <!-- No Data -->
     <div v-else-if="!progress" class="no-data-section">
-      <h3>No Fluency Data Yet</h3>
-      <p>This student hasn't completed the initial diagnostic for {{ capitalizeOperation(selectedOperation) }} yet.</p>
-      <button @click="router.push('/fluency/initial-diagnostic')" class="action-btn">
-        Assign Initial Diagnostic →
+      <h3>No {{ capitalizeOperation(selectedOperation) }} Data Yet</h3>
+      <p>This student is only working on Addition right now.</p>
+      <p class="help-text">Students progress through operations one at a time:</p>
+      <ol class="progression-list">
+        <li>Addition (3 sub-levels)</li>
+        <li>Subtraction (3 sub-levels)</li>
+        <li>Multiplication (4 sub-levels)</li>
+        <li>Division (4 sub-levels)</li>
+      </ol>
+      <p class="help-text">They'll unlock {{ capitalizeOperation(selectedOperation) }} after completing Addition.</p>
+      <button @click="selectedOperation = 'addition'" class="action-btn">
+        View Addition Progress →
       </button>
     </div>
 
@@ -104,6 +112,23 @@
             <div class="unlock-fill" :style="{ width: `${Math.min(100, progress?.proficiencyPercentage || 0)}%` }"></div>
           </div>
           <p class="unlock-text">{{ progress?.proficiencyPercentage || 0 }}% / 95% needed</p>
+        </div>
+      </div>
+
+      <!-- Teacher Settings Card -->
+      <div class="settings-card">
+        <h3>⚙️ Practice Settings</h3>
+        <div class="setting-row">
+          <label class="setting-label">Daily Practice Limit:</label>
+          <select v-model.number="practiceLimit" @change="updatePracticeLimit" class="setting-select">
+            <option :value="1">1 session per day</option>
+            <option :value="2">2 sessions per day</option>
+            <option :value="3">3 sessions per day</option>
+            <option :value="999">Unlimited sessions</option>
+          </select>
+          <p class="setting-help">
+            Controls how many practice sessions {{ studentName }} can complete each day.
+          </p>
         </div>
       </div>
 
@@ -282,7 +307,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { getFluencyProgress, getStudentAssessments, getPracticeSessions } from '@/services/mathFluencyServices'
+import { getFluencyProgress, getStudentAssessments, getPracticeSessions, updateDailyPracticeLimit } from '@/services/mathFluencyServices'
 import type { MathFluencyProgress, MathFluencyAssessment, MathFluencyPracticeSession, OperationType } from '@/types/mathFluency'
 
 const router = useRouter()
@@ -296,6 +321,7 @@ const selectedOperation = ref<OperationType>('addition')
 const progress = ref<MathFluencyProgress | null>(null)
 const weeklyAssessments = ref<MathFluencyAssessment[]>([])
 const recentPractice = ref<MathFluencyPracticeSession[]>([])
+const practiceLimit = ref<1 | 2 | 3 | 999>(1)  // Default to 1
 
 // Constants
 const availableOperations = [
@@ -386,6 +412,9 @@ async function loadData() {
     if (progress.value) {
       studentName.value = progress.value.studentName
       
+      // Load practice limit setting
+      practiceLimit.value = progress.value.dailyPracticeLimit || 1
+      
       // Load assessments
       weeklyAssessments.value = await getStudentAssessments(studentUid.value, selectedOperation.value)
       
@@ -398,6 +427,16 @@ async function loadData() {
     console.error('Error loading data:', error)
   } finally {
     loading.value = false
+  }
+}
+
+async function updatePracticeLimit() {
+  try {
+    await updateDailyPracticeLimit(studentUid.value, selectedOperation.value, practiceLimit.value)
+    alert(`✅ Practice limit updated to ${practiceLimit.value === 999 ? 'unlimited' : practiceLimit.value + ' per day'}`)
+  } catch (error) {
+    console.error('Error updating practice limit:', error)
+    alert('Error updating setting. Please try again.')
   }
 }
 
@@ -1041,6 +1080,83 @@ function generateIEPReport() {
 
 .actions-footer .action-btn {
   flex: 1;
+}
+
+/* =============================================================================
+   TEACHER SETTINGS CARD
+   ============================================================================= */
+.settings-card {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  margin-bottom: 2rem;
+}
+
+.settings-card h3 {
+  color: #1f2937;
+  margin-bottom: 1.5rem;
+  font-size: 1.25rem;
+}
+
+.setting-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.setting-label {
+  font-weight: 600;
+  color: #374151;
+  font-size: 0.95rem;
+}
+
+.setting-select {
+  padding: 0.75rem 1rem;
+  border: 2px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 1rem;
+  background: white;
+  cursor: pointer;
+  transition: border-color 0.2s;
+  max-width: 300px;
+}
+
+.setting-select:hover {
+  border-color: #3b82f6;
+}
+
+.setting-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.setting-help {
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-style: italic;
+  margin: 0;
+}
+
+/* No Data Section Updates */
+.help-text {
+  color: #6b7280;
+  font-size: 0.95rem;
+  margin: 1rem 0;
+}
+
+.progression-list {
+  text-align: left;
+  max-width: 400px;
+  margin: 1rem auto;
+  padding-left: 1.5rem;
+  color: #374151;
+}
+
+.progression-list li {
+  margin: 0.5rem 0;
+  font-weight: 500;
 }
 </style>
 

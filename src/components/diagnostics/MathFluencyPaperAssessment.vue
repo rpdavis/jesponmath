@@ -129,19 +129,38 @@
       <h3>Generated Assessments:</h3>
       <div class="assessment-list">
         <div v-for="assessment in generatedAssessments" :key="assessment.studentUid" class="assessment-item">
-          <span class="student-name">{{ assessment.studentName }}</span>
-          <button @click="downloadPDF(assessment)" class="download-btn">
-            📥 Download PDF
-          </button>
-          <button @click="printAssessment(assessment)" class="print-btn">
-            🖨️ Print
-          </button>
+          <div class="assessment-info">
+            <span class="student-name">{{ assessment.studentName }}</span>
+            <span class="sub-level-tag">{{ assessment.subLevelName || 'Mixed' }}</span>
+            <span class="problem-count">{{ assessment.problems.length }} problems</span>
+          </div>
+          <div class="assessment-actions">
+            <button @click="downloadPDF(assessment)" class="download-btn">
+              📥 Download PDF
+            </button>
+            <button @click="printAssessment(assessment)" class="print-btn">
+              🖨️ Print
+            </button>
+          </div>
         </div>
       </div>
       
       <button v-if="generationMode === 'class'" @click="downloadAllPDFs" class="download-all-btn">
         📥 Download All as ZIP
       </button>
+      
+      <!-- Save Assessment Button -->
+      <div class="save-section">
+        <button @click="saveAssessments" class="save-btn" :disabled="assessmentsSaved">
+          {{ assessmentsSaved ? '✅ Assessments Saved' : '💾 Save Assessments to Database' }}
+        </button>
+        <p v-if="assessmentsSaved" class="save-note">
+          ✅ Saved! Go to Score Entry to enter results.
+        </p>
+        <p v-else class="save-help">
+          Click to save these assessments for score entry later. Each will get a unique ID.
+        </p>
+      </div>
     </div>
   </div>
 </template>
@@ -150,8 +169,16 @@
 import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/authStore'
 import { getAllStudents, getStudentsByTeacher } from '@/firebase/userServices'
-import { getFluencyProgress } from '@/services/mathFluencyServices'
+import { 
+  getFluencyProgress, 
+  createPaperAssessmentTemplate,
+  getAssessmentCountForStudent 
+} from '@/services/mathFluencyServices'
 import { generateFridayAssessment, getAllProblemsForOperation, shuffleArray } from '@/utils/mathFluencyProblemGenerator'
+import { generatePersonalizedAssessment } from '@/utils/paperAssessmentStrategies'
+import { getSubLevelConfig } from '@/config/fluencySubLevels'
+import { doc, updateDoc, Timestamp } from 'firebase/firestore'
+import { db } from '@/firebase/config'
 import type { Student } from '@/types/users'
 import type { OperationType, MathFactProblem } from '@/types/mathFluency'
 
@@ -176,7 +203,12 @@ const generatedAssessments = ref<Array<{
   problems: MathFactProblem[]
   assessmentName: string
   weekNumber: number
+  templateId?: string
+  savedAssessmentId?: string
+  subLevelName?: string
 }>>([])
+
+const assessmentsSaved = ref(false)
 
 // Computed
 const uniqueClasses = computed(() => {
@@ -247,27 +279,97 @@ async function generateAssessments() {
   try {
     for (const student of selectedStudents.value) {
       let problems: MathFactProblem[] = []
+      let distribution = null
+      let metrics = null
+      
+      // Get sub-level name for this student
+      let subLevelName = 'Unknown Level'
       
       if (usePersonalization.value) {
         // Try to get student's problem banks
         const progress = await getFluencyProgress(student.uid, selectedOperation.value as OperationType)
         
         if (progress && progress.problemBanks) {
-          // Generate personalized assessment based on problem banks
-          problems = generateFridayAssessment(progress.problemBanks, totalProblems.value)
+          // Get sub-level name
+          if (progress.currentSubLevel) {
+            const config = getSubLevelConfig(progress.currentSubLevel)
+            subLevelName = config ? config.shortName || config.name : progress.currentSubLevel
+          }
+          
+          // ✨ NEW: Use intelligent distribution based on week and proficiency
+          const assessment = generatePersonalizedAssessment(progress, weekNumber.value, totalProblems.value)
+          problems = assessment.problems
+          distribution = assessment.distribution
+          metrics = assessment.metrics
+          
+          // If not enough problems, repeat to reach target
+          if (problems.length < totalProblems.value) {
+            console.log(`⚠️ Only ${problems.length} unique problems available, repeating to reach ${totalProblems.value}`)
+            while (problems.length < totalProblems.value) {
+              const remaining = totalProblems.value - problems.length
+              const toAdd = assessment.problems.slice(0, remaining)
+              problems = [...problems, ...toAdd]
+            }
+            console.log(`✅ Repeated problems to reach ${problems.length} total`)
+          }
+          
+          console.log(`📊 Generated personalized assessment for ${student.firstName}:`, {
+            distribution,
+            expectedCPM: metrics.expectedCPM,
+            targetCPM: metrics.targetCPM,
+            purpose: metrics.assessmentPurpose,
+            subLevel: subLevelName
+          })
         } else {
           // Student hasn't done diagnostic yet - use all problems
           const allProblems = getAllProblemsForOperation(selectedOperation.value as OperationType)
-          problems = shuffleArray(allProblems).slice(0, totalProblems.value)
+          const shuffled = shuffleArray(allProblems)
+          
+          // If not enough unique problems, repeat to reach target
+          if (shuffled.length < totalProblems.value) {
+            problems = []
+            while (problems.length < totalProblems.value) {
+              const remaining = totalProblems.value - problems.length
+              const toAdd = shuffled.slice(0, Math.min(remaining, shuffled.length))
+              problems = [...problems, ...toAdd]
+            }
+          } else {
+            problems = shuffled.slice(0, totalProblems.value)
+          }
+          
+          console.log(`⚠️ No progress data for ${student.firstName}, using ${problems.length} problems`)
         }
       } else {
         // Non-personalized - same problems for everyone
         const allProblems = getAllProblemsForOperation(selectedOperation.value as OperationType)
-        problems = shuffleArray(allProblems).slice(0, totalProblems.value)
+        const shuffled = shuffleArray(allProblems)
+        
+        // If not enough unique problems, repeat to reach target
+        if (shuffled.length < totalProblems.value) {
+          problems = []
+          while (problems.length < totalProblems.value) {
+            const remaining = totalProblems.value - problems.length
+            const toAdd = shuffled.slice(0, Math.min(remaining, shuffled.length))
+            problems = [...problems, ...toAdd]
+          }
+        } else {
+          problems = shuffled.slice(0, totalProblems.value)
+        }
       }
       
       const finalAssessmentName = assessmentName.value || 
         `Week ${weekNumber.value} ${capitalizeOperation(selectedOperation.value)} Fluency Check`
+      
+      // ✨ CREATE PRE-FILLED SCORE ENTRY TEMPLATE
+      const templateId = await createPaperAssessmentTemplate(
+        student.uid,
+        `${student.firstName} ${student.lastName}`,
+        selectedOperation.value as OperationType,
+        problems,
+        weekNumber.value,
+        finalAssessmentName,
+        authStore.currentUser?.uid || 'unknown'
+      )
       
       generatedAssessments.value.push({
         studentUid: student.uid,
@@ -275,11 +377,13 @@ async function generateAssessments() {
         operation: selectedOperation.value as OperationType,
         problems,
         assessmentName: finalAssessmentName,
-        weekNumber: weekNumber.value
-      })
+        weekNumber: weekNumber.value,
+        templateId,  // Link to score entry template
+        subLevelName  // NEW: For display and tracking
+      } as any)
     }
     
-    console.log(`✅ Generated ${generatedAssessments.value.length} assessments`)
+    console.log(`✅ Generated ${generatedAssessments.value.length} personalized assessments with score templates`)
   } catch (error) {
     console.error('Error generating assessments:', error)
     alert('Error generating assessments. Please try again.')
@@ -290,6 +394,51 @@ async function generateAssessments() {
 
 function capitalizeOperation(op: string): string {
   return op.charAt(0).toUpperCase() + op.slice(1)
+}
+
+async function saveAssessments() {
+  if (assessmentsSaved.value) return
+  
+  loading.value = true
+  
+  try {
+    for (const assessment of generatedAssessments.value) {
+      // Get assessment count for this student (for numbering)
+      const count = await getAssessmentCountForStudent(assessment.studentUid)
+      const assessmentNumber = count + 1
+      
+      // Generate unique name
+      const date = new Date().toLocaleDateString('en-US', {
+        month: '2-digit',
+        day: '2-digit',
+        year: '2-digit'
+      })
+      const uniqueName = `${assessment.studentName}_Assessment${assessmentNumber}_${date.replace(/\//g, '/')}`
+      
+      // Update the existing template with final name and metadata
+      if (assessment.templateId) {
+        await updateDoc(doc(db, 'mathFluencyPaperAssessments', assessment.templateId), {
+          assessmentName: uniqueName,
+          assessmentNumber,
+          generatedDate: Timestamp.now(),
+          subLevelContext: assessment.subLevelName || 'Unknown',
+          currentSubLevel: null,  // Would need to get from progress
+          status: 'ready-for-scoring',
+          updatedAt: Timestamp.now()
+        })
+        
+        console.log(`✅ Saved: ${uniqueName}`)
+      }
+    }
+    
+    assessmentsSaved.value = true
+    alert(`✅ Successfully saved ${generatedAssessments.value.length} assessments!\n\nGo to Score Entry to enter results.`)
+  } catch (error) {
+    console.error('Error saving assessments:', error)
+    alert('Error saving assessments. Please try again.')
+  } finally {
+    loading.value = false
+  }
 }
 
 function downloadPDF(assessment: any) {

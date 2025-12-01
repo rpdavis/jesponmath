@@ -23,6 +23,38 @@ import {
 import { db } from './config';
 import { COLLECTIONS } from '@/types/users';
 import type { AssessmentAssignment } from '@/types/iep';
+import { 
+  getCurrentAcademicYear, 
+  generateAcademicYear, 
+  getCurrentPeriod 
+} from '@/types/academicPeriods';
+
+// ==================== HELPER FUNCTIONS ====================
+
+/**
+ * Auto-detect current academic period based on today's date
+ * Returns period ID like "q1", "q2", "q3", "q4", "s1", "s2", "t1", "t2", "t3"
+ */
+export function getAutoDetectedAcademicPeriod(): string {
+  try {
+    const yearString = getCurrentAcademicYear();
+    // Default to quarters - this should eventually be loaded from settings
+    const academicYear = generateAcademicYear(yearString, 'quarters');
+    const currentPeriod = getCurrentPeriod(academicYear);
+    
+    if (currentPeriod) {
+      console.log(`📅 Auto-detected academic period: ${currentPeriod.id} (${currentPeriod.name})`);
+      return currentPeriod.id;
+    }
+    
+    // Fallback to q1 if no period detected
+    console.warn('⚠️ Could not detect current period, defaulting to q1');
+    return 'q1';
+  } catch (error) {
+    console.error('❌ Error detecting academic period:', error);
+    return 'q1'; // Safe fallback
+  }
+}
 
 // ==================== ASSIGNMENT CREATION ====================
 
@@ -38,6 +70,7 @@ export async function assignAssessmentToStudent(
     notes?: string;
     priority?: 'low' | 'medium' | 'high';
     accommodations?: string[];
+    academicPeriod?: string; // Optional: manually override auto-detected quarter
   }
 ): Promise<string> {
   try {
@@ -55,6 +88,9 @@ export async function assignAssessmentToStudent(
       throw new Error('Assessment already assigned to this student');
     }
     
+    // Auto-detect academic period if not provided
+    const academicPeriod = options?.academicPeriod || getAutoDetectedAcademicPeriod();
+    
     // Create assignment record - only include fields with values
     const assignmentData: any = {
       assessmentId,
@@ -64,6 +100,7 @@ export async function assignAssessmentToStudent(
       status: 'assigned',
       priority: options?.priority || 'medium',
       accommodations: options?.accommodations || [],
+      academicPeriod, // NEW: Auto-detected or manually set quarter
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     };
@@ -78,7 +115,7 @@ export async function assignAssessmentToStudent(
     
     const docRef = await addDoc(collection(db, COLLECTIONS.ASSESSMENT_ASSIGNMENTS), assignmentData);
     
-    console.log('✅ Assessment assigned successfully:', docRef.id);
+    console.log(`✅ Assessment assigned successfully to ${academicPeriod}:`, docRef.id);
     return docRef.id;
   } catch (error) {
     console.error('❌ Error assigning assessment:', error);
@@ -97,10 +134,15 @@ export async function bulkAssignAssessment(
     dueDate?: Date;
     notes?: string;
     priority?: 'low' | 'medium' | 'high';
+    academicPeriod?: string; // Optional: manually override auto-detected quarter
   }
 ): Promise<string[]> {
   try {
     console.log('📋 Bulk assigning assessment:', { assessmentId, studentCount: studentUids.length });
+    
+    // Auto-detect academic period if not provided
+    const academicPeriod = options?.academicPeriod || getAutoDetectedAcademicPeriod();
+    console.log(`📅 Using academic period: ${academicPeriod}`);
     
     // Check for existing assignments - get ALL existing assignments for this assessment
     const existingQuery = query(
@@ -137,6 +179,7 @@ export async function bulkAssignAssessment(
         status: 'assigned',
         priority: options?.priority || 'medium',
         accommodations: [],
+        academicPeriod, // NEW: Auto-detected or manually set quarter
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       };
@@ -178,7 +221,7 @@ export async function bulkAssignAssessment(
       }
     }
     
-    console.log(`✅ Assessment assigned to ${studentsToAssign.length} students (${alreadyAssigned.length} were already assigned)`);
+    console.log(`✅ Assessment assigned to ${studentsToAssign.length} students in ${academicPeriod} (${alreadyAssigned.length} were already assigned)`);
     return assignmentIds;
   } catch (error) {
     console.error('❌ Error bulk assigning assessment:', error);

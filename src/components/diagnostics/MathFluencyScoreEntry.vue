@@ -6,7 +6,53 @@
       <p class="subtitle">Input results from paper fluency checks</p>
     </div>
 
-    <!-- Assessment Setup -->
+    <!-- ✨ NEW: Saved Assessment Score Entry -->
+    <div v-if="!entryStarted" class="saved-assessment-section">
+      <div class="section-header">
+        <h3>📋 Score Saved Assessments</h3>
+        <p>Select a student, then choose which assessment to score</p>
+      </div>
+
+      <!-- Student Selection -->
+      <div class="form-group">
+        <label>Select Student:</label>
+        <select v-model="selectedStudentForScoring" @change="loadStudentSavedAssessments" class="form-select">
+          <option value="">-- Choose Student --</option>
+          <option v-for="student in students" :key="student.uid" :value="student.uid">
+            {{ student.lastName }}, {{ student.firstName }}
+          </option>
+        </select>
+      </div>
+
+      <!-- Assessment Selection (appears after student chosen) -->
+      <div v-if="studentSavedAssessments.length > 0" class="form-group">
+        <label>Select Assessment to Score:</label>
+        <select v-model="selectedSavedAssessmentId" class="form-select">
+          <option value="">-- Choose Assessment --</option>
+          <option v-for="assessment in studentSavedAssessments" :key="assessment.id" :value="assessment.id">
+            {{ assessment.assessmentName }} ({{ assessment.subLevelContext || 'Unknown Level' }})
+          </option>
+        </select>
+        
+        <button 
+          v-if="selectedSavedAssessmentId" 
+          @click="loadSavedAssessment" 
+          class="load-assessment-btn">
+          📄 Load Assessment & Begin Scoring
+        </button>
+      </div>
+      
+      <div v-if="selectedStudentForScoring && studentSavedAssessments.length === 0" class="no-assessments-message">
+        <p>⚠️ No saved assessments found for this student.</p>
+        <p class="help-text">Generate an assessment first, then click "Save Assessment" before coming here.</p>
+      </div>
+
+      <div class="template-separator">
+        <span>OR Manual Entry</span>
+      </div>
+    </div>
+
+    <!-- Manual Assessment Setup -->
     <div v-if="!entryStarted" class="setup-section">
       <div class="form-row">
         <div class="form-group">
@@ -289,7 +335,11 @@ import {
   getFluencyProgress, 
   createFluencyAssessment,
   updateProblemInProgress,
-  getLatestAssessment
+  getLatestAssessment,
+  getPendingPaperAssessments,
+  getPaperAssessmentTemplate,
+  updatePaperAssessmentScore,
+  getStudentPaperAssessments
 } from '@/services/mathFluencyServices'
 import { getAllProblemsForOperation } from '@/utils/mathFluencyProblemGenerator'
 import { calculateFluencyLevel } from '@/types/mathFluency'
@@ -314,6 +364,11 @@ const entryMode = ref<'quick' | 'detailed'>('quick')
 const savedCount = ref(0)
 const allComplete = ref(false)
 
+// ⭐ NEW: Saved assessment loading
+const selectedStudentForScoring = ref('')
+const studentSavedAssessments = ref<any[]>([])
+const selectedSavedAssessmentId = ref('')
+
 interface StudentEntry {
   attempted: number
   correct: number
@@ -330,6 +385,11 @@ const currentEntry = ref<StudentEntry>({
 
 const currentAssessmentProblems = ref<MathFactProblem[]>([])
 const totalProblems = ref(60)
+
+// ✨ NEW: Template state
+const pendingTemplates = ref<any[]>([])
+const selectedTemplateId = ref('')
+const usingTemplate = ref(false)
 
 // Computed
 const filteredStudents = computed(() => {
@@ -382,6 +442,7 @@ const currentFluencyLevelDisplay = computed(() => {
 // Methods
 onMounted(async () => {
   await loadStudents()
+  await loadPendingTemplates()
 })
 
 async function loadStudents() {
@@ -399,6 +460,139 @@ async function loadStudents() {
     })
   } catch (error) {
     console.error('Error loading students:', error)
+  }
+}
+
+// ✨ NEW: Load pending templates
+async function loadPendingTemplates() {
+  try {
+    if (authStore.currentUser?.uid) {
+      const templates = await getPendingPaperAssessments(authStore.currentUser.uid)
+      pendingTemplates.value = templates
+      console.log(`📋 Loaded ${templates.length} pending paper assessments`)
+    }
+  } catch (error) {
+    console.error('Error loading pending templates:', error)
+  }
+}
+
+// ✨ NEW: Load template and pre-fill form
+async function loadTemplate(templateId: string) {
+  try {
+    const template = await getPaperAssessmentTemplate(templateId)
+    if (!template) {
+      alert('Template not found')
+      return
+    }
+    
+    // Pre-populate form fields
+    assessmentName.value = template.assessmentName
+    assessmentCategory.value = template.operation
+    weekNumber.value = template.weekNumber
+    
+    // Pre-select student
+    selectedStudentUids.value = [template.studentUid]
+    
+    // Load problems (all marked correct by default)
+    currentAssessmentProblems.value = template.problems.map((p: any) => ({
+      id: p.problemId,
+      displayText: p.displayText,
+      correctAnswer: p.correctAnswer,
+      num1: 0,  // Not needed for display
+      num2: 0,
+      operation: template.operation,
+      category: '',
+      factFamily: ''
+    }))
+    
+    // Set template mode
+    usingTemplate.value = true
+    selectedTemplateId.value = templateId
+    
+    // Start entry with pre-filled data
+    totalProblems.value = template.problems.length
+    entryStarted.value = true
+    currentStudentIndex.value = 0
+    
+    // Pre-fill all as correct (teacher will uncheck incorrect ones)
+    currentEntry.value = {
+      attempted: template.problems.length,
+      correct: template.problems.length,
+      incorrectProblems: [],  // Teacher marks these
+      notes: ''
+    }
+    
+    console.log(`✅ Loaded template: ${template.assessmentName} - All ${template.problems.length} problems marked correct`)
+    alert(`Template loaded! All ${template.problems.length} problems are marked CORRECT. Just uncheck the incorrect ones.`)
+  } catch (error) {
+    console.error('Error loading template:', error)
+    alert('Error loading template. Please try again.')
+  }
+}
+
+function capitalizeOperation(op: string): string {
+  return op.charAt(0).toUpperCase() + op.slice(1)
+}
+
+function formatDate(timestamp: any): string {
+  if (!timestamp) return ''
+  const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp)
+  return date.toLocaleDateString()
+}
+
+// ⭐ NEW: Load saved assessments for selected student
+async function loadStudentSavedAssessments() {
+  if (!selectedStudentForScoring.value) {
+    studentSavedAssessments.value = []
+    selectedSavedAssessmentId.value = ''
+    return
+  }
+  
+  try {
+    const assessments = await getStudentPaperAssessments(selectedStudentForScoring.value)
+    
+    // Filter to only unscored assessments
+    studentSavedAssessments.value = assessments.filter(a => 
+      a.status === 'ready-for-scoring' || a.status === 'pending-score-entry'
+    )
+    
+    console.log(`📋 Loaded ${studentSavedAssessments.value.length} assessments`)
+  } catch (error) {
+    console.error('Error loading student assessments:', error)
+    studentSavedAssessments.value = []
+  }
+}
+
+// ⭐ NEW: Load selected saved assessment
+async function loadSavedAssessment() {
+  if (!selectedSavedAssessmentId.value) return
+  
+  try {
+    const template = await getPaperAssessmentTemplate(selectedSavedAssessmentId.value)
+    if (!template) {
+      alert('Assessment not found')
+      return
+    }
+    
+    // Set up for this ONE student
+    selectedStudentUids.value = [template.studentUid]
+    assessmentName.value = template.assessmentName
+    assessmentCategory.value = template.operation
+    weekNumber.value = template.weekNumber || 1
+    
+    // Pre-load problems
+    currentAssessmentProblems.value = template.problems
+    usingTemplate.value = true
+    selectedTemplateId.value = template.id
+    
+    // Start entry
+    entryStarted.value = true
+    currentStudentIndex.value = 0
+    
+    console.log(`✅ Loaded: ${template.assessmentName}`)
+  } catch (error) {
+    console.error('Error loading assessment:', error)
+    alert('Error loading assessment')
   }
 }
 
@@ -520,16 +714,21 @@ async function saveCurrent() {
       }
     }
     
-    // Get last week's assessment for growth calculation
+    // Get last week's assessment for growth calculation (optional - don't block save if fails)
     let growthFromLastWeek = null
     if (assessmentCategory.value !== 'mixed') {
-      const lastWeek = await getLatestAssessment(student.uid, assessmentCategory.value as OperationType)
-      if (lastWeek && lastWeek.week < weekNumber.value) {
-        growthFromLastWeek = {
-          cpmChange: currentEntry.value.correct - (lastWeek.correctPerMinute || 0),
-          accuracyChange: (currentEntry.value.correct / currentEntry.value.attempted * 100) - (lastWeek.accuracy || 0),
-          proficiencyLevelChange: `${lastWeek.fluencyLevel} → ${currentFluencyLevel.value}`
+      try {
+        const lastWeek = await getLatestAssessment(student.uid, assessmentCategory.value as OperationType)
+        if (lastWeek && lastWeek.week < weekNumber.value) {
+          growthFromLastWeek = {
+            cpmChange: currentEntry.value.correct - (lastWeek.correctPerMinute || 0),
+            accuracyChange: (currentEntry.value.correct / currentEntry.value.attempted * 100) - (lastWeek.accuracy || 0),
+            proficiencyLevelChange: `${lastWeek.fluencyLevel} → ${currentFluencyLevel.value}`
+          }
         }
+      } catch (error) {
+        console.log('ℹ️ Could not calculate growth (no previous assessment or index building)')
+        // Continue without growth data - not critical
       }
     }
     
@@ -601,6 +800,39 @@ async function saveCurrent() {
       entryMethod: entryMode.value,
       notes: currentEntry.value.notes
     } as any)
+    
+    // ✨ NEW: Update paper assessment template if using template mode
+    if (usingTemplate.value && selectedTemplateId.value) {
+      try {
+        // Update template with actual results
+        const updatedProblems = currentAssessmentProblems.value.map((problem, index) => ({
+          problemNumber: index + 1,
+          problemId: problem.id,
+          displayText: problem.displayText,
+          correctAnswer: problem.correctAnswer,
+          studentAnswer: currentEntry.value.incorrectProblems.includes(index + 1) ? '' : problem.correctAnswer,
+          isCorrect: !currentEntry.value.incorrectProblems.includes(index + 1),
+          proficiencyLevel: (problem as any).proficiencyLevel || 'unknown'
+        }))
+        
+        await updatePaperAssessmentScore(
+          selectedTemplateId.value,
+          updatedProblems,
+          currentEntry.value.attempted,
+          currentEntry.value.correct,
+          authStore.currentUser?.uid || 'unknown'
+        )
+        
+        console.log(`✅ Updated paper assessment template: ${selectedTemplateId.value}`)
+        
+        // Clear template mode for next student
+        usingTemplate.value = false
+        selectedTemplateId.value = ''
+      } catch (error) {
+        console.error('Error updating template:', error)
+        // Don't fail the whole save if template update fails
+      }
+    }
     
     savedCount.value++
     
@@ -1049,6 +1281,119 @@ function startAnother() {
   color: #666;
   font-style: italic;
   margin-top: 1rem;
+}
+
+/* ✨ NEW: Template Section Styles */
+.template-section {
+  background: #e3f2fd;
+  padding: 2rem;
+  border-radius: 12px;
+  margin-bottom: 2rem;
+  border: 2px solid #2196f3;
+}
+
+.template-header {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.template-header h3 {
+  color: #1976d2;
+  margin: 0 0 0.5rem 0;
+}
+
+.template-header p {
+  color: #555;
+  margin: 0;
+}
+
+.template-list {
+  display: grid;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.template-card {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.3s;
+  border: 2px solid #e0e0e0;
+}
+
+.template-card:hover {
+  border-color: #2196f3;
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.2);
+  transform: translateY(-2px);
+}
+
+.template-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.template-info strong {
+  font-size: 1.1rem;
+  color: #333;
+}
+
+.template-meta {
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.template-date {
+  font-size: 0.85rem;
+  color: #999;
+  font-style: italic;
+}
+
+.load-template-btn {
+  padding: 0.75rem 1.5rem;
+  background: #2196f3;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.3s;
+  white-space: nowrap;
+}
+
+.load-template-btn:hover {
+  background: #1976d2;
+}
+
+.template-separator {
+  text-align: center;
+  position: relative;
+  margin: 2rem 0;
+}
+
+.template-separator span {
+  background: #e3f2fd;
+  padding: 0 1rem;
+  color: #666;
+  font-weight: 600;
+  position: relative;
+  z-index: 1;
+}
+
+.template-separator::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #ccc;
+  z-index: 0;
 }
 
 .notes-textarea {

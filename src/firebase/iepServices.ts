@@ -304,9 +304,27 @@ export const getAssessmentsByCategory = async (category: Assessment['category'])
   }
 };
 
-export const getAssessmentsByStudent = async (studentUid: string) => {
+export const getAssessmentsByStudent = async (studentUid: string, filterByCurrentPeriod: boolean = true) => {
   try {
     console.log('🔍 Looking for assessments for student:', studentUid);
+    
+    // Get current academic period for filtering
+    let currentPeriodId: string | null = null;
+    if (filterByCurrentPeriod) {
+      try {
+        const { getCurrentAcademicYear, generateAcademicYear, getCurrentPeriod } = await import('@/types/academicPeriods');
+        const yearString = getCurrentAcademicYear();
+        const academicYear = generateAcademicYear(yearString, 'quarters');
+        const currentPeriod = getCurrentPeriod(academicYear);
+        currentPeriodId = currentPeriod?.id || null;
+        
+        if (currentPeriodId) {
+          console.log(`📅 Filtering assessments by current period: ${currentPeriodId}`);
+        }
+      } catch (err) {
+        console.warn('⚠️ Could not detect current period, showing all assessments:', err);
+      }
+    }
     
     // NEW: Get student's assignments from junction table
     const assignmentsQuery = query(
@@ -321,8 +339,15 @@ export const getAssessmentsByStudent = async (studentUid: string) => {
       return [];
     }
     
+    // Get all assignment IDs (don't filter by period yet - we'll check the assessment's period)
     const assignedAssessmentIds = assignmentsSnapshot.docs.map(doc => doc.data().assessmentId);
-    console.log(`📋 Student has ${assignedAssessmentIds.length} assigned assessments:`, assignedAssessmentIds);
+    
+    if (assignedAssessmentIds.length === 0) {
+      console.log('No assessments assigned to student');
+      return [];
+    }
+    
+    console.log(`📋 Student has ${assignedAssessmentIds.length} total assignments`);
     
     // Fetch assessments in parallel using Promise.all for better performance
     const assessmentPromises = assignedAssessmentIds.map(async (assessmentId) => {
@@ -345,7 +370,36 @@ export const getAssessmentsByStudent = async (studentUid: string) => {
     
     // Wait for all assessments to load in parallel
     const assessmentResults = await Promise.all(assessmentPromises);
-    const assessments = assessmentResults.filter((a): a is Assessment => a !== null);
+    let assessments = assessmentResults.filter((a): a is Assessment => a !== null);
+    
+    // Filter by current period based on assessment's academicPeriod field
+    if (currentPeriodId) {
+      const beforeFilter = assessments.length;
+      assessments = assessments.filter(assessment => {
+        // Show if:
+        // 1. Assessment has no academicPeriod (old/unset) → show in all quarters
+        // 2. Assessment academicPeriod is "all" → show in all quarters
+        // 3. Assessment academicPeriod matches current period → show in this quarter
+        const assessmentPeriod = assessment.academicPeriod;
+        
+        if (!assessmentPeriod) {
+          // No period set - show in all quarters (backwards compatible)
+          return true;
+        }
+        
+        if (assessmentPeriod === 'all') {
+          // Explicitly marked as "all year" - show in all quarters
+          return true;
+        }
+        
+        // Check if matches current period
+        return assessmentPeriod === currentPeriodId;
+      });
+      
+      console.log(`📅 Filtered to ${assessments.length} assessments for ${currentPeriodId} (${beforeFilter - assessments.length} filtered out)`);
+    } else {
+      console.log(`📋 Showing all ${assessments.length} assessments (no period filtering)`);
+    }
     
     // Sort by creation date
     assessments.sort((a, b) => {
@@ -615,6 +669,93 @@ export async function getAssessmentResults(assessmentId: string): Promise<any[]>
     return results;
   } catch (error) {
     console.error('Error getting assessment results:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get all assessment results for multiple assessments in batched queries
+ * PERFORMANCE OPTIMIZED: Uses Firestore 'in' queries (max 10 items per query)
+ * to reduce N+1 query problem. For 50 assessments, this makes 5 queries instead of 50.
+ * 
+ * @param assessmentIds Array of assessment IDs to fetch results for
+ * @returns All assessment results for the given assessments
+ */
+export async function getAssessmentResultsBulk(
+  assessmentIds: string[]
+): Promise<AssessmentResult[]> {
+  if (assessmentIds.length === 0) {
+    return [];
+  }
+  
+  try {
+    // Firestore 'in' queries support up to 10 items per query
+    const BATCH_SIZE = 10;
+    const batches: string[][] = [];
+    
+    // Split assessmentIds into batches of 10
+    for (let i = 0; i < assessmentIds.length; i += BATCH_SIZE) {
+      batches.push(assessmentIds.slice(i, i + BATCH_SIZE));
+    }
+    
+    console.log(`📊 Fetching results for ${assessmentIds.length} assessments in ${batches.length} batched queries`);
+    
+    // Execute all batches in parallel for maximum performance
+    const batchPromises = batches.map(async (batch) => {
+      const q = query(
+        collection(db, 'assessmentResults'),
+        where('assessmentId', 'in', batch)
+      );
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as AssessmentResult[];
+    });
+    
+    // Wait for all batches to complete
+    const batchResults = await Promise.all(batchPromises);
+    const allResults = batchResults.flat();
+    
+    // Sort in JavaScript instead of Firestore to avoid index requirement
+    // Handle invalid/missing dates gracefully
+    allResults.sort((a: any, b: any) => {
+      // Safely extract timestamps, defaulting to 0 for invalid dates
+      let aTime = 0;
+      let bTime = 0;
+      
+      try {
+        if (a.completedAt?.seconds) {
+          aTime = a.completedAt.seconds * 1000;
+        } else if (a.completedAt && typeof a.completedAt === 'number') {
+          aTime = a.completedAt;
+        } else if (a.completedAt instanceof Date) {
+          aTime = a.completedAt.getTime();
+        }
+      } catch (e) {
+        // Invalid date, leave as 0
+      }
+      
+      try {
+        if (b.completedAt?.seconds) {
+          bTime = b.completedAt.seconds * 1000;
+        } else if (b.completedAt && typeof b.completedAt === 'number') {
+          bTime = b.completedAt;
+        } else if (b.completedAt instanceof Date) {
+          bTime = b.completedAt.getTime();
+        }
+      } catch (e) {
+        // Invalid date, leave as 0
+      }
+      
+      return bTime - aTime; // Most recent first
+    });
+    
+    console.log(`✅ Fetched ${allResults.length} results in ${batches.length} queries (${Math.round(allResults.length / batches.length)} avg per query)`);
+    
+    return allResults;
+  } catch (error) {
+    console.error('Error getting assessment results in bulk:', error);
     throw error;
   }
 }

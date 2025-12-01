@@ -188,64 +188,97 @@ export const useAuthStore = defineStore('auth', () => {
         throw new Error('No email address found in Google account');
       }
       
-      // Check if user exists in Firestore
+      // Check if user exists in Firestore users collection (existing user check)
       const userDoc = await getDoc(doc(db, COLLECTIONS.USERS, user.uid));
       
-      if (!userDoc.exists()) {
-        // Check if this email exists as a student or teacher first
-        let existingRole: UserRole | null = null;
-        
-        try {
-          // Check if user exists in students collection by email
-          const studentsQuery = query(
-            collection(db, COLLECTIONS.STUDENTS),
-            where('email', '==', user.email)
-          );
-          const studentsSnapshot = await getDocs(studentsQuery);
-          
-          if (!studentsSnapshot.empty) {
-            existingRole = ROLES.STUDENT;
-            console.log('📧 Found existing student with this email');
-          } else {
-            // Check if user exists in teachers collection by email
-            const teachersQuery = query(
-              collection(db, COLLECTIONS.TEACHERS),
-              where('email', '==', user.email)
-            );
-            const teachersSnapshot = await getDocs(teachersQuery);
+      // If user already exists in the system, allow them through
+      if (userDoc.exists()) {
+        console.log('✅ Existing user found in users collection, allowing sign-in');
+        success.value = 'Successfully signed in with Google!';
+        return true;
+      }
+      
+      // NEW USER: Check if this email is authorized BEFORE allowing sign-in
+      // Check if user exists in students collection by email
+      const studentsQuery = query(
+        collection(db, COLLECTIONS.STUDENTS),
+        where('email', '==', user.email)
+      );
+      const studentsSnapshot = await getDocs(studentsQuery);
+      
+      // Check if user exists in teachers collection by email
+      const teachersQuery = query(
+        collection(db, COLLECTIONS.TEACHERS),
+        where('email', '==', user.email)
+      );
+      const teachersSnapshot = await getDocs(teachersQuery);
+      
+      // If email is not found in either collection, reject the sign-in
+      if (studentsSnapshot.empty && teachersSnapshot.empty) {
+        console.log('🚫 Unauthorized email attempted sign-in:', user.email);
+        await signOut(auth); // Sign out the user immediately
+        error.value = 'Access denied. Your email address is not authorized for this system. Please contact your teacher or administrator to be added.';
+        return false;
+      }
+      
+      // User is authorized - determine their role
+      let existingRole: UserRole;
+      let existingData: any = null;
+      
+      if (!studentsSnapshot.empty) {
+        existingRole = ROLES.STUDENT;
+        existingData = studentsSnapshot.docs[0];
+        console.log('✅ Authorized student found:', user.email);
+      } else {
+        const teacherDoc = teachersSnapshot.docs[0];
+        const teacherData = teacherDoc.data();
+        existingRole = teacherData.role || ROLES.TEACHER;
+        existingData = teacherDoc;
+        console.log('✅ Authorized teacher/admin found:', user.email, 'Role:', existingRole);
+      }
+      
+      // At this point, user is authorized but doesn't have a users collection entry yet
+      // Create their account records
+      const role = existingRole;
+      
+      const baseUser = {
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName || '',
+        role,
+        isActive: true,
+        createdAt: serverTimestamp(),
+        lastLogin: serverTimestamp()
+      };
+      
+      // Create base user record
+      await setDoc(doc(db, COLLECTIONS.USERS, user.uid), baseUser);
+      
+      // Create role-specific record ONLY if user doesn't already exist in either collection
+      if (role === ROLES.TEACHER || role === ROLES.ADMIN) {
+          // Check if user already exists in teachers collection with the correct UID
+          const existingTeacherByUid = await getDoc(doc(db, COLLECTIONS.TEACHERS, user.uid));
+          if (!existingTeacherByUid.exists() && existingData) {
+            // Teacher was pre-authorized but needs record with Firebase UID
+            const existingTeacherData = existingData.data();
             
-            if (!teachersSnapshot.empty) {
-              const teacherDoc = teachersSnapshot.docs[0];
-              const teacherData = teacherDoc.data();
-              existingRole = teacherData.role || ROLES.TEACHER; // Use actual role from document
-              console.log('📧 Found existing teacher/admin with this email, role:', existingRole);
+            // If the existing teacher document has a different ID, merge it
+            if (existingData.id !== user.uid) {
+              console.log('🔄 Merging existing teacher record with Firebase UID...');
+              const mergedTeacherData = {
+                ...existingTeacherData,
+                uid: user.uid,
+                displayName: user.displayName || existingTeacherData.displayName,
+                lastLogin: serverTimestamp()
+              };
+              await setDoc(doc(db, COLLECTIONS.TEACHERS, user.uid), mergedTeacherData);
+              await deleteDoc(doc(db, COLLECTIONS.TEACHERS, existingData.id));
+              console.log('✅ Teacher record merged with Firebase UID');
+            } else {
+              console.log('⚠️ Teacher record already exists with correct UID');
             }
-          }
-        } catch (emailCheckError) {
-          console.warn('Could not check existing email, using default role assignment');
-        }
-        
-        // Use existing role or assign based on email
-        const role = existingRole || assignRoleFromEmail(user.email);
-        
-        const baseUser = {
-          uid: user.uid,
-          email: user.email,
-          displayName: user.displayName || '',
-          role,
-          isActive: true,
-          createdAt: serverTimestamp(),
-          lastLogin: serverTimestamp()
-        };
-        
-        // Create base user record
-        await setDoc(doc(db, COLLECTIONS.USERS, user.uid), baseUser);
-        
-        // Create role-specific record ONLY if user doesn't already exist in either collection
-        if (role === ROLES.TEACHER || role === ROLES.ADMIN) {
-          // Check if user already exists in teachers collection
-          const existingTeacher = await getDoc(doc(db, COLLECTIONS.TEACHERS, user.uid));
-          if (!existingTeacher.exists()) {
+          } else if (!existingTeacherByUid.exists()) {
+            // Create new teacher record (shouldn't happen since we verified authorization)
             const teacherData = {
               ...baseUser,
               role,
@@ -258,67 +291,40 @@ export const useAuthStore = defineStore('auth', () => {
             };
             await setDoc(doc(db, COLLECTIONS.TEACHERS, user.uid), teacherData);
             console.log('✅ Created teacher record');
-          } else {
-            console.log('⚠️ Teacher record already exists, skipping creation');
-          }
-        } else if (role === ROLES.STUDENT) {
-          // For students, check if they were imported from Google Classroom first
-          if (existingRole === ROLES.STUDENT) {
-            // Student exists from Google Classroom import - update their UID
-            const existingStudentQuery = query(
-              collection(db, COLLECTIONS.STUDENTS),
-              where('email', '==', user.email)
-            );
-            const existingStudentSnapshot = await getDocs(existingStudentQuery);
+        } else {
+          console.log('⚠️ Teacher record already exists, skipping creation');
+        }
+      } else if (role === ROLES.STUDENT) {
+          // Student exists from pre-authorization (Google Classroom import or manual add)
+          const existingStudentByUid = await getDoc(doc(db, COLLECTIONS.STUDENTS, user.uid));
+          
+          if (!existingStudentByUid.exists() && existingData) {
+            const existingStudentData = existingData.data();
             
-            if (!existingStudentSnapshot.empty) {
-              const existingStudentDoc = existingStudentSnapshot.docs[0];
-              const existingStudentData = existingStudentDoc.data();
-              
-              console.log('🔄 Updating existing Google Classroom student with Firebase UID...');
-              
-              // Update the existing student record with the Firebase UID
-              const updatedStudentData = {
+            // If the existing student document has a different ID, merge it
+            if (existingData.id !== user.uid) {
+              console.log('🔄 Merging existing student record with Firebase UID...');
+              const mergedStudentData = {
                 ...existingStudentData,
                 uid: user.uid,
                 displayName: user.displayName || existingStudentData.displayName,
                 lastLogin: serverTimestamp()
               };
-              
-              // Delete old record and create new one with Firebase UID as document ID
-              await deleteDoc(doc(db, COLLECTIONS.STUDENTS, existingStudentDoc.id));
-              await setDoc(doc(db, COLLECTIONS.STUDENTS, user.uid), updatedStudentData);
-              
-              console.log('✅ Student record updated with Firebase UID');
-            }
-          } else {
-            // New student - create fresh record
-            const existingStudent = await getDoc(doc(db, COLLECTIONS.STUDENTS, user.uid));
-            if (!existingStudent.exists()) {
-              const studentData = {
-                ...baseUser,
-                role: ROLES.STUDENT,
-                firstName: user.displayName?.split(' ')[0] || '',
-                lastName: user.displayName?.split(' ').slice(1).join(' ') || '',
-                grade: '',
-                hasIEP: false,
-                has504: false,
-                assignedAssessments: [],
-                completedAssessments: [],
-                currentGoals: [],
-                accommodations: []
-              };
-              await setDoc(doc(db, COLLECTIONS.STUDENTS, user.uid), studentData);
-              console.log('✅ Created new student record');
+              await setDoc(doc(db, COLLECTIONS.STUDENTS, user.uid), mergedStudentData);
+              await deleteDoc(doc(db, COLLECTIONS.STUDENTS, existingData.id));
+              console.log('✅ Student record merged with Firebase UID');
             } else {
-              console.log('⚠️ Student record already exists, skipping creation');
+              console.log('⚠️ Student record already exists with correct UID');
             }
-          }
+          } else if (!existingStudentByUid.exists()) {
+            // This shouldn't happen since we verified authorization, but handle it
+            console.warn('⚠️ Authorized student email found but no student record to merge');
+        } else {
+          console.log('⚠️ Student record already exists, skipping creation');
         }
-        
-        console.log('✅ New user created with role:', role);
       }
       
+      console.log('✅ New user created with role:', role);
       success.value = 'Successfully signed in with Google!';
       return true;
     } catch (err: any) {
@@ -382,6 +388,45 @@ export const useAuthStore = defineStore('auth', () => {
         throw new Error('Invalid role specified');
       }
       
+      // SECURITY: Check if this email is pre-authorized before allowing registration
+      // Check if user exists in students collection by email
+      const studentsQuery = query(
+        collection(db, COLLECTIONS.STUDENTS),
+        where('email', '==', email)
+      );
+      const studentsSnapshot = await getDocs(studentsQuery);
+      
+      // Check if user exists in teachers collection by email
+      const teachersQuery = query(
+        collection(db, COLLECTIONS.TEACHERS),
+        where('email', '==', email)
+      );
+      const teachersSnapshot = await getDocs(teachersQuery);
+      
+      // If email is not found in either collection, reject the registration
+      if (studentsSnapshot.empty && teachersSnapshot.empty) {
+        console.log('🚫 Unauthorized email attempted registration:', email);
+        error.value = 'Access denied. Your email address is not authorized for this system. Please contact your teacher or administrator to be added.';
+        return false;
+      }
+      
+      // Determine the authorized role
+      let authorizedRole: UserRole;
+      let existingData: any = null;
+      
+      if (!studentsSnapshot.empty) {
+        authorizedRole = ROLES.STUDENT;
+        existingData = studentsSnapshot.docs[0];
+        console.log('✅ Authorized student email for registration:', email);
+      } else {
+        const teacherDoc = teachersSnapshot.docs[0];
+        const teacherData = teacherDoc.data();
+        authorizedRole = teacherData.role || ROLES.TEACHER;
+        existingData = teacherDoc;
+        console.log('✅ Authorized teacher/admin email for registration:', email, 'Role:', authorizedRole);
+      }
+      
+      // Create Firebase Auth account
       const result = await createUserWithEmailAndPassword(auth, email, password);
       
       // Update Firebase Auth profile
@@ -394,7 +439,7 @@ export const useAuthStore = defineStore('auth', () => {
         uid: result.user.uid,
         email,
         displayName,
-        role,
+        role: authorizedRole, // Use the pre-authorized role
         isActive: true,
         createdAt: serverTimestamp(),
         lastLogin: serverTimestamp()
@@ -402,22 +447,50 @@ export const useAuthStore = defineStore('auth', () => {
       
       await setDoc(doc(db, COLLECTIONS.USERS, result.user.uid), baseUser);
       
-      // Create role-specific profile
-      if (role === ROLES.TEACHER || role === ROLES.ADMIN) {
-        const teacherData = {
-          ...baseUser,
-          role,
-          firstName: displayName.split(' ')[0] || '',
-          lastName: displayName.split(' ').slice(1).join(' ') || '',
-          subjects: ['Math'],
-          gradesTaught: [],
-          assignedStudents: [],
-          createdAssessments: []
-        };
-        await setDoc(doc(db, COLLECTIONS.TEACHERS, result.user.uid), teacherData);
-      } else if (role === ROLES.STUDENT) {
-        // Student accounts created via registration need SSID
-        throw new Error('Student accounts must be created by administrators with required SSID');
+      // Merge with existing role-specific profile
+      if (authorizedRole === ROLES.TEACHER || authorizedRole === ROLES.ADMIN) {
+        if (existingData && existingData.id !== result.user.uid) {
+          // Merge existing teacher data with new UID
+          const existingTeacherData = existingData.data();
+          const mergedTeacherData = {
+            ...existingTeacherData,
+            ...baseUser,
+            role: authorizedRole,
+            firstName: displayName.split(' ')[0] || existingTeacherData.firstName || '',
+            lastName: displayName.split(' ').slice(1).join(' ') || existingTeacherData.lastName || ''
+          };
+          await setDoc(doc(db, COLLECTIONS.TEACHERS, result.user.uid), mergedTeacherData);
+          await deleteDoc(doc(db, COLLECTIONS.TEACHERS, existingData.id));
+          console.log('✅ Merged teacher record with new Firebase UID');
+        } else if (existingData) {
+          // Update existing record
+          await setDoc(doc(db, COLLECTIONS.TEACHERS, result.user.uid), {
+            ...existingData.data(),
+            ...baseUser,
+            role: authorizedRole
+          }, { merge: true });
+        }
+      } else if (authorizedRole === ROLES.STUDENT) {
+        if (existingData && existingData.id !== result.user.uid) {
+          // Merge existing student data with new UID
+          const existingStudentData = existingData.data();
+          const mergedStudentData = {
+            ...existingStudentData,
+            ...baseUser,
+            role: ROLES.STUDENT,
+            displayName: displayName || existingStudentData.displayName
+          };
+          await setDoc(doc(db, COLLECTIONS.STUDENTS, result.user.uid), mergedStudentData);
+          await deleteDoc(doc(db, COLLECTIONS.STUDENTS, existingData.id));
+          console.log('✅ Merged student record with new Firebase UID');
+        } else if (existingData) {
+          // Update existing record
+          await setDoc(doc(db, COLLECTIONS.STUDENTS, result.user.uid), {
+            ...existingData.data(),
+            ...baseUser,
+            role: ROLES.STUDENT
+          }, { merge: true });
+        }
       }
       
       success.value = 'Account created successfully!';

@@ -20,6 +20,33 @@ export type OperationType =
   | 'multiplication' 
   | 'division'
 
+// ============================================================================
+// SUB-LEVEL PROGRESSION (Progressive Mastery System)
+// ============================================================================
+
+export type SubLevel = 
+  // Addition Sub-Levels (3 levels)
+  | 'addition_within_10'        // 36 problems: sums 2-10
+  | 'addition_within_20'        // 45 problems: sums 11-20
+  | 'addition_mixed'            // 30 problems: mixed review
+  
+  // Subtraction Sub-Levels (3 levels)
+  | 'subtraction_within_10'    // 36 problems: from 2-10
+  | 'subtraction_within_20'    // 90 problems: from 11-20
+  | 'subtraction_mixed'        // 30 problems: mixed review
+  
+  // Multiplication Sub-Levels (4 levels)
+  | 'multiplication_easy'      // 29 problems: ×0,1,2,5,10 (pattern-based)
+  | 'multiplication_medium'    // 31 problems: ×3,4,6 + squares
+  | 'multiplication_hard'      // 36 problems: ×7,8,9,11,12
+  | 'multiplication_mixed'     // 40 problems: mixed review
+  
+  // Division Sub-Levels (4 levels)
+  | 'division_easy'            // 36 problems: ÷2,5,10
+  | 'division_medium'          // 36 problems: ÷3,4,6
+  | 'division_hard'            // 60 problems: ÷7,8,9,11,12
+  | 'division_mixed'           // 40 problems: mixed review
+
 export type AssessmentType = 
   | 'initial-diagnostic'      // Week 0: All 100 problems tested
   | 'weekly-fluency-check'    // Friday: 1-minute probe
@@ -72,6 +99,12 @@ export interface DailyResult {
   assessmentId?: string
 }
 
+export type ChallengeType = 
+  | 'next-level'          // Preview of next sub-level
+  | 'previous-operation'  // Review from previous operation
+  | 'previous-level'      // Review from previous sub-level
+  | null
+
 export interface ProblemProgress {
   // Problem Identification
   problemId: string  // e.g., "ADD_7_8"
@@ -88,6 +121,12 @@ export interface ProblemProgress {
   
   // Current Proficiency (DERIVED FROM LAST 5 ATTEMPTS)
   proficiencyLevel: ProficiencyLevel
+  
+  // ⭐ Challenge Problem Tracking
+  isChallenge?: boolean  // True if this is a challenge problem
+  challengeType?: ChallengeType  // Type of challenge
+  isOperationChange?: boolean  // True if operation differs from current
+  challengeMessage?: string  // Custom message explaining the challenge
   
   // ⭐ LAST 5 ATTEMPTS TRACKING (Core of proficiency calculation)
   last5Attempts: ProblemAttempt[]
@@ -158,6 +197,53 @@ export interface ProblemBanks {
   mastered: ProblemProgress[]
 }
 
+/**
+ * Sub-Level Progress Tracking
+ * Each sub-level has its own progression and assessment history
+ */
+export interface SubLevelProgress {
+  subLevel: SubLevel
+  operation: OperationType
+  
+  // Unlock Status
+  unlocked: boolean
+  unlockedDate: Timestamp | null
+  completed: boolean
+  completedDate: Timestamp | null
+  
+  // Proficiency Tracking (within this sub-level)
+  totalProblems: number  // Total problems in this sub-level
+  proficiencyPercentage: number  // (approaching + proficient + mastered) / total
+  masteryPercentage: number  // (proficient + mastered) / total
+  
+  // Assessment Readiness
+  readyForAssessment: boolean  // True if proficiencyPercentage >= 85%
+  assessmentAttempts: number  // How many times tested
+  
+  // Paper Assessment History
+  lastAssessmentDate: Timestamp | null
+  lastAssessmentScore: number | null  // Percentage
+  lastAssessmentCPM: number | null  // Correct per minute
+  
+  assessmentHistory: {
+    date: Timestamp
+    correctCount: number
+    totalQuestions: number
+    timeSeconds: number
+    cpm: number
+    passed: boolean  // True if >= 90% accuracy
+    assessmentId: string
+  }[]
+  
+  // Practice Stats (within this sub-level)
+  practiceDays: number
+  lastPracticeDate: Timestamp | null
+  
+  // Progression
+  canAdvance: boolean  // True if passed assessment
+  advancedDate: Timestamp | null
+}
+
 export interface MathFluencyProgress {
   // Identification
   id: string  // Firestore doc ID
@@ -183,6 +269,11 @@ export interface MathFluencyProgress {
   masteryPercentage: number  // (proficient + mastered) / total
   canUnlockNext: boolean  // True if proficiencyPercentage >= 95%
   
+  // ⭐ NEW: Sub-Level Progression Tracking
+  currentSubLevel: SubLevel | null  // Current sub-level student is working on
+  completedSubLevels: SubLevel[]  // Array of completed sub-levels
+  subLevelProgress: { [key: string]: SubLevelProgress }  // Detailed tracking per sub-level
+  
   // Practice Tracking
   totalPracticeDays: number
   consecutivePracticeDays: number
@@ -198,6 +289,9 @@ export interface MathFluencyProgress {
   createdAt: Timestamp
   updatedAt: Timestamp
   createdBy: string  // Teacher UID
+  
+  // Practice Frequency Control (Teacher Setting)
+  dailyPracticeLimit?: 1 | 2 | 3 | 999  // 999 = unlimited (optional for backward compatibility)
 }
 
 // ============================================================================

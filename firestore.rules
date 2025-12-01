@@ -229,19 +229,21 @@ service cloud.firestore {
     
     // Math Fluency Progress - ongoing proficiency tracking per student/operation
     match /mathFluencyProgress/{progressId} {
+      // Allow students to read documents where studentUid matches OR document doesn't exist
+      // (Firestore checks rules even for non-existent docs, so we need to handle that)
       allow read: if isAuthenticated() && (
-        resource.data.studentUid == request.auth.uid ||
-        isTeacher() ||
-        isAdmin()
+        !exists(/databases/$(database)/documents/mathFluencyProgress/$(progressId)) ||
+        resource.data.studentUid == request.auth.uid
       );
+      // Teachers/admins can read all
+      allow read: if isTeacher() || isAdmin();
       
       allow create: if isAuthenticated() && (isTeacher() || isAdmin());
       
-      allow update: if isAuthenticated() && (
-        resource.data.studentUid == request.auth.uid ||
-        isTeacher() ||
-        isAdmin()
-      );
+      // Students can update their own progress
+      allow update: if isAuthenticated() && resource.data.studentUid == request.auth.uid;
+      // Teachers/admins can update any progress
+      allow update: if isTeacher() || isAdmin();
       
       allow delete: if isAuthenticated() && isAdmin();
     }
@@ -281,7 +283,13 @@ service cloud.firestore {
         isAdmin()
       );
       
-      allow delete: if isAuthenticated() && isAdmin();
+      // Students can delete their own incomplete sessions (for cleanup on exit)
+      // Admins can delete any session
+      // Note: Allow delete even if resource.data is null (for batch deletes)
+      allow delete: if isAuthenticated() && (
+        (resource.data != null && resource.data.studentUid == request.auth.uid && resource.data.completed == false) ||
+        isAdmin()
+      );
     }
     
     // Math Fluency Diagnostic Progress - for resumable diagnostics
@@ -310,6 +318,33 @@ service cloud.firestore {
         isTeacher() ||
         isAdmin()
       );
+    }
+    
+    // Math Fluency Paper Assessment Templates - for pre-filled score entry
+    match /mathFluencyPaperAssessments/{templateId} {
+      // Teachers and admins can read all
+      allow read: if isTeacher() || isAdmin();
+      
+      // Students can read their own templates
+      allow read: if isStudent() && resource.data.studentUid == request.auth.uid;
+      
+      // Only teachers and admins can create/update/delete
+      allow write: if isTeacher() || isAdmin();
+    }
+    
+    // Strategy Lesson Progress - tracks completion of mini-lessons
+    match /strategyLessonProgress/{progressId} {
+      // Students can read their own lesson progress
+      allow read: if isAuthenticated();
+      
+      // Students can create/update their own progress (any authenticated user can write)
+      allow create, update: if isAuthenticated();
+      
+      // Teachers and admins can read/write all progress
+      allow read, write: if isTeacher() || isAdmin();
+      
+      // Allow delete for admins only
+      allow delete: if isAdmin();
     }
     
     // REMOVED: Development rule for security

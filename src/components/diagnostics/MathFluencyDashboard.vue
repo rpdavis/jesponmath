@@ -6,6 +6,23 @@
       <p class="subtitle">Class-wide fluency monitoring and management</p>
     </div>
 
+    <!-- Quick Actions - MOVED TO TOP -->
+    <div class="quick-actions-card">
+      <h3>Quick Actions</h3>
+      <div class="actions-grid">
+        <button @click="router.push('/fluency/paper-assessment')" class="action-card featured">
+          <div class="action-icon">📄</div>
+          <div class="action-text">Generate Probes</div>
+          <div class="action-subtitle">Create weekly 1-min PDFs</div>
+        </button>
+        <button @click="router.push('/fluency/score-entry')" class="action-card featured">
+          <div class="action-icon">✍️</div>
+          <div class="action-text">Enter Scores</div>
+          <div class="action-subtitle">Score paper assessments</div>
+        </button>
+      </div>
+    </div>
+
     <!-- Operation Selector -->
     <div class="operation-selector">
       <button
@@ -83,8 +100,8 @@
       <div class="students-table">
         <div class="table-header">
           <div class="col-name">Student</div>
-          <div class="col-proficiency">Proficiency</div>
-          <div class="col-cpm">Last CPM</div>
+          <div class="col-level">Current Level</div>
+          <div class="col-proficiency">Level Progress</div>
           <div class="col-streak">Streak</div>
           <div class="col-practice">Last Practice</div>
           <div class="col-actions">Actions</div>
@@ -96,30 +113,45 @@
           class="table-row"
           :class="{ 
             alert: student.hasData && student.proficiency < 50, 
-            success: student.canUnlock,
+            success: student.readyForTest,
             'no-data': !student.hasData 
           }"
         >
           <div class="col-name">
-            <strong>{{ student.studentName }}</strong>
+            <router-link 
+              v-if="student.hasData" 
+              :to="`/fluency/student/${student.studentUid}`" 
+              class="student-link"
+            >
+              <strong>{{ student.studentName }}</strong>
+            </router-link>
+            <strong v-else>{{ student.studentName }}</strong>
             <span v-if="student.inProgress" class="in-progress-badge">⏳ {{ student.progressInfo }}</span>
-            <span v-else-if="!student.hasData" class="no-data-badge">⚠️ Not started</span>
+            <span v-else-if="student.hasAssignment && !student.hasData" class="assigned-badge">📋 Assigned</span>
+            <span v-else-if="!student.hasData && !student.hasAssignment" class="no-data-badge">⚠️ Not started</span>
           </div>
-          <div class="col-proficiency">
-            <div v-if="student.hasData" class="proficiency-bar-mini">
-              <div 
-                class="proficiency-fill-mini" 
-                :style="{ width: `${student.proficiency}%` }"
-                :class="getProficiencyClass(student.proficiency)"
-              ></div>
+          <div class="col-level">
+            <div v-if="student.hasData && student.currentSubLevel" class="sublevel-display">
+              <div class="sublevel-name">{{ getSubLevelShortName(student.currentSubLevel) }}</div>
+              <div class="sublevel-progress-mini">
+                {{ student.completedSubLevels || 0 }}/{{ getTotalSubLevels(selectedOperation) }}
+              </div>
             </div>
-            <span v-if="student.hasData" class="proficiency-text">{{ student.proficiency }}%</span>
             <span v-else class="no-data-text">—</span>
           </div>
-          <div class="col-cpm">
-            <span v-if="student.hasData && student.lastCPM" class="cpm-value" :class="getCPMClass(student.lastCPM)">
-              {{ student.lastCPM }}
-            </span>
+          <div class="col-proficiency">
+            <div v-if="student.hasData && student.currentSubLevel" class="proficiency-container">
+              <div class="proficiency-bar-mini">
+                <div 
+                  class="proficiency-fill-mini" 
+                  :style="{ width: `${student.subLevelProficiency}%` }"
+                  :class="getProficiencyClass(student.subLevelProficiency)"
+                ></div>
+              </div>
+              <span class="proficiency-text">{{ student.subLevelProficiency }}%</span>
+              <span v-if="student.readyForTest" class="ready-badge-mini">✨ Ready!</span>
+            </div>
+            <span v-else-if="student.hasData" class="proficiency-text">{{ student.proficiency }}%</span>
             <span v-else class="no-data-text">—</span>
           </div>
           <div class="col-streak">
@@ -134,36 +166,13 @@
           </div>
           <div class="col-actions">
             <button v-if="student.hasData" @click="viewStudent(student.studentUid)" class="view-btn">
-              View Details →
+              View Facts →
             </button>
-            <button v-else @click="assignDiagnostic(student.studentUid)" class="assign-btn">
-              Assign Diagnostic
+            <button v-else @click="addToProgram(student.studentUid)" class="add-btn">
+              ➕ Add to Program
             </button>
           </div>
         </div>
-      </div>
-    </div>
-
-    <!-- Quick Actions -->
-    <div class="quick-actions-card">
-      <h3>Quick Actions</h3>
-      <div class="actions-grid">
-        <button @click="router.push('/fluency/initial-diagnostic')" class="action-card">
-          <div class="action-icon">🔢</div>
-          <div class="action-text">Assign Initial Diagnostic</div>
-        </button>
-        <button @click="router.push('/fluency/paper-assessment')" class="action-card">
-          <div class="action-icon">📄</div>
-          <div class="action-text">Generate Friday Probes</div>
-        </button>
-        <button @click="router.push('/fluency/score-entry')" class="action-card">
-          <div class="action-icon">📝</div>
-          <div class="action-text">Enter Friday Scores</div>
-        </button>
-        <button @click="router.push('/diagnostic/results')" class="action-card">
-          <div class="action-icon">📊</div>
-          <div class="action-text">View All Results</div>
-        </button>
       </div>
     </div>
   </div>
@@ -174,9 +183,17 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import { getStudentsByTeacher } from '@/firebase/userServices'
-import { getClassFluencyOverview } from '@/services/mathFluencyServices'
+import { 
+  getClassFluencyOverview,
+  addStudentToFluencyProgram,
+  bulkAddStudentsToFluencyProgram,
+  isStudentInFluencyProgram
+} from '@/services/mathFluencyServices'
+import { getSubLevelConfig, getSubLevelsForOperation } from '@/config/fluencySubLevels'
 import type { Student } from '@/types/users'
-import type { OperationType } from '@/types/mathFluency'
+import type { OperationType, SubLevel } from '@/types/mathFluency'
+import { collection, query, where, getDocs, doc, deleteDoc } from 'firebase/firestore'
+import { db } from '@/firebase/config'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -195,6 +212,7 @@ const classOverview = ref<any>({
 const allOperationsData = ref<Map<OperationType, any>>(new Map())
 const searchQuery = ref('')
 const sortBy = ref('name')
+const placementAssignments = ref<Map<string, any>>(new Map()) // studentUid -> assignment data
 
 // Constants
 const operations = [
@@ -235,6 +253,14 @@ const filteredStudents = computed(() => {
 })
 
 // Methods
+function scrollToStudents() {
+  // Scroll to student list section
+  const studentsCard = document.querySelector('.students-card')
+  if (studentsCard) {
+    studentsCard.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+}
+
 onMounted(async () => {
   await loadData()
 })
@@ -254,9 +280,33 @@ async function loadData() {
       const studentUids = students.value.map(s => s.uid)
       
       if (studentUids.length > 0) {
-        // Load data for ALL operations (to show counts in tabs)
-        const { collection, query, where, getDocs } = await import('firebase/firestore')
-        const { db } = await import('@/firebase/config')
+        // Load placement diagnostic assignments (batch if > 30 students due to Firestore 'in' limit)
+        placementAssignments.value.clear()
+        
+        // Batch studentUids into chunks of 30
+        const batchSize = 30
+        for (let i = 0; i < studentUids.length; i += batchSize) {
+          const batch = studentUids.slice(i, i + batchSize)
+          
+          const assignmentsQuery = query(
+            collection(db, 'diagnosticAssignments'),
+            where('diagnosticType', '==', 'math-fluency-placement'),
+            where('studentUid', 'in', batch)
+          )
+          
+          const assignmentsSnapshot = await getDocs(assignmentsQuery)
+          
+          assignmentsSnapshot.docs.forEach(doc => {
+            const data = doc.data()
+            placementAssignments.value.set(data.studentUid, {
+              id: doc.id,
+              assignedDate: data.assignedDate,
+              completed: data.completed || false
+            })
+          })
+        }
+        
+        console.log('📋 Loaded placement assignments:', placementAssignments.value.size)
         
         // Query all in-progress diagnostics for all operations
         const allInProgressQuery = query(
@@ -324,8 +374,19 @@ async function loadData() {
           // Check if student has in-progress diagnostic
           const inProgress = inProgressMap.get(student.uid)
           
+          // Check if student has been assigned placement diagnostic
+          const assignment = placementAssignments.value.get(student.uid)
+          
           if (fluencyData) {
-            // Student has completed fluency data
+            // Student has fluency data - extract sub-level info
+            const currentSubLevel = fluencyData.currentSubLevel || null
+            const subLevelProficiency = currentSubLevel && fluencyData.subLevelProgress?.[currentSubLevel]
+              ? fluencyData.subLevelProgress[currentSubLevel].proficiencyPercentage
+              : fluencyData.proficiency
+            const readyForTest = currentSubLevel && fluencyData.subLevelProgress?.[currentSubLevel]
+              ? fluencyData.subLevelProgress[currentSubLevel].readyForAssessment
+              : false
+            
             return {
               studentUid: student.uid,
               studentName: `${student.lastName}, ${student.firstName}`,
@@ -336,7 +397,14 @@ async function loadData() {
               streak: fluencyData.streak,
               lastCPM: null,
               hasData: true,
-              inProgress: false
+              inProgress: false,
+              hasAssignment: !!assignment,
+              assignmentId: assignment?.id,
+              // ⭐ NEW: Sub-level information
+              currentSubLevel,
+              completedSubLevels: fluencyData.completedSubLevels?.length || 0,
+              subLevelProficiency,
+              readyForTest
             }
           } else if (inProgress) {
             // Student has started but not finished diagnostic
@@ -351,7 +419,9 @@ async function loadData() {
               lastCPM: null,
               hasData: false,
               inProgress: true,
-              progressInfo: `${inProgress.answersCompleted}/${inProgress.totalProblems} completed`
+              progressInfo: `${inProgress.answersCompleted}/${inProgress.totalProblems} completed`,
+              hasAssignment: !!assignment,
+              assignmentId: assignment?.id
             }
           } else {
             // Student hasn't started
@@ -365,7 +435,10 @@ async function loadData() {
               streak: 0,
               lastCPM: null,
               hasData: false,
-              inProgress: false
+              inProgress: false,
+              hasAssignment: !!assignment,
+              assignmentId: assignment?.id,
+              assignmentDate: assignment?.assignedDate
             }
           }
         })
@@ -382,12 +455,24 @@ async function loadData() {
         const completedCount = allStudentData.filter(s => s.hasData).length
         const inProgressCount = allStudentData.filter(s => s.inProgress).length
         const notStartedCount = allStudentData.filter(s => !s.hasData && !s.inProgress).length
+        const assignedCount = allStudentData.filter(s => s.hasAssignment).length
         
         console.log('📊 Fluency Status:',
           completedCount, 'completed,',
           inProgressCount, 'in progress,',
-          notStartedCount, 'not started'
+          notStartedCount, 'not started,',
+          assignedCount, 'assigned'
         )
+        
+        // Debug: Log students with assignments
+        const studentsWithAssignments = allStudentData.filter(s => s.hasAssignment)
+        if (studentsWithAssignments.length > 0) {
+          console.log('👥 Students with assignments:', studentsWithAssignments.map(s => ({
+            name: s.studentName,
+            uid: s.studentUid,
+            assignmentId: s.assignmentId
+          })))
+        }
       }
     }
   } catch (error) {
@@ -416,6 +501,15 @@ function getCPMClass(cpm: number | null): string {
   return 'emerging'
 }
 
+function getSubLevelShortName(subLevel: SubLevel): string {
+  const config = getSubLevelConfig(subLevel)
+  return config ? config.shortName : subLevel.replace(/_/g, ' ')
+}
+
+function getTotalSubLevels(operation: OperationType): number {
+  return getSubLevelsForOperation(operation).length
+}
+
 function formatDate(timestamp: any): string {
   if (!timestamp) return 'Never'
   const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp)
@@ -426,8 +520,74 @@ function viewStudent(studentUid: string) {
   router.push(`/fluency/student/${studentUid}`)
 }
 
-function assignDiagnostic(studentUid: string) {
-  router.push(`/fluency/initial-diagnostic?preselect=${studentUid}&operation=${selectedOperation.value}`)
+async function addToProgram(studentUid: string) {
+  try {
+    const student = students.value.find(s => s.uid === studentUid)
+    if (!student) return
+    
+    // Check if already in program
+    const alreadyIn = await isStudentInFluencyProgram(studentUid)
+    if (alreadyIn) {
+      alert(`${student.firstName} ${student.lastName} is already in the fluency program!`)
+      return
+    }
+    
+    // Add to fluency program (starts at Addition Within 10)
+    await addStudentToFluencyProgram(
+      studentUid,
+      `${student.firstName} ${student.lastName}`,
+      authStore.currentUser?.uid || 'system'
+    )
+    
+    alert(`✅ ${student.firstName} ${student.lastName} added to fluency program!\n\nThey can now start daily practice.`)
+    
+    // Reload data
+    await loadData()
+  } catch (error) {
+    console.error('Error adding to program:', error)
+    alert('Error adding to program. Please try again.')
+  }
+}
+
+async function removeFromProgram(studentUid: string) {
+  console.log('🔍 Remove from program called:', { studentUid })
+  
+  try {
+    const student = students.value.find(s => s.uid === studentUid)
+    if (!student) {
+      console.error('❌ Student not found:', studentUid)
+      return
+    }
+    
+    const confirmRemove = confirm(
+      `Remove ${student.firstName} ${student.lastName} from fluency program?\n\n⚠️ This will delete all their progress data. This cannot be undone!`
+    )
+    
+    if (!confirmRemove) {
+      return
+    }
+    
+    // Delete all fluency progress documents for this student
+    const operations: OperationType[] = ['addition', 'subtraction', 'multiplication', 'division']
+    for (const op of operations) {
+      const docRef = doc(db, 'mathFluencyProgress', `${studentUid}_${op}`)
+      try {
+        await deleteDoc(docRef)
+        console.log(`✅ Deleted ${op} progress for ${student.firstName}`)
+      } catch (err) {
+        // Document might not exist, that's okay
+        console.log(`ℹ️ No ${op} progress found (expected)`)
+      }
+    }
+    
+    alert(`✅ ${student.firstName} ${student.lastName} removed from fluency program`)
+    
+    // Reload data
+    await loadData()
+  } catch (error) {
+    console.error('❌ Error unassigning diagnostic:', error)
+    alert(`Error unassigning diagnostic: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`)
+  }
 }
 
 function getOperationCounts(operation: OperationType) {
@@ -621,7 +781,7 @@ function getOperationCounts(operation: OperationType) {
 .table-header,
 .table-row {
   display: grid;
-  grid-template-columns: 2fr 1.5fr 0.8fr 0.8fr 1fr 1fr;
+  grid-template-columns: 2fr 1.2fr 1.8fr 0.8fr 1fr 1.2fr;
   gap: 1rem;
   align-items: center;
   padding: 1rem;
@@ -661,7 +821,8 @@ function getOperationCounts(operation: OperationType) {
 }
 
 .no-data-badge,
-.in-progress-badge {
+.in-progress-badge,
+.assigned-badge {
   display: inline-block;
   margin-left: 0.5rem;
   padding: 0.25rem 0.5rem;
@@ -680,14 +841,19 @@ function getOperationCounts(operation: OperationType) {
   color: #0c5460;
 }
 
+.assigned-badge {
+  background: #fff3cd;
+  color: #856404;
+}
+
 .no-data-text {
   color: #999;
 }
 
-.assign-btn {
+.add-btn {
   padding: 0.5rem 1rem;
-  background: #ffc107;
-  color: #333;
+  background: #28a745;
+  color: white;
   border: none;
   border-radius: 6px;
   font-size: 0.875rem;
@@ -696,8 +862,94 @@ function getOperationCounts(operation: OperationType) {
   transition: background 0.2s;
 }
 
-.assign-btn:hover {
-  background: #e0a800;
+.add-btn:hover {
+  background: #218838;
+}
+
+/* Sub-level Display */
+.sublevel-display {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.sublevel-name {
+  font-weight: 600;
+  color: #007bff;
+  font-size: 0.875rem;
+}
+
+.sublevel-progress-mini {
+  font-size: 0.75rem;
+  color: #666;
+}
+
+.proficiency-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.proficiency-bar-mini {
+  width: 100%;
+  height: 6px;
+  background: #e9ecef;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.proficiency-fill-mini {
+  height: 100%;
+  transition: width 0.3s ease;
+  border-radius: 3px;
+}
+
+.proficiency-fill-mini.excellent {
+  background: linear-gradient(90deg, #28a745, #20c997);
+}
+
+.proficiency-fill-mini.good {
+  background: linear-gradient(90deg, #17a2b8, #007bff);
+}
+
+.proficiency-fill-mini.fair {
+  background: linear-gradient(90deg, #ffc107, #fd7e14);
+}
+
+.proficiency-fill-mini.needs-work {
+  background: linear-gradient(90deg, #dc3545, #c82333);
+}
+
+.ready-badge-mini {
+  display: inline-block;
+  padding: 0.125rem 0.375rem;
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  color: white;
+  border-radius: 8px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.9; transform: scale(1.05); }
+}
+
+.unassign-btn {
+  padding: 0.5rem 1rem;
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.unassign-btn:hover {
+  background: #c82333;
 }
 
 .col-name strong {
@@ -842,6 +1094,31 @@ function getOperationCounts(operation: OperationType) {
   font-weight: 600;
   color: #333;
   text-align: center;
+}
+
+.action-subtitle {
+  font-size: 0.75rem;
+  color: #666;
+  text-align: center;
+  margin-top: -0.5rem;
+}
+
+.action-card.featured {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-color: #667eea;
+  color: white;
+}
+
+.action-card.featured .action-text,
+.action-card.featured .action-subtitle {
+  color: white;
+}
+
+.action-card.featured:hover {
+  background: linear-gradient(135deg, #5568d3 0%, #63418d 100%);
+  border-color: #5568d3;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
 }
 </style>
 
