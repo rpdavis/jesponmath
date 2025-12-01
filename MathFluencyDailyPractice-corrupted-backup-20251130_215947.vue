@@ -20,7 +20,7 @@
       <div class="today-summary">
         <h4>Today's Results:</h4>
         <div class="summary-stats">
-          <div class="stat">
+
             <span class="stat-label">Facts Learned:</span>
             <span class="stat-value">{{ todaysSession?.round1_learning?.newlyLearned?.length || 0 }}</span>
           </div>
@@ -43,11 +43,11 @@
     <!-- Start Screen -->
     <div v-else-if="!practiceStarted" class="start-section">
       <div class="progress-overview">
-        <h3>Your Progress - {{ capitalizeOperation(currentOperation) }}</h3>
+eOperation(currentOperation) }}</h3>
         
         <div class="proficiency-bars">
           <div class="bar-item mastered">
-            <span class="bar-label">🏆 Mastered</span>
+astered</span>
             <div class="bar-container">
               <div class="bar-fill" :style="{ width: `${(distribution.mastered / distribution.total) * 100}%` }"></div>
             </div>
@@ -58,7 +58,7 @@
             <span class="bar-label">🔵 Proficient</span>
             <div class="bar-container">
               <div class="bar-fill" :style="{ width: `${(distribution.proficient / distribution.total) * 100}%` }"></div>
-            </div>
+
             <span class="bar-count">{{ distribution.proficient }}</span>
           </div>
           
@@ -67,7 +67,7 @@
             <div class="bar-container">
               <div class="bar-fill" :style="{ width: `${(distribution.approaching / distribution.total) * 100}%` }"></div>
             </div>
-            <span class="bar-count">{{ distribution.approaching }}</span>
+n.approaching }}</span>
           </div>
           
           <div class="bar-item emerging">
@@ -75,7 +75,7 @@
             <div class="bar-container">
               <div class="bar-fill" :style="{ width: `${(distribution.emerging / distribution.total) * 100}%` }"></div>
             </div>
-            <span class="bar-count">{{ distribution.emerging }}</span>
+n.emerging }}</span>
           </div>
           
           <div class="bar-item does-not-know">
@@ -83,7 +83,7 @@
             <div class="bar-container">
               <div class="bar-fill" :style="{ width: `${(distribution.doesNotKnow / distribution.total) * 100}%` }"></div>
             </div>
-            <span class="bar-count">{{ distribution.doesNotKnow }}</span>
+n.doesNotKnow }}</span>
           </div>
         </div>
 
@@ -91,7 +91,7 @@
           <h4>Progress to Unlock {{ nextOperationName }}:</h4>
           <div class="unlock-bar">
             <div class="unlock-fill" :style="{ width: `${proficiencyPercentage}%` }"></div>
-            <span class="unlock-text">{{ proficiencyPercentage }}% / 95%</span>
+cyPercentage }}% / 95%</span>
           </div>
         </div>
 
@@ -131,8 +131,8 @@
     <!-- WARMUP ROUND -->
     <div v-if="practiceStarted && currentRound === 0" class="round-section warmup-round">
       <div class="round-header-bar">
-        <h3>🏃 Warmup</h3>
-        <p>Type these numbers</p>
+        <h3>🏃 Warmup: Get Ready!</h3>
+        <p>Type these numbers to warm up</p>
       </div>
 
       <div class="warmup-content">
@@ -145,7 +145,7 @@
           v-model="warmupAnswer"
           type="number"
           class="answer-input-large warmup-input"
-          placeholder="?"
+          placeholder="Type here..."
           @keyup.enter="submitWarmupAnswer"
           autofocus
         />
@@ -156,7 +156,7 @@
     <!-- DIAGNOSTIC ROUND -->
     <div v-if="practiceStarted && currentRound === 0.5" class="round-section diagnostic-round">
       <div class="round-header-bar">
-        <h3>🎯 Quick Check</h3>
+        <h3>🎯 Diagnostic</h3>
         <p>{{ diagnosticCurrentIndex + 1 }}/{{ diagnosticProblems.length }}</p>
       </div>
 
@@ -171,8 +171,13 @@
         </div>
         <p class="timer-text">{{ diagnosticTimeRemaining }}s</p>
         
-        <div class="question-display-large">
-          {{ currentDiagnosticProblem?.displayText }}
+        <div class="question-stacked">
+          <div class="stack-top-number">{{ currentDiagnosticProblem?.num1 }}</div>
+          <div class="stack-operation-row">
+            <span class="operation-symbol">{{ getOperationSymbol(currentDiagnosticProblem?.operation) }}</span>
+            <span class="stack-bottom-number">{{ currentDiagnosticProblem?.num2 }}</span>
+          </div>
+          <div class="stack-line"></div>
         </div>
         
         <input
@@ -180,15 +185,15 @@
           v-model="diagnosticAnswer"
           type="number"
           class="answer-input-large"
-          :class="{ 'submitting': diagnosticSubmitting }"
+          :cla="{ 'submitting': diagnosticSubmitting }"
           placeholder="?"
-          @keyup.enter="() => submitDiagnosticAnswer(false)"
+          @keyup.enter="() => submDiagnosticAnswer(false)"
           :disabled="diagnosticSubmitting"
           autofocus
         />
         
         <button 
-          @click="() => submitDiagnosticAnswer(false)" 
+="() => submitDiagnosticAnswer(false)" 
           class="submit-btn" 
           :disabled="!diagnosticAnswer || diagnosticSubmitting"
         >
@@ -198,26 +203,37 @@
       
       <div v-else class="processing-transition">
         <div class="processing-spinner"></div>
-        <p>Processing...</p>
+ssing...</p>
       </div>
     </div>
 
     <!-- DIAGNOSTIC RESULTS -->
     <div v-if="practiceStarted && currentRound === 0.75" class="diagnostic-results-screen">
       <div class="results-content">
-        <h2>📊 Quick Check Complete!</h2>
+        <h2>📊 Diagnostic Complete!</h2>
         
         <div class="score-circle" :class="getDiagnosticScoreClass(diagnosticScore)">
           <div class="score-number">{{ diagnosticScore }}%</div>
           <div class="score-label">{{ diagnosticCorrect }}/{{ diagnosticProblems.length }}</div>
+
+
+        <div v-if="diagnosticWrongProblems.length ===  class="perfect-score">
+          <h3>🎉 Perfect Sco!</h3>
+          <p>You know all these facts! Skipping to practice...</p>
         </div>
 
-        <div v-if="diagnosticWrongProblems.length === 0" class="perfect-score">
-          <h3>🎉 Perfect!</h3>
-          <p>Moving to practice...</p>
-          <button @click="continueCurrentLevel" class="continue-btn">
-            Start Practice →
-          </button>
+        <div v-else-if="diagnosticScore >= 90" class="skip-ahead-prompt">
+          <h3>🌟 Excellent Work!</h3>
+>You scored {{ diagnosticScore }}%!</p>
+          <p class="skip-suggestion">Ready for next level?</p>
+          <div class="skip-actions">
+            <button @click="skipToNextSubLevel" class="skip-btn">
+              Skip Ahead →
+            </button>
+            <button @click="continueCurrentLevel" class="continue-btn">
+              Practice More
+            </button>
+          </div>
         </div>
 
         <div v-else class="learning-preview">
@@ -284,28 +300,28 @@
         
         <div v-else class="feedback-incorrect">
           <div class="feedback-icon">❌</div>
-          <div class="feedback-message">The answer is {{ currentRound1Problem?.correctAnswer }}</div>
+lass="feedback-message">The answer is {{ currentRound1Problem?.correctAnswer }}</div>
           <div class="feedback-fact">
             {{ currentRound1Problem?.displayText.replace(' = ?', ` = ${currentRound1Problem.correctAnswer}`) }}
-          </div>
+          </di
           <p class="feedback-next">Let's see it again...</p>
-          <p class="feedback-countdown">{{ feedbackTimeRemaining }}s</p>
-        </div>
+          <p class="feedback-countn">{{ feedbackTimeRemaining }}s</p>
+
       </div>
     </div>
 
     <!-- ROUND 2: Practice -->
-    <div v-if="practiceStarted && currentRound === 2" class="round-section round-2">
+tarted && currentRound === 2" class="round-section round-2">
       <div class="round-header-bar">
         <h3>Round 2: Practice</h3>
-        <p>{{ round2CurrentIndex + 1 }}/{{ round2Problems.length }} problems</p>
+CurrentIndex + 1 }}/{{ round2Problems.length }} problems</p>
         <p class="mix-info">Mixed: {{ round2MixInfo }}</p>
       </div>
 
       <div class="practice-question">
         <div class="question-display-large">
           {{ currentRound2Problem?.displayText }}
-        </div>
+
         <input
           ref="round2Input"
           v-model="round2Answer"
@@ -314,19 +330,19 @@
           placeholder="?"
           @keyup.enter="submitRound2Answer"
           autofocus
-        />
+
         <p class="practice-timer">{{ round2TimeRemaining }}s</p>
         
-        <button @click="submitRound2Answer" class="submit-btn" :disabled="!round2Answer">
-          Submit
+submitRound2Answer" class="submit-btn" :disabled="!round2Answer">
+          Submi
         </button>
       </div>
 
       <!-- Immediate Feedback -->
       <div v-if="round2ShowingFeedback" class="round2-feedback">
-        <div v-if="round2LastCorrect" class="feedback-correct-inline">
+tCorrect" class="feedback-correct-inline">
           <span class="feedback-icon-inline">✅</span>
-          <span v-if="round2LastTime < 6000">Great! Fast and accurate!</span>
+if="round2LastTime < 6000">Great! Fast and accurate!</span>
           <span v-else>Correct! Try to get faster.</span>
         </div>
         <div v-else class="feedback-incorrect-inline">
@@ -348,7 +364,7 @@
       </div>
     </div>
 
-    <!-- ROUND 3: Quick Assessment -->
+ick Assessment -->
     <div v-if="practiceStarted && currentRound === 3" class="round-section round-3">
       <div class="round-header-bar">
         <h3>Round 3: Quick Check</h3>
@@ -356,21 +372,21 @@
       </div>
 
       <div class="assessment-question">
-        <div class="question-display-large">
+-display-large">
           {{ currentRound3Problem?.displayText }}
         </div>
         <input
           ref="round3Input"
-          v-model="round3Answer"
+          v-model="round3Awer"
           type="number"
           class="answer-input-large"
           placeholder="?"
-          @keyup.enter="submitRound3Answer"
+          @keyup.enter="submitRounAnswer"
           autofocus
         />
-        <p class="assessment-timer">{{ round3TimeRemaining }}s</p>
+        <p class="assessment-timer"> round3TimeRemaining }}s</p>
         
-        <button @click="submitRound3Answer" class="submit-btn" :disabled="!round3Answer">
+        <button @click="submitRound3Aner" class="submit-btn" :disabled="!round3Answer">
           Submit
         </button>
       </div>
@@ -387,7 +403,7 @@
         <div class="summary-achievements">
           <div class="achievement-item" v-if="session.round1_learning?.newlyLearned && session.round1_learning.newlyLearned.length > 0">
             <span class="achievement-icon">📚</span>
-            <span>Learned {{ session.round1_learning.newlyLearned.length }} new facts</span>
+ session.round1_learning.newlyLearned.length }} new facts</span>
           </div>
           <div class="achievement-item">
             <span class="achievement-icon">💪</span>
@@ -396,7 +412,7 @@
           <div class="achievement-item">
             <span class="achievement-icon">✓</span>
             <span>{{ session.round2_practice?.accuracy || 0 }}% accuracy in practice</span>
-          </div>
+
           <div class="achievement-item" v-if="promotionsEarned.length > 0">
             <span class="achievement-icon">⭐</span>
             <span>{{ promotionsEarned.length }} facts promoted!</span>
@@ -408,15 +424,15 @@
           <div v-for="problemId in promotionsEarned.slice(0, 5)" :key="problemId" class="promotion-item">
             <span class="promotion-icon">🎊</span>
             <span>{{ getProblemDisplay(problemId) }} is now {{ getNewLevel(problemId) }}!</span>
-          </div>
+
           <p v-if="promotionsEarned.length > 5">
             ...and {{ promotionsEarned.length - 5 }} more!
           </p>
-        </div>
+
 
         <div class="session-quality-display">
           <h4>Session Quality: {{ sessionQualityDisplay }}</h4>
-          <p class="session-time">Total Time: {{ Math.round(totalSessionTime / 60) }} minutes</p>
+me">Total Time: {{ Math.round(totalSessionTime / 60) }} minutes</p>
         </div>
 
         <div class="tomorrow-preview">
@@ -427,12 +443,12 @@
 
       <div class="complete-actions">
         <button @click="viewProgress" class="progress-btn">
-          See My Progress
+gress
         </button>
         <button @click="finishSession" class="done-btn">
           Done for Today
         </button>
-      </div>
+
     </div>
   </div>
 </template>
@@ -442,21 +458,17 @@ import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import { 
-  getFluencyProgress, 
+
   getTodaysPracticeSession,
   createPracticeSession,
   updateProblemInProgress
 } from '@/services/mathFluencyServices'
-import { sampleRandom, shuffleArray, getAllProblemsForOperation } from '@/utils/mathFluencyProblemGenerator'
-import { getNextOperation } from '@/types/mathFluency'
-import { getSubLevelConfig, getSubLevelsForOperation } from '@/config/fluencySubLevels'
-import { filterProblemsBySubLevel, selectDailyPracticeProblems } from '@/utils/subLevelUtils'
-import { selectChallengeProblems } from '@/utils/challengeProblemSelector'
+import { sampleRandom, shuffleArray } from '@/utils/mathFluencyProblemGenerator'
+ '@/types/mathFluency'
 import type { 
   MathFluencyProgress, 
   ProblemProgress, 
   OperationType,
-  SubLevel,
   MathFluencyPracticeSession,
   LearningRoundData,
   PracticeRoundData,
@@ -465,41 +477,41 @@ import type {
 import { Timestamp } from 'firebase/firestore'
 import { markFluencyAssignmentComplete } from '@/services/mathFluencyAssignmentServices'
 
-const router = useRouter()
+
 const route = useRoute()
 const authStore = useAuthStore()
 
 // State
-const loading = ref(true)
+
 const completedToday = ref(false)
 const practiceStarted = ref(false)
 const sessionComplete = ref(false)
-const currentRound = ref(0)
-const progress = ref<MathFluencyProgress | null>(null)
+const currentRound = ref(0)  // 0 = warmup, 0.5 = diagnostic, 0.75 = diagnostic results, 1 = learning, 2 = practice, 3 = assessment
+ ref<MathFluencyProgress | null>(null)
 const todaysSession = ref<MathFluencyPracticeSession | null>(null)
 const assignmentId = ref<string | null>(null)
 
 // Warmup State
 const warmupNumbers = ref<number[]>([])
-const warmupCurrentIndex = ref(0)
+const warmupCurrentIn = ref(0)
 const warmupAnswer = ref('')
-const warmupInput = ref<HTMLInputElement | null>(null)
+const warmupInput = ref<HTnputElement | null>(null)
 
 // Diagnostic Round State
-const diagnosticProblems = ref<ProblemProgress[]>([])
-const diagnosticCurrentIndex = ref(0)
+const diagnosticProblems = ref<PromProgress[]>([])
+const diagnosticCurrentIndex = ref
 const diagnosticAnswer = ref('')
-const diagnosticResults = ref<{[problemId: string]: { correct: boolean, responseTime: number }}>({})
-const diagnosticInput = ref<HTMLInputElement | null>(null)
-const diagnosticTimeRemaining = ref(10)
-const diagnosticTimerInterval = ref<number | null>(null)
-const diagnosticStartTime = ref(0)
+const diagnosticResul= ref<{[problemId: string]: { correct: boolean, responseTime: number }}>({})
+const diagnosticInput = ref<HTMLInpuement | null>(null)
+const diagnosticTimeRemang = ref(10)
+const diagnosticTimerInterval = ref<nur | null>(null)
+const diagnosticStartTime = ref(
 const diagnosticSubmitting = ref(false)
 const diagnosticShowingQuestion = ref(true)
 
-// Round 1: Learning State
+// Round 1: Learning State (MODIFIED - now uses diagnostic wrong answers)
 const round1Phase = ref<'encoding' | 'consolidation' | 'recall' | 'feedback'>('encoding')
-const round1Problems = ref<ProblemProgress[]>([])
+[]>([])
 const round1CurrentIndex = ref(0)
 const round1Answer = ref('')
 const round1RecallAttempt = ref(0)  // 1 or 2
@@ -509,7 +521,7 @@ const round1LearnedToday = ref<string[]>([])
 const round1Input = ref<HTMLInputElement | null>(null)
 
 // Round 1 Timers
-const encodingTimeRemaining = ref(5)
+
 const consolidationTimeRemaining = ref(2)
 const recallTimeRemaining = ref(15)
 const feedbackTimeRemaining = ref(10)
@@ -518,23 +530,23 @@ const round1TimerInterval = ref<number | null>(null)
 // Round 2: Practice State
 const round2Problems = ref<ProblemProgress[]>([])
 const round2Stack = ref<ProblemProgress[]>([])
-const round2CurrentIndex = ref(0)
+(0)
 const round2Answer = ref('')
 const round2ShowingFeedback = ref(false)
 const round2LastCorrect = ref(false)
 const round2LastTime = ref(0)
 const round2Results = ref<{[problemId: string]: any}>({})
-const round2Correct = ref(0)
+const round2Correct =f(0)
 const round2Total = ref(0)
 const round2Input = ref<HTMLInputElement | null>(null)
 const round2TimeRemaining = ref(15)
 const round2TimerInterval = ref<number | null>(null)
-const round2StartTime = ref(0)
+e = ref(0)
 
 // Round 3: Assessment State
 const round3Problems = ref<ProblemProgress[]>([])
 const round3CurrentIndex = ref(0)
-const round3Answer = ref('')
+
 const round3Results = ref<{[problemId: string]: any}>({})
 const round3Input = ref<HTMLInputElement | null>(null)
 const round3TimeRemaining = ref(10)
@@ -549,16 +561,16 @@ const session = ref<Partial<MathFluencyPracticeSession>>({
   round1_learning: {
     problemsTargeted: [],
     problemsCompleted: [],
-    problemsStillUnmet: [],
+et: [],
     attemptsPerProblem: {},
-    newlyLearned: [],
+,
     timeSpent: 0,
     completed: false
   },
   round2_practice: {
     problemsPresented: [],
-    problemsMixed: true,
-    mixComposition: { emerging: 0, proficient: 0, mastered: 0 },
+    problemsMixed: tr,
+on: { emerging: 0, proficient: 0, mastered: 0 },
     results: {},
     accuracy: 0,
     averageResponseTime: 0,
@@ -570,7 +582,7 @@ const session = ref<Partial<MathFluencyPracticeSession>>({
     results: {},
     accuracy: 0,
     averageResponseTime: 0,
-    timeSpent: 0,
+
     completed: false
   }
 })
@@ -583,7 +595,7 @@ const distribution = computed(() => progress.value?.proficiencyDistribution || {
   emerging: 0,
   approaching: 0,
   proficient: 0,
-  mastered: 0,
+
   total: 100
 })
 
@@ -593,7 +605,7 @@ const practiceStreak = computed(() => progress.value?.consecutivePracticeDays ||
 
 const nextOperationName = computed(() => {
   const next = getNextOperation(currentOperation.value)
-  return next ? capitalizeOperation(next) : 'All Operations'
+zeOperation(next) : 'All Operations'
 })
 
 const currentRound1Problem = computed(() => round1Problems.value[round1CurrentIndex.value] || null)
@@ -603,7 +615,7 @@ const currentRound2Problem = computed(() => {
   return round2Stack.value[0]
 })
 
-const currentRound3Problem = computed(() => round3Problems.value[round3CurrentIndex.value] || null)
+roblem = computed(() => round3Problems.value[round3CurrentIndex.value] || null)
 
 const round2Accuracy = computed(() => {
   if (round2Total.value === 0) return 0
@@ -613,7 +625,7 @@ const round2Accuracy = computed(() => {
 const round2MixInfo = computed(() => {
   if (!session.value.round2_practice) return ''
   const mix = session.value.round2_practice.mixComposition
-  if (!mix) return ''
+'
   return `${mix.emerging}E / ${mix.proficient}P / ${mix.mastered}M`
 })
 
@@ -631,29 +643,30 @@ const sessionQualityDisplay = computed(() => {
 const currentDiagnosticProblem = computed(() => diagnosticProblems.value[diagnosticCurrentIndex.value])
 const diagnosticCorrect = computed(() => 
   Object.values(diagnosticResults.value).filter(r => r.correct).length
-)
+
 const diagnosticScore = computed(() => 
   diagnosticProblems.value.length > 0
     ? Math.round((diagnosticCorrect.value / diagnosticProblems.value.length) * 100)
     : 0
 )
 const diagnosticWrongProblems = computed(() => 
-  diagnosticProblems.value.filter(p => {
+  diagnosticProblems.value.filter(p  {
     const result = diagnosticResults.value[p.problemId]
     return result && !result.correct
   })
 )
 
+ on time remaining
 const timerColorClass = computed(() => {
   const timePercent = (diagnosticTimeRemaining.value / 10) * 100
-  if (timePercent > 60) return 'plenty-time'
+Percent > 60) return 'plenty-time'
   if (timePercent > 30) return 'some-time'
   return 'running-out'
 })
 
 // Methods
 onMounted(async () => {
-  // Check if accessed via assignment
+ed via assignment
   assignmentId.value = (route.query.assignment as string) || null
   
   await loadProgress()
@@ -666,16 +679,16 @@ onUnmounted(() => {
 async function loadProgress() {
   if (!authStore.currentUser) return
   
-  loading.value = true
+ue
   
-  try {
+
     // For now, default to addition - later we'll determine current operation
     const operation: OperationType = 'addition'
-    
-    // Load student's progress
+
+student's progress
     progress.value = await getFluencyProgress(authStore.currentUser.uid, operation)
     
-    if (!progress.value) {
+!progress.value) {
       // Student hasn't done initial diagnostic yet
       alert('You need to complete the initial diagnostic first. Please see your teacher.')
       router.push('/dashboard')
@@ -693,14 +706,14 @@ async function loadProgress() {
       preparePracticeSession()
     }
   } catch (error) {
-    console.error('Error loading progress:', error)
+rror loading progress:', error)
     alert('Error loading progress. Please try again.')
   } finally {
     loading.value = false
   }
 }
 
-function preparePracticeSession() {
+PracticeSession() {
   if (!progress.value) return
   
   const banks = progress.value.problemBanks
@@ -712,234 +725,51 @@ function preparePracticeSession() {
   // Check if student has unlocked multiple operations
   const hasPreviousOperation = false  // TODO: Check for previous operations
   
-  if (hasPreviousOperation) {
+  if (hasPreviouOperation) {
     // 80% current, 20% maintenance
     const currentOpProblems = [
       ...sampleRandom(banks.emerging, 7),
-      ...sampleRandom(banks.approaching, 5)
+      ...samplandom(banks.approaching, 5)
     ]
-    // const maintenanceProblems = [get 3 from previous operation]
+    // const maintenanceProblems =get 3 from previous operation]
     round2Problems.value = shuffleArray(currentOpProblems)
-  } else {
+
     // 100% current operation (70% emerging, 20% proficient, 10% mastered)
     round2Problems.value = shuffleArray([
       ...sampleRandom(banks.emerging, 7),
-      ...sampleRandom(banks.approaching, 3),
+andom(banks.approaching, 3),
       ...sampleRandom(banks.proficient, 3),
       ...sampleRandom(banks.mastered, 2)
     ])
   }
   
-  round2Stack.value = [...round2Problems.value]
+ack.value = [...round2Problems.value]
   
   // Track mix composition
   if (session.value.round2_practice) {
-    session.value.round2_practice.mixComposition = {
+e.round2_practice.mixComposition = {
       emerging: round2Problems.value.filter(p => p.proficiencyLevel === 'emerging' || p.proficiencyLevel === 'approaching').length,
       proficient: round2Problems.value.filter(p => p.proficiencyLevel === 'proficient').length,
-      mastered: round2Problems.value.filter(p => p.proficiencyLevel === 'mastered').length
+      mastered: und2Problems.value.filter(p => p.proficiencyLevel === 'mastered').length
     }
   }
   
   // Round 3: Quick assessment (sample from all levels)
   round3Problems.value = shuffleArray([
-    ...sampleRandom(banks.emerging, 5),
+pleRandom(banks.emerging, 5),
     ...sampleRandom(banks.proficient, 3),
-    ...sampleRandom(banks.mastered, 2)
+banks.mastered, 2)
   ])
-}
+
 
 function startPractice() {
   practiceStarted.value = true
   sessionStartTime.value = Date.now()
-  currentRound.value = 0  // Start with warmup
+nd.value = 1
   
-  // Generate 3 random warmup numbers
-  const availableNumbers = Array.from({ length: 20 }, (_, i) => i + 1)
-  const shuffled = availableNumbers.sort(() => Math.random() - 0.5)
-  warmupNumbers.value = shuffled.slice(0, 3)
-  warmupCurrentIndex.value = 0
-  warmupAnswer.value = ''
-  
-  console.log('🔢 Warmup numbers:', warmupNumbers.value)
-  
-  nextTick(() => {
-    warmupInput.value?.focus()
-  })
+  // Start Round 1
+
 }
-
-// =============================================================================
-// WARMUP ROUND
-// =============================================================================
-
-function submitWarmupAnswer() {
-  const typed = String(warmupAnswer.value || '').trim()
-  const expected = warmupNumbers.value[warmupCurrentIndex.value].toString()
-  
-  if (typed === expected) {
-    warmupCurrentIndex.value++
-    warmupAnswer.value = ''
-    
-    if (warmupCurrentIndex.value >= warmupNumbers.value.length) {
-      // Warmup complete - start diagnostic
-      currentRound.value = 0.5
-      startDiagnosticRound()
-    } else {
-      nextTick(() => {
-        warmupInput.value?.focus()
-      })
-    }
-  } else {
-    warmupAnswer.value = ''
-  }
-}
-
-// =============================================================================
-// DIAGNOSTIC ROUND
-// =============================================================================
-
-function startDiagnosticRound() {
-  diagnosticProblems.value = generateDiagnosticProblems()
-  
-  if (diagnosticProblems.value.length === 0) {
-    console.warn('⚠️ No diagnostic problems - skipping to Round 1')
-    currentRound.value = 1
-    startRound1()
-    return
-  }
-  
-  diagnosticCurrentIndex.value = 0
-  diagnosticAnswer.value = ''
-  diagnosticResults.value = {}
-  diagnosticTimeRemaining.value = 10
-  
-  startDiagnosticTimer()
-  
-  nextTick(() => {
-    diagnosticInput.value?.focus()
-  })
-}
-
-function generateDiagnosticProblems(): ProblemProgress[] {
-  if (!progress.value) return []
-  
-  const allProblems = [
-    ...progress.value.problemBanks.doesNotKnow,
-    ...progress.value.problemBanks.emerging,
-    ...progress.value.problemBanks.approaching,
-    ...progress.value.problemBanks.proficient,
-    ...progress.value.problemBanks.mastered
-  ]
-  
-  const sampled = sampleRandom(allProblems, Math.min(20, allProblems.length))
-  
-  console.log(`🎯 Diagnostic: ${sampled.length} problems selected`)
-  
-  return sampled
-}
-
-async function startDiagnosticTimer() {
-  diagnosticTimeRemaining.value = 10
-  diagnosticStartTime.value = Date.now()
-  
-  if (diagnosticTimerInterval.value) {
-    clearInterval(diagnosticTimerInterval.value)
-  }
-  
-  await nextTick()
-  
-  diagnosticTimerInterval.value = setInterval(() => {
-    diagnosticTimeRemaining.value--
-    if (diagnosticTimeRemaining.value <= 0) {
-      submitDiagnosticAnswer(true)
-    }
-  }, 1000) as unknown as number
-}
-
-function submitDiagnosticAnswer(timeout: boolean = false) {
-  if (!currentDiagnosticProblem.value || diagnosticSubmitting.value) return
-  
-  diagnosticSubmitting.value = true
-  diagnosticShowingQuestion.value = false
-  
-  if (diagnosticTimerInterval.value) {
-    clearInterval(diagnosticTimerInterval.value)
-    diagnosticTimerInterval.value = null
-  }
-  
-  const responseTime = Date.now() - diagnosticStartTime.value
-  const userAnswer = timeout ? '' : String(diagnosticAnswer.value || '').trim()
-  const correct = userAnswer === currentDiagnosticProblem.value.correctAnswer
-  
-  diagnosticResults.value[currentDiagnosticProblem.value.problemId] = {
-    correct,
-    responseTime
-  }
-  
-  diagnosticCurrentIndex.value++
-  diagnosticAnswer.value = ''
-  
-  setTimeout(() => {
-    diagnosticSubmitting.value = false
-    
-    if (diagnosticCurrentIndex.value >= diagnosticProblems.value.length) {
-      // Diagnostic complete - show results (USER MUST CLICK)
-      currentRound.value = 0.75
-      diagnosticShowingQuestion.value = true
-      
-      console.log('📊 Diagnostic complete - showing results, waiting for click')
-    } else {
-      diagnosticShowingQuestion.value = true
-      nextTick(() => {
-        startDiagnosticTimer()
-        diagnosticInput.value?.focus()
-      })
-    }
-  }, 600)
-}
-
-function continueCurrentLevel() {
-  // Use diagnostic wrong problems for Round 1
-  round1Problems.value = [...diagnosticWrongProblems.value]
-  
-  console.log(`📚 Round 1: Learning ${round1Problems.value.length} facts from diagnostic`)
-  
-  if (round1Problems.value.length === 0) {
-    // Perfect score - skip to Round 2
-    currentRound.value = 2
-    startRound2()
-  } else {
-    currentRound.value = 1
-    startRound1()
-  }
-}
-
-function skipToNextSubLevel() {
-  alert('Skip ahead feature coming soon!')
-  continueCurrentLevel()
-}
-
-function getDiagnosticScoreClass(score: number): string {
-  if (score >= 90) return 'excellent'
-  if (score >= 75) return 'good'
-  if (score >= 60) return 'fair'
-  return 'needs-work'
-}
-
-function getOperationSymbol(operation: OperationType | undefined): string {
-  if (!operation) return '+'
-  const symbols = {
-    'addition': '+',
-    'subtraction': '−',
-    'multiplication': '×',
-    'division': '÷'
-  }
-  return symbols[operation] || '+'
-}
-
-// =============================================================================
-// ROUND 1: LEARNING
-// =============================================================================
 
 // =============================================================================
 // ROUND 1: LEARNING
@@ -948,38 +778,38 @@ function getOperationSymbol(operation: OperationType | undefined): string {
 function startRound1() {
   if (round1Problems.value.length === 0) {
     // No unmet problems - skip to Round 2
-    startRound2()
+nd2()
     return
   }
-  
+
   currentRound.value = 1
   round1CurrentIndex.value = 0
-  round1Phase.value = 'encoding'
+ase.value = 'encoding'
   
-  // Log this problem as targeted
+oblem as targeted
   if (session.value.round1_learning && currentRound1Problem.value) {
     session.value.round1_learning.problemsTargeted.push(currentRound1Problem.value.problemId)
   }
   
-  startEncodingPhase()
+  startEncodingPse()
 }
 
 function startEncodingPhase() {
   round1Phase.value = 'encoding'
   encodingTimeRemaining.value = 5
-  
+
   clearAllTimers()
-  round1TimerInterval.value = window.setInterval(() => {
+l.value = window.setInterval(() => {
     encodingTimeRemaining.value--
     if (encodingTimeRemaining.value <= 0) {
       startConsolidationPhase()
-    }
+
   }, 1000)
 }
 
 function startConsolidationPhase() {
   round1Phase.value = 'consolidation'
-  consolidationTimeRemaining.value = 2
+emaining.value = 2
   
   clearAllTimers()
   round1TimerInterval.value = window.setInterval(() => {
@@ -992,13 +822,13 @@ function startConsolidationPhase() {
 
 async function startRecallPhase() {
   round1Phase.value = 'recall'
-  round1Answer.value = ''
+ = ''
   recallTimeRemaining.value = 15
   round1RecallAttempt.value = (round1RecallAttempt.value || 0) + 1
   
   clearAllTimers()
   round1TimerInterval.value = window.setInterval(() => {
-    recallTimeRemaining.value--
+meRemaining.value--
     if (recallTimeRemaining.value <= 0) {
       // Timeout - treat as incorrect
       submitRound1Answer()
@@ -1009,7 +839,7 @@ async function startRecallPhase() {
   round1Input.value?.focus()
 }
 
-async function submitRound1Answer() {
+async function submitund1Answer() {
   if (!currentRound1Problem.value) return
   
   clearAllTimers()
@@ -1017,15 +847,15 @@ async function submitRound1Answer() {
   const responseTime = (15 - recallTimeRemaining.value) * 1000
   const isCorrect = String(round1Answer.value || '').trim() === currentRound1Problem.value.correctAnswer
   
-  round1LastCorrect.value = isCorrect
+  round1LastCorect.value = isCorrect
   
   // Log attempt
   const problemId = currentRound1Problem.value.problemId
   if (!round1AttemptsLog.value[problemId]) {
     round1AttemptsLog.value[problemId] = {
       encodingCycles: 1,
-      recallAttempts: 0,
-      timesSpent: []
+      recallAempts: 0,
+mesSpent: []
     }
   }
   round1AttemptsLog.value[problemId].recallAttempts++
@@ -1035,7 +865,7 @@ async function submitRound1Answer() {
   round1Phase.value = 'feedback'
   feedbackTimeRemaining.value = 10
   
-  round1TimerInterval.value = window.setInterval(() => {
+TimerInterval.value = window.setInterval(() => {
     feedbackTimeRemaining.value--
     if (feedbackTimeRemaining.value <= 0) {
       handleRound1Feedback()
@@ -1048,37 +878,37 @@ async function handleRound1Feedback() {
   
   if (round1LastCorrect.value) {
     if (round1RecallAttempt.value === 1) {
-      // First recall successful - test again after delay
+ First recall successful - test again after delay
       await new Promise(resolve => setTimeout(resolve, 1000))
-      round1RecallAttempt.value = 2
+llAttempt.value = 2
       startRecallPhase()
     } else {
-      // Second recall successful - fact learned!
+// Second recall successful - fact learned!
       const problemId = currentRound1Problem.value!.problemId
       round1LearnedToday.value.push(problemId)
       round1AttemptsLog.value[problemId].finalResult = 'learned'
       
       if (session.value.round1_learning) {
         session.value.round1_learning.newlyLearned.push(problemId)
-        session.value.round1_learning.problemsCompleted.push(problemId)
+value.round1_learning.problemsCompleted.push(problemId)
       }
       
       // Update problem in progress
       await updateProblemInProgress(
         authStore.currentUser!.uid,
-        currentOperation.value,
+  currentOperation.value,
         problemId,
         {
           correct: true,
           responseTime: round1AttemptsLog.value[problemId].timesSpent[round1AttemptsLog.value[problemId].timesSpent.length - 1],
           source: 'digital-practice'
         }
-      )
+
       
       // Move to next problem
       moveToNextRound1Problem()
     }
-  } else {
+
     // Incorrect - show again (encoding phase)
     round1AttemptsLog.value[currentRound1Problem.value!.problemId].encodingCycles++
     round1RecallAttempt.value = 0
@@ -1091,7 +921,7 @@ async function handleRound1Feedback() {
       }
       moveToNextRound1Problem()
     } else {
-      // Try encoding again
+ encoding again
       await new Promise(resolve => setTimeout(resolve, 1000))
       startEncodingPhase()
     }
@@ -1126,7 +956,7 @@ function finishRound1() {
 
 // =============================================================================
 // ROUND 2: PRACTICE
-// =============================================================================
+// ============================================================================
 
 async function startRound2() {
   currentRound.value = 2
@@ -1142,7 +972,7 @@ async function startRound2() {
   
   if (round2Stack.value.length === 0) {
     // No problems to practice - skip to Round 3
-    startRound3()
+    startRoun3()
     return
   }
   
@@ -1151,7 +981,7 @@ async function startRound2() {
 
 async function showNextRound2Problem() {
   if (round2Stack.value.length === 0) {
-    // All problems correct - finish round
+    // A problems correct - finish round
     finishRound2()
     return
   }
@@ -1267,16 +1097,16 @@ async function startRound3() {
   }
   
   showNextRound3Problem()
-}
+
 
 async function showNextRound3Problem() {
-  if (round3CurrentIndex.value >= round3Problems.value.length) {
+ (round3CurrentIndex.value >= round3Problems.value.length) {
     finishRound3()
     return
   }
   
   round3Answer.value = ''
-  round3StartTime.value = Date.now()
+StartTime.value = Date.now()
   round3TimeRemaining.value = 10
   
   clearRound3Timer()
@@ -1284,7 +1114,7 @@ async function showNextRound3Problem() {
     round3TimeRemaining.value--
     if (round3TimeRemaining.value <= 0) {
       submitRound3Answer()
-    }
+
   }, 1000)
   
   await nextTick()
@@ -1293,7 +1123,7 @@ async function showNextRound3Problem() {
 
 async function submitRound3Answer() {
   if (!currentRound3Problem.value) return
-  
+
   clearRound3Timer()
   
   const responseTime = Date.now() - round3StartTime.value
@@ -1326,7 +1156,7 @@ async function submitRound3Answer() {
   
   // Brief pause before next question
   await new Promise(resolve => setTimeout(resolve, 500))
-  showNextRound3Problem()
+owNextRound3Problem()
 }
 
 function finishRound3() {
@@ -1335,7 +1165,7 @@ function finishRound3() {
     const correct = Object.values(round3Results.value).filter(r => r.correct).length
     session.value.round3_assessment.accuracy = (correct / round3Problems.value.length) * 100
     const times = Object.values(round3Results.value).map(r => r.responseTime)
-    session.value.round3_assessment.averageResponseTime = times.length > 0 
+session.value.round3_assessment.averageResponseTime = times.length > 0 
       ? Math.round(times.reduce((sum, t) => sum + t, 0) / times.length)
       : 0
     session.value.round3_assessment.timeSpent = Math.round((Date.now() - sessionStartTime.value) / 1000) - 
@@ -1354,9 +1184,9 @@ async function finishSession() {
   clearAllTimers()
   
   totalSessionTime.value = Date.now() - sessionStartTime.value
-  
+
   // Determine session quality
-  const completionRate = (
+nst completionRate = (
     (session.value.round1_learning?.completed ? 1 : 0) +
     (session.value.round2_practice?.completed ? 1 : 0) +
     (session.value.round3_assessment?.completed ? 1 : 0)
@@ -1368,58 +1198,58 @@ async function finishSession() {
   } else if (completionRate === 1) {
     quality = 'good'
   } else if (completionRate >= 0.66) {
-    quality = 'fair'
+ity = 'fair'
   } else {
     quality = 'incomplete'
-  }
+
   
   session.value.sessionQuality = quality
-  session.value.engagementScore = Math.round(completionRate * 100)
+  session.value.engagementScore = Math.round(cpletionRate * 100)
   
   // Reload progress to see updated proficiencies
   await loadProgressSilently()
   
-  // Determine promotions
+ermine promotions
   // (This would check which problems moved up levels)
   promotionsEarned.value = []  // TODO: Calculate from before/after comparison
   
   // Save session to Firestore
   try {
-    await createPracticeSession({
+createPracticeSession({
       studentUid: authStore.currentUser!.uid,
       studentName: authStore.currentUser?.displayName || 'Student',
-      operation: currentOperation.value,
+    operation: currentOperation.value,
       sessionDate: Timestamp.now(),
       dayOfWeek: new Date().getDay(),
-      weekNumber: 1,  // TODO: Calculate actual week number
+ekNumber: 1,  // TODO: Calculate actual week number
       completed: completionRate === 1,
       completionPercentage: completionRate * 100,
-      totalTimeSpent: Math.round(totalSessionTime.value / 1000),
+  totalTimeSpent: Math.round(totalSessionTime.value / 1000),
       round1_learning: session.value.round1_learning!,
       round2_practice: session.value.round2_practice!,
       round3_assessment: session.value.round3_assessment!,
       promotionsEarned: promotionsEarned.value,
-      demotionsOccurred: [],
+motionsOccurred: [],
       consecutiveDaysUpdated: {},
       sessionQuality: quality,
-      engagementScore: session.value.engagementScore || 0
+ore: session.value.engagementScore || 0
     } as any)
     
     console.log('✅ Practice session saved')
     
-    // Mark assignment as complete if accessed via assignment
+ark assignment as complete if accessed via assignment
     if (assignmentId.value) {
       try {
-        const accuracy = session.value.round2_practice?.accuracy || 0
-        await markFluencyAssignmentComplete(assignmentId.value, Math.round(accuracy))
+    const accuracy = session.value.round2_practice?.accuracy || 0
+    await markFluencyAssignmentComplete(assignmentId.value, Math.round(accuracy))
         console.log('✅ Assignment marked complete')
-      } catch (error) {
+  } catch (error) {
         console.error('Error marking assignment complete:', error)
       }
     }
   } catch (error) {
     console.error('Error saving session:', error)
-  }
+
   
   sessionComplete.value = true
 }
@@ -1427,39 +1257,39 @@ async function finishSession() {
 async function loadProgressSilently() {
   if (!authStore.currentUser) return
   
-  try {
+
     progress.value = await getFluencyProgress(authStore.currentUser.uid, currentOperation.value)
-  } catch (error) {
+catch (error) {
     console.error('Error reloading progress:', error)
-  }
+
 }
 
 function viewProgress() {
-  router.push('/fluency/my-progress')
-}
+.push('/fluency/my-progress')
 
-function finishSessionAction() {
+
+ finishSessionAction() {
   router.push('/dashboard')
 }
 
 // Helper Functions
 function clearAllTimers() {
-  if (round1TimerInterval.value) {
-    clearInterval(round1TimerInterval.value)
+if (round1TimerInterval.value) {
+rInterval(round1TimerInterval.value)
     round1TimerInterval.value = null
   }
-  clearRound2Timer()
+ound2Timer()
   clearRound3Timer()
 }
 
 function clearRound2Timer() {
-  if (round2TimerInterval.value) {
-    clearInterval(round2TimerInterval.value)
+if (round2TimerInterval.value) {
+rInterval(round2TimerInterval.value)
     round2TimerInterval.value = null
   }
-}
 
-function clearRound3Timer() {
+
+ clearRound3Timer() {
   if (round3TimerInterval.value) {
     clearInterval(round3TimerInterval.value)
     round3TimerInterval.value = null
@@ -1480,432 +1310,166 @@ function getProblemDisplay(problemId: string): string {
   return problemId
 }
 
-function getNewLevel(problemId: string): string {
+nction getNewLevel(problemId: string): string {
   // TODO: Get actual new level from updated progress
-  return 'PROFICIENT'
+return 'PROFICIENT'
+}
+
+function getOperationSymbol(operation: OperationType | undefined): string {
+  if (!operation) return '+'
+  const symbols = {
+    'addition': '+',
+    'subtraction': '−',
+    'multiplication': '×',
+  'division': '÷'
+  }
+  return symbols[operation] || '+'
+}
+
+function getDiagnosticScoreClass(score: number): string {
+  if (score >= 90) return 'excellent'
+  if (score >= 75) return 'good'
+  if (score >= 60) return 'fair'
+  return 'needs-work'
+}
+
+on getCurrentSubLevelName(): string {
+  if (!progress.value?.currentSubLevel) return 'current level'
+t config = getSubLevelConfig(progress.value.currentSubLevel)
+  return config?.name || 'current level'
 }
 </script>
 
-<style scoped>
+d>
 .daily-practice-container {
   max-width: 900px;
-  margin: 0 auto;
+to;
   padding: 2rem;
-  min-height: 100vh;
-}
-
-/* Warmup Round Styles */
-.warmup-round {
-  background: linear-gradient(135deg, #e3f2fd, #bbdefb);
-  border: 3px solid #2196f3;
-}
-
-.warmup-content {
-  text-align: center;
-  padding: 2rem;
-}
-
-.warmup-instruction {
-  font-size: 1.2rem;
-  color: #1976d2;
-  margin-bottom: 1rem;
-}
-
-.warmup-number-display {
-  font-size: 5rem;
-  font-weight: bold;
-  color: #1565c0;
-  margin: 2rem 0;
-  text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
-}
-
-.warmup-input {
-  border: 4px solid #2196f3 !important;
-}
-
-.warmup-progress {
-  margin-top: 1rem;
-  font-size: 1.1rem;
-  color: #1976d2;
-  font-weight: 600;
-}
-
-/* Diagnostic Round Styles */
-.diagnostic-round {
-  background: linear-gradient(135deg, #fff3e0, #ffe082);
-  border: 3px solid #ffc107;
-}
-
-.diagnostic-question {
-  text-align: center;
-  padding: 2rem;
-}
-
-/* Visual Timer Bar */
-.timer-bar-container {
-  width: 100%;
-  height: 12px;
-  background: #e0e0e0;
-  border-radius: 6px;
-  overflow: hidden;
-  margin: 0 auto 0.5rem auto;
-  box-shadow: inset 0 2px 4px rgba(0,0,0,0.15);
-  border: 2px solid rgba(0,0,0,0.1);
-}
-
-.timer-bar-fill {
-  height: 100%;
-  border-radius: 6px;
-  transition: width 1s linear, background-color 0.3s ease;
-}
-
-.timer-bar-fill.plenty-time {
-  background: linear-gradient(90deg, #4caf50, #66bb6a);
-}
-
-.timer-bar-fill.some-time {
-  background: linear-gradient(90deg, #ff9800, #ffb74d);
-}
-
-.timer-bar-fill.running-out {
-  background: linear-gradient(90deg, #f44336, #ef5350);
-  animation: pulse-bar 0.5s ease-in-out infinite;
-}
-
-@keyframes pulse-bar {
-  0%, 100% { opacity: 1; transform: scaleY(1); }
-  50% { opacity: 0.85; transform: scaleY(1.1); }
-}
-
-.timer-text {
-  font-size: 1.2rem;
-  color: #666;
-  font-weight: 600;
-  margin: 0.5rem 0 2rem 0;
-}
-
-/* Stacked Question Format (like paper test) */
-.question-stacked {
-  display: inline-block;
-  text-align: center;
-  margin: 2rem auto;
-  min-width: 200px;
-}
-
-.stack-top-number {
-  font-size: 4rem;
-  font-weight: bold;
-  color: #333;
-  text-align: right;
-  padding-right: 2rem;
-}
-
-.stack-operation-row {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 3.5rem;
-  font-weight: bold;
-  padding-right: 2rem;
-  margin: 0.5rem 0;
-}
-
-.operation-symbol {
-  color: #2196f3;
-  margin-right: 0.5rem;
-}
-
-.stack-bottom-number {
-  color: #333;
-}
-
-.stack-line {
-  border-top: 4px solid #333;
-  margin: 0.5rem 0 1rem 0;
-}
-
-/* Processing Transition */
-.processing-transition {
-  text-align: center;
-  padding: 4rem 2rem;
-}
-
-.processing-spinner {
-  width: 50px;
-  height: 50px;
-  border: 5px solid #f3f4f6;
-  border-top: 5px solid #ffc107;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin: 0 auto 1rem;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-/* Diagnostic Results Screen */
-.diagnostic-results-screen {
-  background: white;
-  padding: 3rem 2rem;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-}
-
-.results-content {
-  text-align: center;
-  max-width: 600px;
-  margin: 0 auto;
-}
-
-.score-circle {
-  width: 180px;
-  height: 180px;
-  border-radius: 50%;
-  margin: 2rem auto;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  border: 6px solid;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.1);
-}
-
-.score-circle.excellent {
-  background: linear-gradient(135deg, #d4edda, #c3e6cb);
-  border-color: #28a745;
-}
-
-.score-circle.good {
-  background: linear-gradient(135deg, #d1ecf1, #bee5eb);
-  border-color: #17a2b8;
-}
-
-.score-circle.fair {
-  background: linear-gradient(135deg, #fff3cd, #ffeaa7);
-  border-color: #ffc107;
-}
-
-.score-circle.needs-work {
-  background: linear-gradient(135deg, #f8d7da, #f5c6cb);
-  border-color: #dc3545;
-}
-
-.score-number {
-  font-size: 3.5rem;
-  font-weight: bold;
-  color: #2c3e50;
-}
-
-.score-label {
-  font-size: 1.1rem;
-  color: #666;
-  margin-top: 0.5rem;
-}
-
-.perfect-score,
-.skip-ahead-prompt,
-.learning-preview {
-  margin: 2rem 0;
-  padding: 2rem;
-  border-radius: 12px;
-}
-
-.perfect-score {
-  background: linear-gradient(135deg, #d4edda, #c3e6cb);
-  border: 2px solid #28a745;
-}
-
-.skip-ahead-prompt {
-  background: linear-gradient(135deg, #fff3cd, #ffeaa7);
-  border: 2px solid #ffc107;
-}
-
-.learning-preview {
-  background: linear-gradient(135deg, #e3f2fd, #bbdefb);
-  border: 2px solid #2196f3;
-}
-
-.skip-actions {
-  display: flex;
-  gap: 1rem;
-  justify-content: center;
-  margin-top: 1.5rem;
-}
-
-.skip-btn,
-.continue-btn,
-.start-learning-btn {
-  padding: 1rem 2rem;
-  border: none;
-  border-radius: 8px;
-  font-size: 1.1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.skip-btn {
-  background: linear-gradient(135deg, #28a745, #20c997);
-  color: white;
-}
-
-.continue-btn,
-.start-learning-btn {
-  background: linear-gradient(135deg, #2196f3, #0277bd);
-  color: white;
-}
-
-.skip-btn:hover,
-.continue-btn:hover,
-.start-learning-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0,0,0,0.2);
-}
-
-.wrong-facts-preview {
-  margin: 1.5rem 0;
-  padding: 1rem;
-  background: white;
-  border-radius: 8px;
-}
-
-.wrong-fact {
-  padding: 0.5rem;
-  font-size: 1.1rem;
-  color: #666;
-}
-
-.submitting {
-  opacity: 0.6;
-  pointer-events: none;
-}
-
+min-height: 100vh;
 
 
 .practice-header {
-  text-align: center;
-  margin-bottom: 2rem;
-}
+text-align: center;
+ottom: 2rem;
 
-.practice-header h2 {
+
+ h2 {
   margin: 0 0 0.5rem 0;
   color: #333;
 }
 
 .subtitle {
-  color: #666;
-  font-size: 0.95rem;
+r: #666;
+.95rem;
 }
 
-/* Loading */
-.loading-section {
-  text-align: center;
+
+-section {
+lign: center;
   padding: 4rem 2rem;
-  color: #666;
-}
+666;
 
-/* Completed Today */
-.completed-today-section {
+
+ed Today */
+pleted-today-section {
   background: white;
   padding: 3rem 2rem;
-  border-radius: 8px;
+s: 8px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  text-align: center;
-}
+lign: center;
 
-.completed-today-section h3 {
+
+pleted-today-section h3 {
   color: #28a745;
-  margin-bottom: 1rem;
-}
+tom: 1rem;
 
-.completion-time {
+
+ {
   color: #666;
   font-size: 0.9rem;
-  margin: 0.5rem 0;
-}
+em 0;
+
 
 .today-summary {
-  margin: 2rem 0;
+in: 2rem 0;
   padding: 1.5rem;
   background: #f8f9fa;
   border-radius: 8px;
-}
+
 
 .summary-stats {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+ate-columns: repeat(3, 1fr);
   gap: 1rem;
-  margin-top: 1rem;
-}
+-top: 1rem;
 
-.stat {
-  display: flex;
+
+
+splay: flex;
   flex-direction: column;
-  gap: 0.5rem;
-}
+.5rem;
 
-.stat-label {
+
+t-label {
   font-size: 0.875rem;
-  color: #666;
+lor: #666;
 }
 
-.stat-value {
-  font-size: 1.5rem;
-  font-weight: bold;
+t-value {
+ize: 1.5rem;
+nt-weight: bold;
   color: #007bff;
-}
+
 
 /* Start Section */
 .start-section {
-  background: white;
-  padding: 2rem;
+ckground: white;
+dding: 2rem;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+: 0 2px 8px rgba(0,0,0,0.1);
 }
 
-.progress-overview {
-  margin-bottom: 2rem;
-}
+s-overview {
+rgin-bottom: 2rem;
+
 
 .progress-overview h3 {
   margin: 0 0 1.5rem 0;
-  color: #333;
+3;
   text-align: center;
 }
 
 .proficiency-bars {
-  margin: 1.5rem 0;
+rgin: 1.5rem 0;
 }
 
 .bar-item {
-  display: grid;
-  grid-template-columns: 150px 1fr 60px;
+splay: grid;
+e-columns: 150px 1fr 60px;
   align-items: center;
   gap: 1rem;
-  margin: 0.75rem 0;
+rgin: 0.75rem 0;
 }
 
-.bar-label {
-  font-weight: 500;
+
+font-weight: 500;
   font-size: 0.95rem;
-}
 
-.bar-container {
+
+tainer {
   height: 24px;
   background: #eee;
-  border-radius: 12px;
+rder-radius: 12px;
   overflow: hidden;
 }
 
-.bar-fill {
-  height: 100%;
+ar-fill {
+ight: 100%;
   transition: width 0.3s;
-}
+
 
 .bar-item.mastered .bar-fill {
-  background: linear-gradient(90deg, #28a745, #20c997);
+ground: linear-gradient(90deg, #28a745, #20c997);
 }
 
 .bar-item.proficient .bar-fill {
@@ -1913,113 +1477,113 @@ function getNewLevel(problemId: string): string {
 }
 
 .bar-item.approaching .bar-fill {
-  background: linear-gradient(90deg, #ffc107, #ff9800);
+nd: linear-gradient(90deg, #ffc107, #ff9800);
 }
 
-.bar-item.emerging .bar-fill {
+-item.emerging .bar-fill {
   background: linear-gradient(90deg, #17a2b8, #138496);
-}
+
 
 .bar-item.does-not-know .bar-fill {
-  background: linear-gradient(90deg, #dc3545, #c82333);
+nd: linear-gradient(90deg, #dc3545, #c82333);
 }
 
-.bar-count {
+
   font-weight: bold;
-  text-align: right;
+xt-align: right;
   color: #333;
-}
 
-.unlock-progress {
-  margin: 2rem 0;
+
+ock-progress {
+;
   padding: 1.5rem;
   background: #f8f9fa;
   border-radius: 8px;
-}
+
 
 .unlock-progress h4 {
-  margin: 0 0 1rem 0;
-  text-align: center;
-  color: #333;
-}
 
-.unlock-bar {
-  height: 40px;
+  text-align: center;
+lor: #333;
+
+
+
+ight: 40px;
   background: #eee;
-  border-radius: 20px;
-  position: relative;
+x;
+position: relative;
   overflow: hidden;
-}
+
 
 .unlock-fill {
   height: 100%;
-  background: linear-gradient(90deg, #007bff, #28a745);
-  transition: width 0.5s;
-}
+-gradient(90deg, #007bff, #28a745);
+ansition: width 0.5s;
+
 
 .unlock-text {
   position: absolute;
   top: 50%;
-  left: 50%;
+
   transform: translate(-50%, -50%);
-  font-weight: bold;
-  color: #333;
+eight: bold;
+
   font-size: 1.1rem;
 }
 
-.streak-display {
-  text-align: center;
-  margin: 1.5rem 0;
+treak-display {
+xt-align: center;
+rgin: 1.5rem 0;
   font-size: 1.3rem;
-}
 
-.streak-icon {
+
+eak-icon {
   font-size: 2rem;
   margin-right: 0.5rem;
 }
 
 .streak-text {
   font-weight: bold;
-  color: #ff6b6b;
+;
 }
 
-.session-info {
+sion-info {
   margin: 2rem 0;
-}
 
-.session-info h3 {
+
+sion-info h3 {
   margin: 0 0 1rem 0;
-  color: #333;
+lor: #333;
 }
 
 .rounds-preview {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
+ate-columns: repeat(3, 1fr);
+gap: 1rem;
   margin: 1rem 0;
 }
 
 .round-card {
   background: #f8f9fa;
   padding: 1rem;
-  border-radius: 8px;
+ius: 8px;
   border: 2px solid #ddd;
   text-align: center;
-}
+
 
 .round-header {
-  font-weight: bold;
-  color: #007bff;
-  margin-bottom: 0.5rem;
+t: bold;
+color: #007bff;
+-bottom: 0.5rem;
 }
 
-.round-card p {
-  margin: 0.5rem 0;
+ard p {
+rgin: 0.5rem 0;
   font-size: 0.9rem;
   color: #666;
 }
 
-.round-time {
+e {
   font-style: italic;
   color: #999 !important;
 }
@@ -2027,100 +1591,100 @@ function getNewLevel(problemId: string): string {
 .total-time {
   text-align: center;
   font-weight: bold;
-  color: #333;
+ #333;
   margin-top: 1rem;
-}
+
 
 .start-practice-btn {
   width: 100%;
-  padding: 1.5rem 2rem;
+ 1.5rem 2rem;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   border: none;
   border-radius: 12px;
-  font-size: 1.3rem;
+ 1.3rem;
   font-weight: bold;
   cursor: pointer;
   transition: transform 0.2s;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
 }
 
-.start-practice-btn:hover {
+tart-practice-btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(102, 126, 234, 0.5);
-}
+
 
 /* Round Sections */
 .round-section {
   background: white;
-  padding: 2rem;
-  border-radius: 8px;
+padding: 2rem;
+ius: 8px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
   min-height: 500px;
   display: flex;
-  flex-direction: column;
+ex-direction: column;
   justify-content: center;
-}
+
 
 .round-header-bar {
-  text-align: center;
+text-align: center;
   margin-bottom: 2rem;
   padding-bottom: 1rem;
-  border-bottom: 2px solid #eee;
-}
+rder-bottom: 2px solid #eee;
 
-.round-header-bar h3 {
-  margin: 0 0 0.5rem 0;
+
+der-bar h3 {
+margin: 0 0 0.5rem 0;
   color: #333;
-}
 
-.round-header-bar p {
+
+r-bar p {
   margin: 0.25rem 0;
   color: #666;
-}
+
 
 .mix-info {
-  font-size: 0.85rem;
+nt-size: 0.85rem;
   color: #999;
 }
 
 /* Round 1: Learning Phases */
-.encoding-phase,
-.consolidation-phase,
-.recall-phase,
+g-phase,
+solidation-phase,
+ecall-phase,
 .feedback-phase {
-  text-align: center;
-  padding: 3rem 0;
+text-align: center;
+padding: 3rem 0;
 }
 
 .phase-instruction {
-  font-size: 1.2rem;
+font-size: 1.2rem;
   color: #666;
-  margin-bottom: 2rem;
-}
+margin-bottom: 2rem;
 
-.fact-display-large,
+
+act-display-large,
 .question-display-large {
   font-size: 4rem;
-  font-weight: bold;
+nt-weight: bold;
   color: #333;
-  margin: 2rem 0;
-  line-height: 1.2;
+margin: 2rem 0;
+eight: 1.2;
 }
 
 .encoding-timer,
-.recall-timer,
-.practice-timer,
-.assessment-timer {
+ecall-timer,
+ractice-timer,
+ent-timer {
   font-size: 1.5rem;
   color: #007bff;
-  margin-top: 2rem;
+in-top: 2rem;
 }
 
 .countdown-display {
   font-size: 6rem;
   font-weight: bold;
-  color: #007bff;
+color: #007bff;
   margin: 3rem 0;
 }
 
@@ -2129,18 +1693,18 @@ function getNewLevel(problemId: string): string {
   padding: 1.5rem;
   font-size: 3rem;
   text-align: center;
-  border: 4px solid #007bff;
-  border-radius: 12px;
-  font-weight: bold;
+rder: 4px solid #007bff;
+border-radius: 12px;
+nt-weight: bold;
 }
 
-.answer-input-large:focus {
+r-input-large:focus {
   outline: none;
   border-color: #0056b3;
-  box-shadow: 0 0 0 4px rgba(0,123,255,0.25);
-}
+box-shadow: 0 0 0 4px rgba(0,123,255,0.25);
 
-.feedback-icon {
+
+eedback-icon {
   font-size: 5rem;
   margin-bottom: 1rem;
 }
@@ -2151,18 +1715,18 @@ function getNewLevel(problemId: string): string {
   margin: 1rem 0;
 }
 
-.feedback-correct .feedback-message {
-  color: #28a745;
+eedback-correct .feedback-message {
+color: #28a745;
 }
 
 .feedback-incorrect .feedback-message {
-  color: #dc3545;
+3545;
 }
 
 .feedback-fact {
-  font-size: 3rem;
+font-size: 3rem;
   font-weight: bold;
-  color: #333;
+lor: #333;
   margin: 2rem 0;
 }
 
@@ -2174,116 +1738,116 @@ function getNewLevel(problemId: string): string {
 
 .feedback-countdown {
   font-size: 1.5rem;
-  color: #007bff;
-  margin-top: 1.5rem;
-}
+color: #007bff;
+margin-top: 1.5rem;
+
 
 /* Round 2: Practice */
 .practice-question {
   text-align: center;
-  padding: 2rem 0;
-}
+g: 2rem 0;
 
-.submit-btn {
+
+mit-btn {
   margin-top: 2rem;
   padding: 1rem 3rem;
-  background: #007bff;
+background: #007bff;
   color: white;
-  border: none;
+border: none;
   border-radius: 8px;
   font-size: 1.2rem;
   font-weight: bold;
   cursor: pointer;
-  transition: background 0.2s;
-}
+transition: background 0.2s;
+
 
 .submit-btn:hover:not(:disabled) {
-  background: #0056b3;
-}
+ckground: #0056b3;
+
 
 .submit-btn:disabled {
   background: #ccc;
   cursor: not-allowed;
 }
 
-.round2-feedback {
+ound2-feedback {
   text-align: center;
-  margin-top: 1.5rem;
-  padding: 1rem;
+margin-top: 1.5rem;
+dding: 1rem;
   border-radius: 8px;
   font-size: 1.1rem;
-  font-weight: 500;
+-weight: 500;
 }
 
 .feedback-correct-inline {
-  background: #d4edda;
+ckground: #d4edda;
   color: #155724;
-  padding: 1rem;
+dding: 1rem;
   border-radius: 6px;
-}
 
-.feedback-incorrect-inline {
+
+dback-incorrect-inline {
   background: #f8d7da;
   color: #721c24;
-  padding: 1rem;
+padding: 1rem;
   border-radius: 6px;
 }
 
-.feedback-icon-inline {
-  font-size: 1.5rem;
+eedback-icon-inline {
+-size: 1.5rem;
   margin-right: 0.5rem;
 }
 
-.retry-note {
+ry-note {
   display: block;
   font-size: 0.9rem;
-  margin-top: 0.5rem;
-  font-style: italic;
+rgin-top: 0.5rem;
+font-style: italic;
 }
 
-.round2-stats {
-  display: flex;
+s {
+display: flex;
   justify-content: center;
   gap: 3rem;
-  margin-top: 2rem;
+-top: 2rem;
   padding: 1rem;
   background: #f8f9fa;
   border-radius: 8px;
-}
+
 
 .stat-mini {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+display: flex;
+flex-direction: column;
+align-items: center;
   gap: 0.5rem;
-}
 
-.stat-value-mini {
-  font-size: 1.5rem;
+
+tat-value-mini {
+ize: 1.5rem;
   font-weight: bold;
   color: #007bff;
 }
 
 /* Round 3: Assessment */
-.assessment-question {
-  text-align: center;
-  padding: 2rem 0;
+ssessment-question {
+xt-align: center;
+padding: 2rem 0;
 }
 
 .assessment-note {
-  text-align: center;
-  color: #666;
-  font-style: italic;
+text-align: center;
+color: #666;
+font-style: italic;
   margin-top: 1.5rem;
 }
 
-/* Session Complete */
+on Complete */
 .complete-section {
   background: white;
-  padding: 3rem 2rem;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  text-align: center;
+padding: 3rem 2rem;
+rder-radius: 8px;
+box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+xt-align: center;
 }
 
 .complete-section h2 {
@@ -2291,65 +1855,65 @@ function getNewLevel(problemId: string): string {
   margin-bottom: 2rem;
 }
 
-.session-summary {
-  margin: 2rem 0;
+ession-summary {
+rgin: 2rem 0;
 }
 
-.summary-achievements {
+ummary-achievements {
   margin: 1.5rem 0;
-}
+
 
 .achievement-item {
   display: flex;
-  align-items: center;
-  justify-content: center;
+align-items: center;
+stify-content: center;
   gap: 1rem;
   padding: 1rem;
   margin: 0.5rem 0;
-  background: #f8f9fa;
-  border-radius: 8px;
+ground: #f8f9fa;
+border-radius: 8px;
   font-size: 1.1rem;
 }
 
-.achievement-icon {
+vement-icon {
   font-size: 2rem;
 }
 
 .promotions-list {
-  margin: 2rem 0;
-  padding: 1.5rem;
+margin: 2rem 0;
+.5rem;
   background: #d4edda;
-  border-radius: 8px;
+rder-radius: 8px;
 }
 
-.promotions-list h4 {
+ons-list h4 {
   margin: 0 0 1rem 0;
-  color: #155724;
+color: #155724;
 }
 
-.promotion-item {
+motion-item {
   padding: 0.75rem;
   margin: 0.5rem 0;
-  background: white;
+nd: white;
   border-radius: 6px;
-  display: flex;
+splay: flex;
   align-items: center;
   gap: 0.75rem;
-  font-weight: 500;
-}
+-weight: 500;
+
 
 .promotion-icon {
   font-size: 1.5rem;
-}
 
-.session-quality-display {
+
+sion-quality-display {
   margin: 2rem 0;
   padding: 1.5rem;
   background: #e7f3ff;
-  border-radius: 8px;
-}
+er-radius: 8px;
 
-.session-quality-display h4 {
+
+sion-quality-display h4 {
   margin: 0 0 0.5rem 0;
   color: #007bff;
   font-size: 1.3rem;
@@ -2360,60 +1924,60 @@ function getNewLevel(problemId: string): string {
   margin: 0.5rem 0;
 }
 
-.tomorrow-preview {
-  margin: 2rem 0;
+w-preview {
+rgin: 2rem 0;
   padding: 1rem;
   background: #fff3cd;
   border-radius: 8px;
-}
 
-.tomorrow-preview h4 {
+
+omorrow-preview h4 {
   margin: 0 0 0.5rem 0;
   color: #856404;
 }
 
-.tomorrow-preview p {
+row-preview p {
   margin: 0;
   color: #856404;
 }
 
 .complete-actions {
-  display: flex;
+display: flex;
   gap: 1rem;
   justify-content: center;
   margin-top: 2rem;
 }
 
 .progress-btn,
-.done-btn,
+e-btn,
 .view-progress-btn {
   padding: 0.75rem 2rem;
   border: none;
   border-radius: 8px;
   font-size: 1rem;
-  font-weight: bold;
-  cursor: pointer;
+font-weight: bold;
+rsor: pointer;
   transition: all 0.2s;
 }
 
 .progress-btn,
-.view-progress-btn {
-  background: #007bff;
+w-progress-btn {
+background: #007bff;
   color: white;
 }
 
-.progress-btn:hover,
+rogress-btn:hover,
 .view-progress-btn:hover {
-  background: #0056b3;
+background: #0056b3;
 }
 
 .done-btn {
-  background: #6c757d;
-  color: white;
+ckground: #6c757d;
+color: white;
 }
 
 .done-btn:hover {
-  background: #5a6268;
+background: #5a6268;
 }
 </style>
 
