@@ -299,6 +299,56 @@
             </svg>
           </div>
           
+          <!-- Multiplication: Array/Matrix Visual -->
+          <div v-if="currentRound1Problem?.operation === 'multiplication'" class="visual-section">
+            <h4>Array Visual:</h4>
+            <svg :width="(currentRound1Problem.num2 * 30) + 40" :height="(currentRound1Problem.num1 * 30) + 60" class="array-visual">
+              <!-- Draw array of dots -->
+              <circle 
+                v-for="(dot, index) in getArrayDots(currentRound1Problem)" 
+                :key="'array-' + index"
+                :cx="20 + (dot.col * 30)"
+                :cy="20 + (dot.row * 30)"
+                r="10"
+                fill="#8b5cf6"
+                class="animated-dot"
+                :style="{ animationDelay: `${index * 0.05}s` }"
+              />
+            </svg>
+            <p class="visual-explanation">{{ currentRound1Problem.num1 }} groups of {{ currentRound1Problem.num2 }} = {{ currentRound1Problem.correctAnswer }}</p>
+          </div>
+          
+          <!-- Division: Grouped Circles Visual -->
+          <div v-if="currentRound1Problem?.operation === 'division'" class="visual-section">
+            <h4>Division Groups:</h4>
+            <svg :width="getDivisionWidth(currentRound1Problem)" :height="200" class="division-visual">
+              <g v-for="(group, groupIndex) in getDivisionGroups(currentRound1Problem)" :key="'group-' + groupIndex">
+                <rect 
+                  :x="groupIndex * 80 + 10"
+                  y="30"
+                  width="60"
+                  height="150"
+                  fill="none"
+                  stroke="#f59e0b"
+                  stroke-width="2"
+                  stroke-dasharray="5,5"
+                  rx="8"
+                />
+                <circle 
+                  v-for="(dot, dotIndex) in group.dots" 
+                  :key="'div-dot-' + groupIndex + '-' + dotIndex"
+                  :cx="groupIndex * 80 + 20 + ((dotIndex % 2) * 30)"
+                  :cy="45 + (Math.floor(dotIndex / 2) * 30)"
+                  r="10"
+                  fill="#f59e0b"
+                  class="animated-dot"
+                  :style="{ animationDelay: `${(groupIndex * group.dots.length + dotIndex) * 0.05}s` }"
+                />
+              </g>
+            </svg>
+            <p class="visual-explanation">{{ currentRound1Problem.num1 }} ÷ {{ currentRound1Problem.num2 }} = {{ currentRound1Problem.correctAnswer }} groups</p>
+          </div>
+          
           <!-- Number Line Visual -->
           <div class="visual-section">
             <h4>Number Line:</h4>
@@ -348,13 +398,21 @@
           </div>
         </div>
         
-        <p class="encoding-timer">{{ encodingTimeRemaining }}s</p>
+        <!-- NO TIMER - Student paced! -->
         <button @click="proceedToRecall" class="next-btn">I've Got It! Next →</button>
       </div>
 
-      <!-- Consolidation Phase -->
+      <!-- Consolidation Phase (5 seconds with animation) -->
       <div v-if="round1Phase === 'consolidation'" class="consolidation-phase">
-        <p class="phase-instruction">Get ready...</p>
+        <p class="phase-instruction">Get ready to recall...</p>
+        <div class="consolidation-animation">
+          <div class="thinking-dots">
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+          </div>
+          <p class="consolidation-message">Think about it...</p>
+        </div>
         <div class="countdown-display">{{ consolidationTimeRemaining }}</div>
       </div>
 
@@ -384,7 +442,7 @@
           <div class="feedback-fact">
             {{ currentRound1Problem?.displayText.replace(' = ?', ` = ${currentRound1Problem.correctAnswer}`) }}
           </div>
-          <p class="feedback-next">{{ round1RecallAttempt === 1 ? 'Testing again...' : 'Moving to next fact...' }}</p>
+          <p class="feedback-next">Great! Moving to next fact...</p>
           <p class="feedback-countdown">{{ feedbackTimeRemaining }}s</p>
         </div>
         
@@ -617,7 +675,7 @@ const round1Input = ref<HTMLInputElement | null>(null)
 
 // Round 1 Timers
 const encodingTimeRemaining = ref(5)
-const consolidationTimeRemaining = ref(2)
+const consolidationTimeRemaining = ref(5)  // 5 seconds to think
 const recallTimeRemaining = ref(15)
 const feedbackTimeRemaining = ref(10)
 const round1TimerInterval = ref<number | null>(null)
@@ -1244,37 +1302,30 @@ async function handleRound1Feedback() {
   clearAllTimers()
   
   if (round1LastCorrect.value) {
-    if (round1RecallAttempt.value === 1) {
-      // First recall successful - test again after delay
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      round1RecallAttempt.value = 2
-      startRecallPhase()
-    } else {
-      // Second recall successful - fact learned!
-      const problemId = currentRound1Problem.value!.problemId
-      round1LearnedToday.value.push(problemId)
-      round1AttemptsLog.value[problemId].finalResult = 'learned'
-      
-      if (session.value.round1_learning) {
-        session.value.round1_learning.newlyLearned.push(problemId)
-        session.value.round1_learning.problemsCompleted.push(problemId)
-      }
-      
-      // Update problem in progress
-      await updateProblemInProgress(
-        authStore.currentUser!.uid,
-        currentOperation.value,
-        problemId,
-        {
-          correct: true,
-          responseTime: round1AttemptsLog.value[problemId].timesSpent[round1AttemptsLog.value[problemId].timesSpent.length - 1],
-          source: 'digital-practice'
-        }
-      )
-      
-      // Move to next problem
-      moveToNextRound1Problem()
+    // Correct on first try - fact learned!
+    const problemId = currentRound1Problem.value!.problemId
+    round1LearnedToday.value.push(problemId)
+    round1AttemptsLog.value[problemId].finalResult = 'learned'
+    
+    if (session.value.round1_learning) {
+      session.value.round1_learning.newlyLearned.push(problemId)
+      session.value.round1_learning.problemsCompleted.push(problemId)
     }
+    
+    // Update problem in progress
+    await updateProblemInProgress(
+      authStore.currentUser!.uid,
+      currentOperation.value,
+      problemId,
+      {
+        correct: true,
+        responseTime: round1AttemptsLog.value[problemId].timesSpent[round1AttemptsLog.value[problemId].timesSpent.length - 1],
+        source: 'digital-practice'
+      }
+    )
+    
+    // Move to next problem
+    moveToNextRound1Problem()
   } else {
     // Incorrect - show again (encoding phase)
     round1AttemptsLog.value[currentRound1Problem.value!.problemId].encodingCycles++
@@ -1811,14 +1862,57 @@ function getAdditionArc(problem: ProblemProgress | undefined): string {
 function proceedToRecall() {
   round1Answer.value = ''
   round1Phase.value = 'consolidation'
+  consolidationTimeRemaining.value = 5
   
-  setTimeout(() => {
-    round1Phase.value = 'recall'
-    round1Answer.value = ''
-    nextTick(() => {
-      round1Input.value?.focus()
-    })
-  }, 1500)
+  // Countdown with animation
+  const consolidationInterval = setInterval(() => {
+    consolidationTimeRemaining.value--
+    if (consolidationTimeRemaining.value <= 0) {
+      clearInterval(consolidationInterval)
+      round1Phase.value = 'recall'
+      round1Answer.value = ''
+      nextTick(() => {
+        round1Input.value?.focus()
+      })
+    }
+  }, 1000)
+}
+
+// Multiplication array helpers
+function getArrayDots(problem: ProblemProgress | undefined): Array<{ row: number, col: number }> {
+  if (!problem) return []
+  const rows = problem.num1
+  const cols = problem.num2
+  const dots: Array<{ row: number, col: number }> = []
+  
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      dots.push({ row: r, col: c })
+    }
+  }
+  
+  return dots
+}
+
+// Division groups helpers
+function getDivisionGroups(problem: ProblemProgress | undefined): Array<{ dots: number[] }> {
+  if (!problem) return []
+  const total = problem.num1
+  const groupSize = problem.num2
+  const numGroups = parseInt(problem.correctAnswer)
+  
+  const groups: Array<{ dots: number[] }> = []
+  for (let g = 0; g < numGroups; g++) {
+    groups.push({ dots: Array(groupSize).fill(0).map((_, i) => i) })
+  }
+  
+  return groups
+}
+
+function getDivisionWidth(problem: ProblemProgress | undefined): number {
+  if (!problem) return 400
+  const numGroups = parseInt(problem.correctAnswer)
+  return Math.max(400, numGroups * 80 + 40)
 }
 </script>
 
