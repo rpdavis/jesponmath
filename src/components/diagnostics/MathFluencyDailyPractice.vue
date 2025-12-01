@@ -239,11 +239,117 @@
 
       <!-- Encoding Phase -->
       <div v-if="round1Phase === 'encoding'" class="encoding-phase">
-        <p class="phase-instruction">Watch carefully!</p>
+        <p class="phase-instruction">Learn this fact:</p>
+        
+        <!-- Fact Display with Answer Highlighted -->
         <div class="fact-display-large">
-          {{ currentRound1Problem?.displayText.replace(' = ?', ` = ${currentRound1Problem.correctAnswer}`) }}
+          <span class="fact-problem">{{ currentRound1Problem?.displayText.replace(' = ?', '') }} = </span>
+          <span class="fact-answer">{{ currentRound1Problem?.correctAnswer }}</span>
         </div>
+        
+        <!-- Visual Representations -->
+        <div v-if="shouldShowVisuals(currentRound1Problem)" class="visual-representations">
+          <!-- Ten-Frame Visual (for addition/subtraction) -->
+          <div v-if="currentRound1Problem?.operation === 'addition' || currentRound1Problem?.operation === 'subtraction'" class="visual-section">
+            <h4>Ten-Frame:</h4>
+            <svg :width="230" :height="200" class="ten-frame-visual">
+              <!-- Ten-frame grid -->
+              <rect v-for="i in 10" :key="'frame-' + i"
+                :x="((i - 1) % 5) * 40 + 10"
+                :y="Math.floor((i - 1) / 5) * 40 + 10"
+                width="35"
+                height="35"
+                fill="none"
+                stroke="#94a3b8"
+                stroke-width="2"
+                rx="4"
+              />
+              
+              <!-- Dots with animation -->
+              <circle v-for="i in Math.min(10, getAnswerNumber(currentRound1Problem))" :key="'dot1-' + i"
+                :cx="((i - 1) % 5) * 40 + 27.5"
+                :cy="Math.floor((i - 1) / 5) * 40 + 27.5"
+                r="12"
+                :fill="i <= (currentRound1Problem?.num1 || 0) ? '#3b82f6' : '#10b981'"
+                class="animated-dot"
+                :style="{ animationDelay: `${i * 0.1}s` }"
+              />
+              
+              <!-- Second ten-frame if answer > 10 -->
+              <g v-if="getAnswerNumber(currentRound1Problem) > 10">
+                <rect v-for="i in 10" :key="'frame2-' + i"
+                  :x="((i - 1) % 5) * 40 + 10"
+                  :y="Math.floor((i - 1) / 5) * 40 + 110"
+                  width="35"
+                  height="35"
+                  fill="none"
+                  stroke="#94a3b8"
+                  stroke-width="2"
+                  rx="4"
+                />
+                <circle v-for="i in (getAnswerNumber(currentRound1Problem) - 10)" :key="'dot2-' + i"
+                  :cx="((i - 1) % 5) * 40 + 27.5"
+                  :cy="Math.floor((i - 1) / 5) * 40 + 127.5"
+                  r="12"
+                  fill="#10b981"
+                  class="animated-dot"
+                  :style="{ animationDelay: `${(10 + i) * 0.1}s` }"
+                />
+              </g>
+            </svg>
+          </div>
+          
+          <!-- Number Line Visual -->
+          <div class="visual-section">
+            <h4>Number Line:</h4>
+            <svg :width="650" :height="80" class="number-line-visual">
+              <!-- Number line -->
+              <line x1="30" y1="40" :x2="620" y2="40" 
+                    stroke="#94a3b8" stroke-width="3" stroke-linecap="round" />
+              
+              <!-- Tick marks and numbers -->
+              <g v-for="i in Math.min(21, getAnswerNumber(currentRound1Problem) + 3)" :key="'tick-' + i">
+                <line 
+                  :x1="30 + (i * 25)" 
+                  :y1="35" 
+                  :x2="30 + (i * 25)" 
+                  :y2="45"
+                  stroke="#64748b" 
+                  stroke-width="2" 
+                />
+                <text 
+                  :x="30 + (i * 25)" 
+                  y="60" 
+                  text-anchor="middle" 
+                  font-size="12" 
+                  fill="#475569"
+                >
+                  {{ i }}
+                </text>
+              </g>
+              
+              <!-- Animated arc showing the addition -->
+              <path v-if="currentRound1Problem?.operation === 'addition'"
+                :d="getAdditionArc(currentRound1Problem)"
+                fill="none"
+                stroke="#3b82f6"
+                stroke-width="3"
+                marker-end="url(#arrowhead)"
+                class="animated-arc"
+              />
+              
+              <!-- Arrow marker -->
+              <defs>
+                <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                  <polygon points="0 0, 10 3, 0 6" fill="#3b82f6" />
+                </marker>
+              </defs>
+            </svg>
+          </div>
+        </div>
+        
         <p class="encoding-timer">{{ encodingTimeRemaining }}s</p>
+        <button @click="proceedToRecall" class="next-btn">I've Got It! Next →</button>
       </div>
 
       <!-- Consolidation Phase -->
@@ -1673,6 +1779,47 @@ function sampleRandomUnique(problems: ProblemProgress[], count: number): Problem
   
   return sampled
 }
+
+// Visual helper functions
+function shouldShowVisuals(problem: ProblemProgress | undefined): boolean {
+  if (!problem) return false
+  
+  if (problem.operation === 'addition' || problem.operation === 'subtraction') {
+    const answer = getAnswerNumber(problem)
+    return answer <= 20 && answer >= 0
+  }
+  
+  return false
+}
+
+function getAnswerNumber(problem: ProblemProgress | undefined): number {
+  if (!problem) return 0
+  return parseInt(problem.correctAnswer) || 0
+}
+
+function getAdditionArc(problem: ProblemProgress | undefined): string {
+  if (!problem) return ''
+  const num1 = problem.num1
+  const num2 = problem.num2
+  const startX = 30 + (num1 * 25)
+  const endX = 30 + ((num1 + num2) * 25)
+  const arcHeight = 20
+  
+  return `M ${startX} 35 Q ${(startX + endX) / 2} ${35 - arcHeight} ${endX} 35`
+}
+
+function proceedToRecall() {
+  round1Answer.value = ''
+  round1Phase.value = 'consolidation'
+  
+  setTimeout(() => {
+    round1Phase.value = 'recall'
+    round1Answer.value = ''
+    nextTick(() => {
+      round1Input.value?.focus()
+    })
+  }, 1500)
+}
 </script>
 
 <style scoped>
@@ -2304,6 +2451,91 @@ function sampleRandomUnique(problems: ProblemProgress[], count: number): Problem
   font-size: 1.5rem;
   color: #007bff;
   margin-top: 2rem;
+}
+
+.fact-problem {
+  color: #333;
+}
+
+.fact-answer {
+  color: #28a745;
+  font-weight: bold;
+  text-shadow: 2px 2px 4px rgba(40, 167, 69, 0.2);
+}
+
+.visual-representations {
+  margin: 2rem 0;
+  padding: 1.5rem;
+  background: rgba(248, 249, 250, 0.8);
+  border-radius: 12px;
+  border: 2px dashed #cbd5e1;
+}
+
+.visual-section {
+  margin: 1.5rem 0;
+}
+
+.visual-section h4 {
+  margin: 0 0 1rem 0;
+  color: #1976d2;
+  font-size: 1.1rem;
+  text-align: center;
+}
+
+.ten-frame-visual,
+.number-line-visual {
+  display: block;
+  margin: 0 auto;
+}
+
+.animated-dot {
+  opacity: 0;
+  animation: popIn 0.3s ease-out forwards;
+}
+
+@keyframes popIn {
+  0% {
+    opacity: 0;
+    transform: scale(0);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animated-arc {
+  stroke-dasharray: 200;
+  stroke-dashoffset: 200;
+  animation: drawArc 1s ease-out forwards;
+  animation-delay: 0.5s;
+}
+
+@keyframes drawArc {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.next-btn {
+  margin-top: 1.5rem;
+  padding: 1rem 2.5rem;
+  background: linear-gradient(135deg, #2196f3, #1976d2);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1.2rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.next-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(33, 150, 243, 0.3);
 }
 
 .countdown-display {
