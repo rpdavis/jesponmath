@@ -2633,10 +2633,51 @@ function getDivisionWidth(problem: ProblemProgress | undefined): number {
 }
 
 .countdown-display {
-  font-size: 6rem;
+  font-size: 3rem;
   font-weight: bold;
   color: #007bff;
-  margin: 3rem 0;
+  margin: 1rem 0;
+}
+
+.consolidation-animation {
+  text-align: center;
+  padding: 2rem;
+}
+
+.thinking-dots {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin: 2rem auto;
+}
+
+.thinking-dots .dot {
+  width: 20px;
+  height: 20px;
+  background: #2196f3;
+  border-radius: 50%;
+  animation: bounce 1.4s ease-in-out infinite;
+}
+
+.thinking-dots .dot:nth-child(1) { animation-delay: 0s; }
+.thinking-dots .dot:nth-child(2) { animation-delay: 0.2s; }
+.thinking-dots .dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes bounce {
+  0%, 80%, 100% {
+    transform: scale(0);
+    opacity: 0.5;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.consolidation-message {
+  font-size: 1.3rem;
+  color: #1976d2;
+  font-style: italic;
 }
 
 .answer-input-large {
