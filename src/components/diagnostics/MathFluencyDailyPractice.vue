@@ -1221,20 +1221,13 @@ function startRound1() {
 
 function startEncodingPhase() {
   round1Phase.value = 'encoding'
-  encodingTimeRemaining.value = 5
-  
   clearAllTimers()
-  round1TimerInterval.value = window.setInterval(() => {
-    encodingTimeRemaining.value--
-    if (encodingTimeRemaining.value <= 0) {
-      startConsolidationPhase()
-    }
-  }, 1000)
+  // NO AUTO-TIMER - student clicks "I've Got It!" when ready
 }
 
 function startConsolidationPhase() {
   round1Phase.value = 'consolidation'
-  consolidationTimeRemaining.value = 2
+  consolidationTimeRemaining.value = 5  // 5 second pause with animation
   
   clearAllTimers()
   round1TimerInterval.value = window.setInterval(() => {
@@ -1242,7 +1235,7 @@ function startConsolidationPhase() {
     if (consolidationTimeRemaining.value <= 0) {
       startRecallPhase()
     }
-  }, 1000)
+  }, 1000) as unknown as number
 }
 
 async function startRecallPhase() {
@@ -1279,23 +1272,28 @@ async function submitRound1Answer() {
   if (!round1AttemptsLog.value[problemId]) {
     round1AttemptsLog.value[problemId] = {
       encodingCycles: 1,
-      recallAttempts: 0,
+      recallAttempts: 1,
       timesSpent: []
     }
   }
-  round1AttemptsLog.value[problemId].recallAttempts++
   round1AttemptsLog.value[problemId].timesSpent.push(responseTime)
   
-  // Show feedback
-  round1Phase.value = 'feedback'
-  feedbackTimeRemaining.value = 10
-  
-  round1TimerInterval.value = window.setInterval(() => {
-    feedbackTimeRemaining.value--
-    if (feedbackTimeRemaining.value <= 0) {
-      handleRound1Feedback()
+  // Update problem in progress
+  if (isCorrect) {
+    await updateProblemInProgress(authStore.currentUser!.uid, currentOperation.value, problemId, {
+      correct: true,
+      responseTime,
+      source: 'digital-practice'
+    })
+    
+    if (session.value.round1_learning) {
+      session.value.round1_learning.newlyLearned.push(problemId)
+      session.value.round1_learning.problemsCompleted.push(problemId)
     }
-  }, 1000)
+  }
+  
+  // Show feedback immediately (NO TIMER - button to continue)
+  round1Phase.value = 'feedback'
 }
 
 async function handleRound1Feedback() {
