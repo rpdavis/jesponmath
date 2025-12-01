@@ -15,73 +15,94 @@
     <div v-else-if="completedToday && !practiceStarted" class="completed-today-section">
       <h3>✅ Practice Complete for Today!</h3>
       <p>You've already completed today's practice session.</p>
-      <p class="completion-time">Completed at: {{ todaysSession?.completedAt?.toDate().toLocaleTimeString() }}</p>
-      
+      <p class="completion-time">
+        Completed at: {{ todaysSession?.completedAt?.toDate().toLocaleTimeString() }}
+      </p>
+
       <div class="today-summary">
         <h4>Today's Results:</h4>
         <div class="summary-stats">
           <div class="stat">
             <span class="stat-label">Facts Learned:</span>
-            <span class="stat-value">{{ todaysSession?.round1_learning?.newlyLearned?.length || 0 }}</span>
+            <span class="stat-value">{{
+              todaysSession?.round1_learning?.newlyLearned?.length || 0
+            }}</span>
           </div>
           <div class="stat">
             <span class="stat-label">Practice Accuracy:</span>
-            <span class="stat-value">{{ Math.round(todaysSession?.round2_practice?.accuracy || 0) }}%</span>
+            <span class="stat-value"
+              >{{ Math.round(todaysSession?.round2_practice?.accuracy || 0) }}%</span
+            >
           </div>
           <div class="stat">
             <span class="stat-label">Total Time:</span>
-            <span class="stat-value">{{ Math.round((todaysSession?.totalTimeSpent || 0) / 60) }} min</span>
+            <span class="stat-value"
+              >{{ Math.round((todaysSession?.totalTimeSpent || 0) / 60) }} min</span
+            >
           </div>
         </div>
       </div>
 
-      <button @click="viewProgress" class="view-progress-btn">
-        View My Progress →
-      </button>
+      <button @click="viewProgress" class="view-progress-btn">View My Progress →</button>
     </div>
 
     <!-- Start Screen -->
     <div v-else-if="!practiceStarted" class="start-section">
       <div class="progress-overview">
         <h3>Your Progress - {{ capitalizeOperation(currentOperation) }}</h3>
-        
+
         <div class="proficiency-bars">
           <div class="bar-item mastered">
             <span class="bar-label">🏆 Mastered</span>
             <div class="bar-container">
-              <div class="bar-fill" :style="{ width: `${(distribution.mastered / distribution.total) * 100}%` }"></div>
+              <div
+                class="bar-fill"
+                :style="{ width: `${(distribution.mastered / distribution.total) * 100}%` }"
+              ></div>
             </div>
             <span class="bar-count">{{ distribution.mastered }}</span>
           </div>
-          
+
           <div class="bar-item proficient">
             <span class="bar-label">🔵 Proficient</span>
             <div class="bar-container">
-              <div class="bar-fill" :style="{ width: `${(distribution.proficient / distribution.total) * 100}%` }"></div>
+              <div
+                class="bar-fill"
+                :style="{ width: `${(distribution.proficient / distribution.total) * 100}%` }"
+              ></div>
             </div>
             <span class="bar-count">{{ distribution.proficient }}</span>
           </div>
-          
+
           <div class="bar-item approaching">
             <span class="bar-label">🟡 Approaching</span>
             <div class="bar-container">
-              <div class="bar-fill" :style="{ width: `${(distribution.approaching / distribution.total) * 100}%` }"></div>
+              <div
+                class="bar-fill"
+                :style="{ width: `${(distribution.approaching / distribution.total) * 100}%` }"
+              ></div>
             </div>
             <span class="bar-count">{{ distribution.approaching }}</span>
           </div>
-          
+
           <div class="bar-item emerging">
             <span class="bar-label">🟢 Emerging</span>
             <div class="bar-container">
-              <div class="bar-fill" :style="{ width: `${(distribution.emerging / distribution.total) * 100}%` }"></div>
+              <div
+                class="bar-fill"
+                :style="{ width: `${(distribution.emerging / distribution.total) * 100}%` }"
+              ></div>
             </div>
             <span class="bar-count">{{ distribution.emerging }}</span>
           </div>
-          
+
           <div class="bar-item does-not-know">
             <span class="bar-label">🔴 Learning</span>
             <div class="bar-container">
-              <div class="bar-fill" :style="{ width: `${(distribution.doesNotKnow / distribution.total) * 100}%` }"></div>
+              <div
+                class="bar-fill"
+                :style="{ width: `${(distribution.doesNotKnow / distribution.total) * 100}%` }"
+              ></div>
             </div>
             <span class="bar-count">{{ distribution.doesNotKnow }}</span>
           </div>
@@ -123,9 +144,7 @@
         <p class="total-time">Total: ~10-12 minutes</p>
       </div>
 
-      <button @click="startPractice" class="start-practice-btn">
-        🚀 Start Today's Practice
-      </button>
+      <button @click="startPractice" class="start-practice-btn">🚀 Start Today's Practice</button>
     </div>
 
     <!-- WARMUP ROUND -->
@@ -162,40 +181,40 @@
 
       <div v-if="diagnosticShowingQuestion" class="diagnostic-question">
         <div class="timer-bar-container">
-          <div 
+          <div
             :key="'timer-' + diagnosticCurrentIndex"
-            class="timer-bar-fill" 
+            class="timer-bar-fill"
             :class="timerColorClass"
             :style="{ width: `${(diagnosticTimeRemaining / 10) * 100}%` }"
           ></div>
         </div>
         <p class="timer-text">{{ diagnosticTimeRemaining }}s</p>
-        
+
         <div class="question-display-large">
           {{ currentDiagnosticProblem?.displayText }}
         </div>
-        
+
         <input
           ref="diagnosticInput"
           v-model="diagnosticAnswer"
           type="number"
           class="answer-input-large"
-          :class="{ 'submitting': diagnosticSubmitting }"
+          :class="{ submitting: diagnosticSubmitting }"
           placeholder="?"
           @keyup.enter="() => submitDiagnosticAnswer(false)"
           :disabled="diagnosticSubmitting"
           autofocus
         />
-        
-        <button 
-          @click="() => submitDiagnosticAnswer(false)" 
-          class="submit-btn" 
+
+        <button
+          @click="() => submitDiagnosticAnswer(false)"
+          class="submit-btn"
           :disabled="!diagnosticAnswer || diagnosticSubmitting"
         >
           {{ diagnosticSubmitting ? '✓' : 'Submit' }}
         </button>
       </div>
-      
+
       <div v-else class="processing-transition">
         <div class="processing-spinner"></div>
         <p>Processing...</p>
@@ -206,7 +225,7 @@
     <div v-if="practiceStarted && currentRound === 0.75" class="diagnostic-results-screen">
       <div class="results-content">
         <h2>📊 Quick Check Complete!</h2>
-        
+
         <div class="score-circle" :class="getDiagnosticScoreClass(diagnosticScore)">
           <div class="score-number">{{ diagnosticScore }}%</div>
           <div class="score-label">{{ diagnosticCorrect }}/{{ diagnosticProblems.length }}</div>
@@ -215,17 +234,13 @@
         <div v-if="diagnosticWrongProblems.length === 0" class="perfect-score">
           <h3>🎉 Perfect!</h3>
           <p>Moving to practice...</p>
-          <button @click="continueCurrentLevel" class="continue-btn">
-            Start Practice →
-          </button>
+          <button @click="continueCurrentLevel" class="continue-btn">Start Practice →</button>
         </div>
 
         <div v-else class="learning-preview">
           <h3>📚 Let's Learn {{ diagnosticWrongProblems.length }} Facts</h3>
           <p>You got {{ diagnosticCorrect }}/{{ diagnosticProblems.length }} correct</p>
-          <button @click="continueCurrentLevel" class="start-learning-btn">
-            Start Learning →
-          </button>
+          <button @click="continueCurrentLevel" class="start-learning-btn">Start Learning →</button>
         </div>
       </div>
     </div>
@@ -240,21 +255,31 @@
       <!-- Encoding Phase -->
       <div v-if="round1Phase === 'encoding'" class="encoding-phase">
         <p class="phase-instruction">Learn this fact:</p>
-        
+
         <!-- Fact Display with Answer Highlighted -->
         <div class="fact-display-large">
-          <span class="fact-problem">{{ currentRound1Problem?.displayText.replace(' = ?', '') }} = </span>
+          <span class="fact-problem"
+            >{{ currentRound1Problem?.displayText.replace(' = ?', '') }} =
+          </span>
           <span class="fact-answer">{{ currentRound1Problem?.correctAnswer }}</span>
         </div>
-        
+
         <!-- Visual Representations -->
         <div v-if="shouldShowVisuals(currentRound1Problem)" class="visual-representations">
           <!-- Ten-Frame Visual (for addition/subtraction) -->
-          <div v-if="currentRound1Problem?.operation === 'addition' || currentRound1Problem?.operation === 'subtraction'" class="visual-section">
+          <div
+            v-if="
+              currentRound1Problem?.operation === 'addition' ||
+              currentRound1Problem?.operation === 'subtraction'
+            "
+            class="visual-section"
+          >
             <h4>Ten-Frame:</h4>
             <svg :width="230" :height="200" class="ten-frame-visual">
               <!-- Ten-frame grid -->
-              <rect v-for="i in 10" :key="'frame-' + i"
+              <rect
+                v-for="i in 10"
+                :key="'frame-' + i"
                 :x="((i - 1) % 5) * 40 + 10"
                 :y="Math.floor((i - 1) / 5) * 40 + 10"
                 width="35"
@@ -264,9 +289,11 @@
                 stroke-width="2"
                 rx="4"
               />
-              
+
               <!-- Dots with animation -->
-              <circle v-for="i in Math.min(10, getAnswerNumber(currentRound1Problem))" :key="'dot1-' + i"
+              <circle
+                v-for="i in Math.min(10, getAnswerNumber(currentRound1Problem))"
+                :key="'dot1-' + i"
                 :cx="((i - 1) % 5) * 40 + 27.5"
                 :cy="Math.floor((i - 1) / 5) * 40 + 27.5"
                 r="12"
@@ -274,10 +301,12 @@
                 class="animated-dot"
                 :style="{ animationDelay: `${i * 0.1}s` }"
               />
-              
+
               <!-- Second ten-frame if answer > 10 -->
               <g v-if="getAnswerNumber(currentRound1Problem) > 10">
-                <rect v-for="i in 10" :key="'frame2-' + i"
+                <rect
+                  v-for="i in 10"
+                  :key="'frame2-' + i"
                   :x="((i - 1) % 5) * 40 + 10"
                   :y="Math.floor((i - 1) / 5) * 40 + 110"
                   width="35"
@@ -287,7 +316,9 @@
                   stroke-width="2"
                   rx="4"
                 />
-                <circle v-for="i in (getAnswerNumber(currentRound1Problem) - 10)" :key="'dot2-' + i"
+                <circle
+                  v-for="i in getAnswerNumber(currentRound1Problem) - 10"
+                  :key="'dot2-' + i"
                   :cx="((i - 1) % 5) * 40 + 27.5"
                   :cy="Math.floor((i - 1) / 5) * 40 + 127.5"
                   r="12"
@@ -298,32 +329,46 @@
               </g>
             </svg>
           </div>
-          
+
           <!-- Multiplication: Array/Matrix Visual -->
           <div v-if="currentRound1Problem?.operation === 'multiplication'" class="visual-section">
             <h4>Array Visual:</h4>
-            <svg :width="(currentRound1Problem.num2 * 30) + 40" :height="(currentRound1Problem.num1 * 30) + 60" class="array-visual">
+            <svg
+              :width="currentRound1Problem.num2 * 30 + 40"
+              :height="currentRound1Problem.num1 * 30 + 60"
+              class="array-visual"
+            >
               <!-- Draw array of dots -->
-              <circle 
-                v-for="(dot, index) in getArrayDots(currentRound1Problem)" 
+              <circle
+                v-for="(dot, index) in getArrayDots(currentRound1Problem)"
                 :key="'array-' + index"
-                :cx="20 + (dot.col * 30)"
-                :cy="20 + (dot.row * 30)"
+                :cx="20 + dot.col * 30"
+                :cy="20 + dot.row * 30"
                 r="10"
                 fill="#8b5cf6"
                 class="animated-dot"
                 :style="{ animationDelay: `${index * 0.05}s` }"
               />
             </svg>
-            <p class="visual-explanation">{{ currentRound1Problem.num1 }} groups of {{ currentRound1Problem.num2 }} = {{ currentRound1Problem.correctAnswer }}</p>
+            <p class="visual-explanation">
+              {{ currentRound1Problem.num1 }} groups of {{ currentRound1Problem.num2 }} =
+              {{ currentRound1Problem.correctAnswer }}
+            </p>
           </div>
-          
+
           <!-- Division: Grouped Circles Visual -->
           <div v-if="currentRound1Problem?.operation === 'division'" class="visual-section">
             <h4>Division Groups:</h4>
-            <svg :width="getDivisionWidth(currentRound1Problem)" :height="200" class="division-visual">
-              <g v-for="(group, groupIndex) in getDivisionGroups(currentRound1Problem)" :key="'group-' + groupIndex">
-                <rect 
+            <svg
+              :width="getDivisionWidth(currentRound1Problem)"
+              :height="200"
+              class="division-visual"
+            >
+              <g
+                v-for="(group, groupIndex) in getDivisionGroups(currentRound1Problem)"
+                :key="'group-' + groupIndex"
+              >
+                <rect
                   :x="groupIndex * 80 + 10"
                   y="30"
                   width="60"
@@ -334,52 +379,62 @@
                   stroke-dasharray="5,5"
                   rx="8"
                 />
-                <circle 
-                  v-for="(dot, dotIndex) in group.dots" 
+                <circle
+                  v-for="(dot, dotIndex) in group.dots"
                   :key="'div-dot-' + groupIndex + '-' + dotIndex"
-                  :cx="groupIndex * 80 + 20 + ((dotIndex % 2) * 30)"
-                  :cy="45 + (Math.floor(dotIndex / 2) * 30)"
+                  :cx="groupIndex * 80 + 20 + (dotIndex % 2) * 30"
+                  :cy="45 + Math.floor(dotIndex / 2) * 30"
                   r="10"
                   fill="#f59e0b"
                   class="animated-dot"
-                  :style="{ animationDelay: `${(groupIndex * group.dots.length + dotIndex) * 0.05}s` }"
+                  :style="{
+                    animationDelay: `${(groupIndex * group.dots.length + dotIndex) * 0.05}s`,
+                  }"
                 />
               </g>
             </svg>
-            <p class="visual-explanation">{{ currentRound1Problem.num1 }} ÷ {{ currentRound1Problem.num2 }} = {{ currentRound1Problem.correctAnswer }} groups</p>
+            <p class="visual-explanation">
+              {{ currentRound1Problem.num1 }} ÷ {{ currentRound1Problem.num2 }} =
+              {{ currentRound1Problem.correctAnswer }} groups
+            </p>
           </div>
-          
+
           <!-- Number Line Visual -->
           <div class="visual-section">
             <h4>Number Line:</h4>
-            <svg :width="650" :height="80" class="number-line-visual">
+            <svg :width="Math.max(650, (getAnswerNumber(currentRound1Problem) + 3) * 25 + 60)" :height="80" class="number-line-visual">
               <!-- Number line -->
-              <line x1="30" y1="40" :x2="620" y2="40" 
-                    stroke="#94a3b8" stroke-width="3" stroke-linecap="round" />
-              
+              <line
+                x1="30"
+                y1="40"
+                :x2="620"
+                y2="40"
+                stroke="#94a3b8"
+                stroke-width="3"
+                stroke-linecap="round"
+              />
+
               <!-- Tick marks and numbers -->
-              <g v-for="i in Math.min(21, getAnswerNumber(currentRound1Problem) + 3)" :key="'tick-' + i">
-                <line 
-                  :x1="30 + (i * 25)" 
-                  :y1="35" 
-                  :x2="30 + (i * 25)" 
+              <g
+                v-for="i in Math.min(21, getAnswerNumber(currentRound1Problem) + 3)"
+                :key="'tick-' + i"
+              >
+                <line
+                  :x1="30 + i * 25"
+                  :y1="35"
+                  :x2="30 + i * 25"
                   :y2="45"
-                  stroke="#64748b" 
-                  stroke-width="2" 
+                  stroke="#64748b"
+                  stroke-width="2"
                 />
-                <text 
-                  :x="30 + (i * 25)" 
-                  y="60" 
-                  text-anchor="middle" 
-                  font-size="12" 
-                  fill="#475569"
-                >
+                <text :x="30 + i * 25" y="60" text-anchor="middle" font-size="12" fill="#475569">
                   {{ i }}
                 </text>
               </g>
-              
+
               <!-- Animated arc showing the addition -->
-              <path v-if="currentRound1Problem?.operation === 'addition'"
+              <path
+                v-if="currentRound1Problem?.operation === 'addition'"
                 :d="getAdditionArc(currentRound1Problem)"
                 fill="none"
                 stroke="#3b82f6"
@@ -387,17 +442,24 @@
                 marker-end="url(#arrowhead)"
                 class="animated-arc"
               />
-              
+
               <!-- Arrow marker -->
               <defs>
-                <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                <marker
+                  id="arrowhead"
+                  markerWidth="10"
+                  markerHeight="10"
+                  refX="9"
+                  refY="3"
+                  orient="auto"
+                >
                   <polygon points="0 0, 10 3, 0 6" fill="#3b82f6" />
                 </marker>
               </defs>
             </svg>
           </div>
         </div>
-        
+
         <!-- NO TIMER - Student paced! -->
         <button @click="proceedToRecall" class="next-btn">I've Got It! Next →</button>
       </div>
@@ -440,17 +502,29 @@
           <div class="feedback-icon">✅</div>
           <div class="feedback-message">Correct!</div>
           <div class="feedback-fact">
-            {{ currentRound1Problem?.displayText.replace(' = ?', ` = ${currentRound1Problem.correctAnswer}`) }}
+            {{
+              currentRound1Problem?.displayText.replace(
+                ' = ?',
+                ` = ${currentRound1Problem.correctAnswer}`,
+              )
+            }}
           </div>
           <p class="feedback-next">Great! Moving to next fact...</p>
           <p class="feedback-countdown">{{ feedbackTimeRemaining }}s</p>
         </div>
-        
+
         <div v-else class="feedback-incorrect">
           <div class="feedback-icon">❌</div>
-          <div class="feedback-message">The answer is {{ currentRound1Problem?.correctAnswer }}</div>
+          <div class="feedback-message">
+            The answer is {{ currentRound1Problem?.correctAnswer }}
+          </div>
           <div class="feedback-fact">
-            {{ currentRound1Problem?.displayText.replace(' = ?', ` = ${currentRound1Problem.correctAnswer}`) }}
+            {{
+              currentRound1Problem?.displayText.replace(
+                ' = ?',
+                ` = ${currentRound1Problem.correctAnswer}`,
+              )
+            }}
           </div>
           <p class="feedback-next">Let's see it again...</p>
           <p class="feedback-countdown">{{ feedbackTimeRemaining }}s</p>
@@ -480,7 +554,7 @@
           autofocus
         />
         <p class="practice-timer">{{ round2TimeRemaining }}s</p>
-        
+
         <button @click="submitRound2Answer" class="submit-btn" :disabled="!round2Answer">
           Submit
         </button>
@@ -533,7 +607,7 @@
           autofocus
         />
         <p class="assessment-timer">{{ round3TimeRemaining }}s</p>
-        
+
         <button @click="submitRound3Answer" class="submit-btn" :disabled="!round3Answer">
           Submit
         </button>
@@ -545,17 +619,25 @@
     <!-- Session Complete -->
     <div v-if="sessionComplete" class="complete-section">
       <h2>🎉 Great Practice Session!</h2>
-      
+
       <div class="session-summary">
         <h3>Today You:</h3>
         <div class="summary-achievements">
-          <div class="achievement-item" v-if="session.round1_learning?.newlyLearned && session.round1_learning.newlyLearned.length > 0">
+          <div
+            class="achievement-item"
+            v-if="
+              session.round1_learning?.newlyLearned &&
+              session.round1_learning.newlyLearned.length > 0
+            "
+          >
             <span class="achievement-icon">📚</span>
             <span>Learned {{ session.round1_learning.newlyLearned.length }} new facts</span>
           </div>
           <div class="achievement-item">
             <span class="achievement-icon">💪</span>
-            <span>Practiced {{ session.round2_practice?.problemsPresented?.length || 0 }} facts</span>
+            <span
+              >Practiced {{ session.round2_practice?.problemsPresented?.length || 0 }} facts</span
+            >
           </div>
           <div class="achievement-item">
             <span class="achievement-icon">✓</span>
@@ -569,13 +651,15 @@
 
         <div v-if="promotionsEarned.length > 0" class="promotions-list">
           <h4>Facts Promoted Today:</h4>
-          <div v-for="problemId in promotionsEarned.slice(0, 5)" :key="problemId" class="promotion-item">
+          <div
+            v-for="problemId in promotionsEarned.slice(0, 5)"
+            :key="problemId"
+            class="promotion-item"
+          >
             <span class="promotion-icon">🎊</span>
             <span>{{ getProblemDisplay(problemId) }} is now {{ getNewLevel(problemId) }}!</span>
           </div>
-          <p v-if="promotionsEarned.length > 5">
-            ...and {{ promotionsEarned.length - 5 }} more!
-          </p>
+          <p v-if="promotionsEarned.length > 5">...and {{ promotionsEarned.length - 5 }} more!</p>
         </div>
 
         <div class="session-quality-display">
@@ -590,12 +674,8 @@
       </div>
 
       <div class="complete-actions">
-        <button @click="viewProgress" class="progress-btn">
-          See My Progress
-        </button>
-        <button @click="finishSession" class="done-btn">
-          Done for Today
-        </button>
+        <button @click="viewProgress" class="progress-btn">See My Progress</button>
+        <button @click="finishSession" class="done-btn">Done for Today</button>
       </div>
     </div>
   </div>
@@ -605,27 +685,31 @@
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
-import { 
-  getFluencyProgress, 
+import {
+  getFluencyProgress,
   getAllFluencyProgress,
   getTodaysPracticeSession,
   createPracticeSession,
-  updateProblemInProgress
+  updateProblemInProgress,
 } from '@/services/mathFluencyServices'
-import { sampleRandom, shuffleArray, getAllProblemsForOperation } from '@/utils/mathFluencyProblemGenerator'
+import {
+  sampleRandom,
+  shuffleArray,
+  getAllProblemsForOperation,
+} from '@/utils/mathFluencyProblemGenerator'
 import { getNextOperation } from '@/types/mathFluency'
 import { getSubLevelConfig, getSubLevelsForOperation } from '@/config/fluencySubLevels'
 import { filterProblemsBySubLevel, selectDailyPracticeProblems } from '@/utils/subLevelUtils'
 import { selectChallengeProblems } from '@/utils/challengeProblemSelector'
-import type { 
-  MathFluencyProgress, 
-  ProblemProgress, 
+import type {
+  MathFluencyProgress,
+  ProblemProgress,
   OperationType,
   SubLevel,
   MathFluencyPracticeSession,
   LearningRoundData,
   PracticeRoundData,
-  AssessmentRoundData
+  AssessmentRoundData,
 } from '@/types/mathFluency'
 import { Timestamp } from 'firebase/firestore'
 import { markFluencyAssignmentComplete } from '@/services/mathFluencyAssignmentServices'
@@ -654,7 +738,9 @@ const warmupInput = ref<HTMLInputElement | null>(null)
 const diagnosticProblems = ref<ProblemProgress[]>([])
 const diagnosticCurrentIndex = ref(0)
 const diagnosticAnswer = ref('')
-const diagnosticResults = ref<{[problemId: string]: { correct: boolean, responseTime: number }}>({})
+const diagnosticResults = ref<{ [problemId: string]: { correct: boolean; responseTime: number } }>(
+  {},
+)
 const diagnosticInput = ref<HTMLInputElement | null>(null)
 const diagnosticTimeRemaining = ref(10)
 const diagnosticTimerInterval = ref<number | null>(null)
@@ -667,15 +753,15 @@ const round1Phase = ref<'encoding' | 'consolidation' | 'recall' | 'feedback'>('e
 const round1Problems = ref<ProblemProgress[]>([])
 const round1CurrentIndex = ref(0)
 const round1Answer = ref('')
-const round1RecallAttempt = ref(0)  // 1 or 2
+const round1RecallAttempt = ref(0) // 1 or 2
 const round1LastCorrect = ref(false)
-const round1AttemptsLog = ref<{[problemId: string]: any}>({})
+const round1AttemptsLog = ref<{ [problemId: string]: any }>({})
 const round1LearnedToday = ref<string[]>([])
 const round1Input = ref<HTMLInputElement | null>(null)
 
 // Round 1 Timers
 const encodingTimeRemaining = ref(5)
-const consolidationTimeRemaining = ref(5)  // 5 seconds to think
+const consolidationTimeRemaining = ref(5) // 5 seconds to think
 const recallTimeRemaining = ref(15)
 const feedbackTimeRemaining = ref(10)
 const round1TimerInterval = ref<number | null>(null)
@@ -688,7 +774,7 @@ const round2Answer = ref('')
 const round2ShowingFeedback = ref(false)
 const round2LastCorrect = ref(false)
 const round2LastTime = ref(0)
-const round2Results = ref<{[problemId: string]: any}>({})
+const round2Results = ref<{ [problemId: string]: any }>({})
 const round2Correct = ref(0)
 const round2Total = ref(0)
 const round2Input = ref<HTMLInputElement | null>(null)
@@ -700,7 +786,7 @@ const round2StartTime = ref(0)
 const round3Problems = ref<ProblemProgress[]>([])
 const round3CurrentIndex = ref(0)
 const round3Answer = ref('')
-const round3Results = ref<{[problemId: string]: any}>({})
+const round3Results = ref<{ [problemId: string]: any }>({})
 const round3Input = ref<HTMLInputElement | null>(null)
 const round3TimeRemaining = ref(10)
 const round3TimerInterval = ref<number | null>(null)
@@ -718,7 +804,7 @@ const session = ref<Partial<MathFluencyPracticeSession>>({
     attemptsPerProblem: {},
     newlyLearned: [],
     timeSpent: 0,
-    completed: false
+    completed: false,
   },
   round2_practice: {
     problemsPresented: [],
@@ -728,7 +814,7 @@ const session = ref<Partial<MathFluencyPracticeSession>>({
     accuracy: 0,
     averageResponseTime: 0,
     timeSpent: 0,
-    completed: false
+    completed: false,
   },
   round3_assessment: {
     problemsAssessed: [],
@@ -736,21 +822,24 @@ const session = ref<Partial<MathFluencyPracticeSession>>({
     accuracy: 0,
     averageResponseTime: 0,
     timeSpent: 0,
-    completed: false
-  }
+    completed: false,
+  },
 })
 
 // Computed
 const currentOperation = computed(() => progress.value?.operation || 'addition')
 
-const distribution = computed(() => progress.value?.proficiencyDistribution || {
-  doesNotKnow: 0,
-  emerging: 0,
-  approaching: 0,
-  proficient: 0,
-  mastered: 0,
-  total: 100
-})
+const distribution = computed(
+  () =>
+    progress.value?.proficiencyDistribution || {
+      doesNotKnow: 0,
+      emerging: 0,
+      approaching: 0,
+      proficient: 0,
+      mastered: 0,
+      total: 100,
+    },
+)
 
 const proficiencyPercentage = computed(() => progress.value?.proficiencyPercentage || 0)
 
@@ -784,29 +873,31 @@ const round2MixInfo = computed(() => {
 
 const sessionQualityDisplay = computed(() => {
   const qualities = {
-    'excellent': '🏆 Excellent',
-    'good': '⭐ Good',
-    'fair': '👍 Fair',
-    'incomplete': '⚠️ Incomplete'
+    excellent: '🏆 Excellent',
+    good: '⭐ Good',
+    fair: '👍 Fair',
+    incomplete: '⚠️ Incomplete',
   }
   return qualities[session.value.sessionQuality as keyof typeof qualities] || 'Good'
 })
 
 // Diagnostic Round Computed
-const currentDiagnosticProblem = computed(() => diagnosticProblems.value[diagnosticCurrentIndex.value])
-const diagnosticCorrect = computed(() => 
-  Object.values(diagnosticResults.value).filter(r => r.correct).length
+const currentDiagnosticProblem = computed(
+  () => diagnosticProblems.value[diagnosticCurrentIndex.value],
 )
-const diagnosticScore = computed(() => 
+const diagnosticCorrect = computed(
+  () => Object.values(diagnosticResults.value).filter((r) => r.correct).length,
+)
+const diagnosticScore = computed(() =>
   diagnosticProblems.value.length > 0
     ? Math.round((diagnosticCorrect.value / diagnosticProblems.value.length) * 100)
-    : 0
+    : 0,
 )
-const diagnosticWrongProblems = computed(() => 
-  diagnosticProblems.value.filter(p => {
+const diagnosticWrongProblems = computed(() =>
+  diagnosticProblems.value.filter((p) => {
     const result = diagnosticResults.value[p.problemId]
     return result && !result.correct
-  })
+  }),
 )
 
 const timerColorClass = computed(() => {
@@ -820,7 +911,7 @@ const timerColorClass = computed(() => {
 onMounted(async () => {
   // Check if accessed via assignment
   assignmentId.value = (route.query.assignment as string) || null
-  
+
   await loadProgress()
 })
 
@@ -830,26 +921,26 @@ onUnmounted(() => {
 
 async function loadProgress() {
   if (!authStore.currentUser) return
-  
+
   loading.value = true
-  
+
   try {
     // For now, default to addition - later we'll determine current operation
     const operation: OperationType = 'addition'
-    
+
     // Load student's progress
     progress.value = await getFluencyProgress(authStore.currentUser.uid, operation)
-    
+
     if (!progress.value) {
       // Student hasn't done initial diagnostic yet
       alert('You need to complete the initial diagnostic first. Please see your teacher.')
       router.push('/dashboard')
       return
     }
-    
+
     // Check if already practiced today
     const today = await getTodaysPracticeSession(authStore.currentUser.uid, operation)
-    
+
     if (today && today.completed) {
       completedToday.value = true
       todaysSession.value = today
@@ -867,70 +958,84 @@ async function loadProgress() {
 
 async function preparePracticeSession() {
   if (!progress.value) return
-  
+
   const banks = progress.value.problemBanks
-  
+
   // Convert problem banks to flat array for sub-level utilities
   let allProblems = [
     ...banks.doesNotKnow,
     ...banks.emerging,
     ...banks.approaching,
     ...banks.proficient,
-    ...banks.mastered
+    ...banks.mastered,
   ]
-  
+
   // ⭐ ADAPTIVE LOGIC: Check ALL sub-levels up to current and fill gaps
   if (progress.value.currentSubLevel) {
     const currentConfig = getSubLevelConfig(progress.value.currentSubLevel)
     if (currentConfig) {
       // Get all sub-levels in the operation up to and including current
       const allOperationLevels = getSubLevelsForOperation(currentConfig.operation)
-        .filter(sl => sl.order <= currentConfig.order)
+        .filter((sl) => sl.order <= currentConfig.order)
         .sort((a, b) => a.order - b.order)
-      
+
       console.log(`🔍 Checking ${allOperationLevels.length} sub-levels for gaps...`)
-      
+
       // Check each sub-level for gaps
       for (const levelConfig of allOperationLevels) {
-        const levelProblems = allProblems.filter(p => problemBelongsToSubLevel(p, levelConfig.id))
+        const levelProblems = allProblems.filter((p) => problemBelongsToSubLevel(p, levelConfig.id))
         const expectedCount = levelConfig.totalProblems
-        
+
         if (levelProblems.length < expectedCount) {
-          console.log(`⚠️ Gap detected in ${levelConfig.name}: ${levelProblems.length}/${expectedCount} problems`)
-          
+          console.log(
+            `⚠️ Gap detected in ${levelConfig.name}: ${levelProblems.length}/${expectedCount} problems`,
+          )
+
           // Generate missing problems
-          const allLevelProblems = generateProblemsForSubLevel(levelConfig.id, progress.value.studentUid)
-          const existingIds = new Set(levelProblems.map(p => p.problemId))
-          const missingProblems = allLevelProblems.filter(p => !existingIds.has(p.problemId))
-          
+          const allLevelProblems = generateProblemsForSubLevel(
+            levelConfig.id,
+            progress.value.studentUid,
+          )
+          const existingIds = new Set(levelProblems.map((p) => p.problemId))
+          const missingProblems = allLevelProblems.filter((p) => !existingIds.has(p.problemId))
+
           if (missingProblems.length > 0) {
-            console.log(`📝 Adding ${missingProblems.length} missing problems from ${levelConfig.name}`)
+            console.log(
+              `📝 Adding ${missingProblems.length} missing problems from ${levelConfig.name}`,
+            )
             allProblems = [...allProblems, ...missingProblems]
           }
         } else {
-          console.log(`✅ ${levelConfig.name}: ${levelProblems.length}/${expectedCount} problems complete`)
+          console.log(
+            `✅ ${levelConfig.name}: ${levelProblems.length}/${expectedCount} problems complete`,
+          )
         }
       }
     }
   }
-  
+
   // Use sub-level aware selection if available
   if (progress.value.currentSubLevel && allProblems.length > 0) {
     const selection = selectDailyPracticeProblems(
       allProblems,
       progress.value.currentSubLevel,
       progress.value.completedSubLevels,
-      15
+      15,
     )
-    
+
     // Round 1: Focus on "Does Not Know" from current sub-level
-    const currentSubLevelProblems = filterProblemsBySubLevel(allProblems, progress.value.currentSubLevel)
-    const doesNotKnowInLevel = currentSubLevelProblems.filter(p => p.proficiencyLevel === 'doesNotKnow')
+    const currentSubLevelProblems = filterProblemsBySubLevel(
+      allProblems,
+      progress.value.currentSubLevel,
+    )
+    const doesNotKnowInLevel = currentSubLevelProblems.filter(
+      (p) => p.proficiencyLevel === 'doesNotKnow',
+    )
     round1Problems.value = sampleRandom(doesNotKnowInLevel, Math.min(3, doesNotKnowInLevel.length))
-    
+
     // Round 2: Mix current level and maintenance
     const round2Pool = [...selection.currentLevelProblems, ...selection.maintenanceProblems]
-    
+
     // ⭐ ADD CHALLENGE PROBLEMS
     try {
       const allProgress = await getAllFluencyProgress(authStore.currentUser!.uid)
@@ -938,61 +1043,68 @@ async function preparePracticeSession() {
         currentOperation.value,
         progress.value.currentSubLevel,
         allProgress,
-        4
+        4,
       )
-      
+
       round2Problems.value = shuffleArray([...round2Pool, ...challengeProblems])
-      
+
       console.log('🎯 Challenge problems added:', {
         total: challengeProblems.length,
-        nextLevel: challengeProblems.filter(p => p.challengeType === 'next-level').length,
-        previousOp: challengeProblems.filter(p => p.challengeType === 'previous-operation').length
+        nextLevel: challengeProblems.filter((p) => p.challengeType === 'next-level').length,
+        previousOp: challengeProblems.filter((p) => p.challengeType === 'previous-operation')
+          .length,
       })
     } catch (error) {
       console.error('Error selecting challenge problems:', error)
       round2Problems.value = shuffleArray(round2Pool)
     }
-    
+
     round2Stack.value = [...round2Problems.value]
-    
+
     // Round 3: Quick assessment from current sub-level
-    const emergingInLevel = currentSubLevelProblems.filter(p => p.proficiencyLevel === 'emerging' || p.proficiencyLevel === 'approaching')
-    const proficientInLevel = currentSubLevelProblems.filter(p => p.proficiencyLevel === 'proficient')
-    const masteredInLevel = currentSubLevelProblems.filter(p => p.proficiencyLevel === 'mastered')
-    
+    const emergingInLevel = currentSubLevelProblems.filter(
+      (p) => p.proficiencyLevel === 'emerging' || p.proficiencyLevel === 'approaching',
+    )
+    const proficientInLevel = currentSubLevelProblems.filter(
+      (p) => p.proficiencyLevel === 'proficient',
+    )
+    const masteredInLevel = currentSubLevelProblems.filter((p) => p.proficiencyLevel === 'mastered')
+
     round3Problems.value = shuffleArray([
       ...sampleRandom(emergingInLevel, Math.min(5, emergingInLevel.length)),
       ...sampleRandom(proficientInLevel, Math.min(3, proficientInLevel.length)),
-      ...sampleRandom(masteredInLevel, Math.min(2, masteredInLevel.length))
+      ...sampleRandom(masteredInLevel, Math.min(2, masteredInLevel.length)),
     ])
-    
+
     console.log('📚 Sub-level practice session prepared')
   } else {
     // Fallback: Original logic
     round1Problems.value = sampleRandom(banks.doesNotKnow, 3)
-    
+
     round2Problems.value = shuffleArray([
       ...sampleRandom(banks.emerging, 7),
       ...sampleRandom(banks.approaching, 3),
       ...sampleRandom(banks.proficient, 3),
-      ...sampleRandom(banks.mastered, 2)
+      ...sampleRandom(banks.mastered, 2),
     ])
-    
+
     round2Stack.value = [...round2Problems.value]
-    
+
     round3Problems.value = shuffleArray([
       ...sampleRandom(banks.emerging, 5),
       ...sampleRandom(banks.proficient, 3),
-      ...sampleRandom(banks.mastered, 2)
+      ...sampleRandom(banks.mastered, 2),
     ])
   }
-  
+
   // Track mix composition
   if (session.value.round2_practice) {
     session.value.round2_practice.mixComposition = {
-      emerging: round2Problems.value.filter(p => p.proficiencyLevel === 'emerging' || p.proficiencyLevel === 'approaching').length,
-      proficient: round2Problems.value.filter(p => p.proficiencyLevel === 'proficient').length,
-      mastered: round2Problems.value.filter(p => p.proficiencyLevel === 'mastered').length
+      emerging: round2Problems.value.filter(
+        (p) => p.proficiencyLevel === 'emerging' || p.proficiencyLevel === 'approaching',
+      ).length,
+      proficient: round2Problems.value.filter((p) => p.proficiencyLevel === 'proficient').length,
+      mastered: round2Problems.value.filter((p) => p.proficiencyLevel === 'mastered').length,
     }
   }
 }
@@ -1000,17 +1112,17 @@ async function preparePracticeSession() {
 function startPractice() {
   practiceStarted.value = true
   sessionStartTime.value = Date.now()
-  currentRound.value = 0  // Start with warmup
-  
+  currentRound.value = 0 // Start with warmup
+
   // Generate 3 random warmup numbers
   const availableNumbers = Array.from({ length: 20 }, (_, i) => i + 1)
   const shuffled = availableNumbers.sort(() => Math.random() - 0.5)
   warmupNumbers.value = shuffled.slice(0, 3)
   warmupCurrentIndex.value = 0
   warmupAnswer.value = ''
-  
+
   console.log('🔢 Warmup numbers:', warmupNumbers.value)
-  
+
   nextTick(() => {
     warmupInput.value?.focus()
   })
@@ -1023,11 +1135,11 @@ function startPractice() {
 function submitWarmupAnswer() {
   const typed = String(warmupAnswer.value || '').trim()
   const expected = warmupNumbers.value[warmupCurrentIndex.value].toString()
-  
+
   if (typed === expected) {
     warmupCurrentIndex.value++
     warmupAnswer.value = ''
-    
+
     if (warmupCurrentIndex.value >= warmupNumbers.value.length) {
       // Warmup complete - start diagnostic
       currentRound.value = 0.5
@@ -1048,21 +1160,21 @@ function submitWarmupAnswer() {
 
 function startDiagnosticRound() {
   diagnosticProblems.value = generateDiagnosticProblems()
-  
+
   if (diagnosticProblems.value.length === 0) {
     console.warn('⚠️ No diagnostic problems - skipping to Round 1')
     currentRound.value = 1
     startRound1()
     return
   }
-  
+
   diagnosticCurrentIndex.value = 0
   diagnosticAnswer.value = ''
   diagnosticResults.value = {}
   diagnosticTimeRemaining.value = 10
-  
+
   startDiagnosticTimer()
-  
+
   nextTick(() => {
     diagnosticInput.value?.focus()
   })
@@ -1070,39 +1182,39 @@ function startDiagnosticRound() {
 
 function generateDiagnosticProblems(): ProblemProgress[] {
   if (!progress.value?.currentSubLevel) return []
-  
+
   const allProblemsRaw = [
     ...progress.value.problemBanks.doesNotKnow,
     ...progress.value.problemBanks.emerging,
     ...progress.value.problemBanks.approaching,
     ...progress.value.problemBanks.proficient,
-    ...progress.value.problemBanks.mastered
+    ...progress.value.problemBanks.mastered,
   ]
-  
+
   const allProblems = deduplicateByProblemIdAndText(allProblemsRaw)
-  
+
   if (allProblemsRaw.length !== allProblems.length) {
     console.warn(`⚠️ Removed ${allProblemsRaw.length - allProblems.length} duplicates`)
   }
-  
+
   const subLevelProblems = filterProblemsBySubLevel(allProblems, progress.value.currentSubLevel)
   const sampled = sampleRandomUnique(subLevelProblems, Math.min(20, subLevelProblems.length))
-  
+
   console.log(`🎯 Diagnostic: ${sampled.length} problems`)
-  
+
   return sampled
 }
 
 async function startDiagnosticTimer() {
   diagnosticTimeRemaining.value = 10
   diagnosticStartTime.value = Date.now()
-  
+
   if (diagnosticTimerInterval.value) {
     clearInterval(diagnosticTimerInterval.value)
   }
-  
+
   await nextTick()
-  
+
   diagnosticTimerInterval.value = setInterval(() => {
     diagnosticTimeRemaining.value--
     if (diagnosticTimeRemaining.value <= 0) {
@@ -1113,35 +1225,35 @@ async function startDiagnosticTimer() {
 
 function submitDiagnosticAnswer(timeout: boolean = false) {
   if (!currentDiagnosticProblem.value || diagnosticSubmitting.value) return
-  
+
   diagnosticSubmitting.value = true
   diagnosticShowingQuestion.value = false
-  
+
   if (diagnosticTimerInterval.value) {
     clearInterval(diagnosticTimerInterval.value)
     diagnosticTimerInterval.value = null
   }
-  
+
   const responseTime = Date.now() - diagnosticStartTime.value
   const userAnswer = timeout ? '' : String(diagnosticAnswer.value || '').trim()
   const correct = userAnswer === currentDiagnosticProblem.value.correctAnswer
-  
+
   diagnosticResults.value[currentDiagnosticProblem.value.problemId] = {
     correct,
-    responseTime
+    responseTime,
   }
-  
+
   diagnosticCurrentIndex.value++
   diagnosticAnswer.value = ''
-  
+
   setTimeout(() => {
     diagnosticSubmitting.value = false
-    
+
     if (diagnosticCurrentIndex.value >= diagnosticProblems.value.length) {
       // Diagnostic complete - show results (USER MUST CLICK)
       currentRound.value = 0.75
       diagnosticShowingQuestion.value = true
-      
+
       console.log('📊 Diagnostic complete - showing results, waiting for click')
     } else {
       diagnosticShowingQuestion.value = true
@@ -1156,9 +1268,9 @@ function submitDiagnosticAnswer(timeout: boolean = false) {
 function continueCurrentLevel() {
   // Use diagnostic wrong problems for Round 1
   round1Problems.value = [...diagnosticWrongProblems.value]
-  
+
   console.log(`📚 Round 1: Learning ${round1Problems.value.length} facts from diagnostic`)
-  
+
   if (round1Problems.value.length === 0) {
     // Perfect score - skip to Round 2
     currentRound.value = 2
@@ -1184,10 +1296,10 @@ function getDiagnosticScoreClass(score: number): string {
 function getOperationSymbol(operation: OperationType | undefined): string {
   if (!operation) return '+'
   const symbols = {
-    'addition': '+',
-    'subtraction': '−',
-    'multiplication': '×',
-    'division': '÷'
+    addition: '+',
+    subtraction: '−',
+    multiplication: '×',
+    division: '÷',
   }
   return symbols[operation] || '+'
 }
@@ -1206,16 +1318,16 @@ function startRound1() {
     startRound2()
     return
   }
-  
+
   currentRound.value = 1
   round1CurrentIndex.value = 0
   round1Phase.value = 'encoding'
-  
+
   // Log this problem as targeted
   if (session.value.round1_learning && currentRound1Problem.value) {
     session.value.round1_learning.problemsTargeted.push(currentRound1Problem.value.problemId)
   }
-  
+
   startEncodingPhase()
 }
 
@@ -1227,8 +1339,8 @@ function startEncodingPhase() {
 
 function startConsolidationPhase() {
   round1Phase.value = 'consolidation'
-  consolidationTimeRemaining.value = 5  // 5 second pause with animation
-  
+  consolidationTimeRemaining.value = 5 // 5 second pause with animation
+
   clearAllTimers()
   round1TimerInterval.value = window.setInterval(() => {
     consolidationTimeRemaining.value--
@@ -1243,7 +1355,7 @@ async function startRecallPhase() {
   round1Answer.value = ''
   recallTimeRemaining.value = 15
   round1RecallAttempt.value = (round1RecallAttempt.value || 0) + 1
-  
+
   clearAllTimers()
   round1TimerInterval.value = window.setInterval(() => {
     recallTimeRemaining.value--
@@ -1252,101 +1364,54 @@ async function startRecallPhase() {
       submitRound1Answer()
     }
   }, 1000)
-  
+
   await nextTick()
   round1Input.value?.focus()
 }
 
 async function submitRound1Answer() {
   if (!currentRound1Problem.value) return
-  
+
   clearAllTimers()
-  
+
   const responseTime = (15 - recallTimeRemaining.value) * 1000
-  const isCorrect = String(round1Answer.value || '').trim() === currentRound1Problem.value.correctAnswer
-  
+  const isCorrect =
+    String(round1Answer.value || '').trim() === currentRound1Problem.value.correctAnswer
+
   round1LastCorrect.value = isCorrect
-  
+
   // Log attempt
   const problemId = currentRound1Problem.value.problemId
   if (!round1AttemptsLog.value[problemId]) {
     round1AttemptsLog.value[problemId] = {
       encodingCycles: 1,
       recallAttempts: 1,
-      timesSpent: []
+      timesSpent: [],
     }
   }
   round1AttemptsLog.value[problemId].timesSpent.push(responseTime)
-  
+
   // Update problem in progress
   if (isCorrect) {
     await updateProblemInProgress(authStore.currentUser!.uid, currentOperation.value, problemId, {
       correct: true,
       responseTime,
-      source: 'digital-practice'
+      source: 'digital-practice',
     })
-    
-    if (session.value.round1_learning) {
-      session.value.round1_learning.newlyLearned.push(problemId)
-      session.value.round1_learning.problemsCompleted.push(problemId)
-    }
-  }
-  
-  // Show feedback immediately (NO TIMER - button to continue)
-  round1Phase.value = 'feedback'
-}
 
-async function handleRound1Feedback() {
-  clearAllTimers()
-  
-  if (round1LastCorrect.value) {
-    // Correct on first try - fact learned!
-    const problemId = currentRound1Problem.value!.problemId
-    round1LearnedToday.value.push(problemId)
-    round1AttemptsLog.value[problemId].finalResult = 'learned'
-    
     if (session.value.round1_learning) {
       session.value.round1_learning.newlyLearned.push(problemId)
       session.value.round1_learning.problemsCompleted.push(problemId)
     }
-    
-    // Update problem in progress
-    await updateProblemInProgress(
-      authStore.currentUser!.uid,
-      currentOperation.value,
-      problemId,
-      {
-        correct: true,
-        responseTime: round1AttemptsLog.value[problemId].timesSpent[round1AttemptsLog.value[problemId].timesSpent.length - 1],
-        source: 'digital-practice'
-      }
-    )
-    
-    // Move to next problem
-    moveToNextRound1Problem()
-  } else {
-    // Incorrect - show again (encoding phase)
-    round1AttemptsLog.value[currentRound1Problem.value!.problemId].encodingCycles++
-    round1RecallAttempt.value = 0
-    
-    // Maximum 3 encoding cycles, then skip
-    if (round1AttemptsLog.value[currentRound1Problem.value!.problemId].encodingCycles >= 3) {
-      round1AttemptsLog.value[currentRound1Problem.value!.problemId].finalResult = 'retry-later'
-      if (session.value.round1_learning) {
-        session.value.round1_learning.problemsStillUnmet.push(currentRound1Problem.value!.problemId)
-      }
-      moveToNextRound1Problem()
-    } else {
-      // Try encoding again
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      startEncodingPhase()
-    }
   }
+
+  // Show feedback immediately (NO AUTO-DELAY - buttons control flow)
+  round1Phase.value = 'feedback'
 }
 
 function moveToNextRound1Problem() {
   round1CurrentIndex.value++
-  
+
   if (round1CurrentIndex.value >= round1Problems.value.length) {
     // Round 1 complete
     finishRound1()
@@ -1362,10 +1427,12 @@ function moveToNextRound1Problem() {
 function finishRound1() {
   if (session.value.round1_learning) {
     session.value.round1_learning.attemptsPerProblem = round1AttemptsLog.value
-    session.value.round1_learning.timeSpent = Math.round((Date.now() - sessionStartTime.value) / 1000)
+    session.value.round1_learning.timeSpent = Math.round(
+      (Date.now() - sessionStartTime.value) / 1000,
+    )
     session.value.round1_learning.completed = true
   }
-  
+
   // Start Round 2
   startRound2()
 }
@@ -1381,17 +1448,17 @@ async function startRound2() {
   round2Correct.value = 0
   round2Total.value = 0
   round2Results.value = {}
-  
+
   if (session.value.round2_practice) {
-    session.value.round2_practice.problemsPresented = round2Problems.value.map(p => p.problemId)
+    session.value.round2_practice.problemsPresented = round2Problems.value.map((p) => p.problemId)
   }
-  
+
   if (round2Stack.value.length === 0) {
     // No problems to practice - skip to Round 3
     startRound3()
     return
   }
-  
+
   showNextRound2Problem()
 }
 
@@ -1401,12 +1468,12 @@ async function showNextRound2Problem() {
     finishRound2()
     return
   }
-  
+
   round2Answer.value = ''
   round2ShowingFeedback.value = false
   round2StartTime.value = Date.now()
   round2TimeRemaining.value = 15
-  
+
   clearRound2Timer()
   round2TimerInterval.value = window.setInterval(() => {
     round2TimeRemaining.value--
@@ -1414,27 +1481,28 @@ async function showNextRound2Problem() {
       submitRound2Answer()
     }
   }, 1000)
-  
+
   await nextTick()
   round2Input.value?.focus()
 }
 
 async function submitRound2Answer() {
   if (!currentRound2Problem.value) return
-  
+
   clearRound2Timer()
-  
+
   const responseTime = Date.now() - round2StartTime.value
-  const isCorrect = String(round2Answer.value || '').trim() === currentRound2Problem.value.correctAnswer
-  
+  const isCorrect =
+    String(round2Answer.value || '').trim() === currentRound2Problem.value.correctAnswer
+
   round2LastCorrect.value = isCorrect
   round2LastTime.value = responseTime
   round2Total.value++
-  
+
   if (isCorrect) {
     round2Correct.value++
   }
-  
+
   // Log result
   const problemId = currentRound2Problem.value.problemId
   if (!round2Results.value[problemId]) {
@@ -1442,39 +1510,34 @@ async function submitRound2Answer() {
       attempts: 0,
       correct: false,
       responseTimes: [],
-      returnedToStack: false
+      returnedToStack: false,
     }
   }
   round2Results.value[problemId].attempts++
   round2Results.value[problemId].responseTimes.push(responseTime)
   round2Results.value[problemId].correct = isCorrect
-  
+
   // Update problem in progress
-  await updateProblemInProgress(
-    authStore.currentUser!.uid,
-    currentOperation.value,
-    problemId,
-    {
-      correct: isCorrect,
-      responseTime,
-      source: 'digital-practice'
-    }
-  )
-  
+  await updateProblemInProgress(authStore.currentUser!.uid, currentOperation.value, problemId, {
+    correct: isCorrect,
+    responseTime,
+    source: 'digital-practice',
+  })
+
   // Show feedback briefly
   round2ShowingFeedback.value = true
-  
+
   // Remove from stack
   const current = round2Stack.value.shift()
-  
+
   // If incorrect, add back to end of stack
   if (!isCorrect && current) {
     round2Stack.value.push(current)
     round2Results.value[problemId].returnedToStack = true
   }
-  
+
   // Continue after brief pause
-  await new Promise(resolve => setTimeout(resolve, 1500))
+  await new Promise((resolve) => setTimeout(resolve, 1500))
   showNextRound2Problem()
 }
 
@@ -1482,14 +1545,15 @@ function finishRound2() {
   if (session.value.round2_practice) {
     session.value.round2_practice.results = round2Results.value
     session.value.round2_practice.accuracy = round2Accuracy.value
-    const times = Object.values(round2Results.value).flatMap(r => r.responseTimes)
-    session.value.round2_practice.averageResponseTime = times.length > 0 
-      ? Math.round(times.reduce((sum, t) => sum + t, 0) / times.length)
-      : 0
-    session.value.round2_practice.timeSpent = Math.round((Date.now() - sessionStartTime.value) / 1000) - (session.value.round1_learning?.timeSpent || 0)
+    const times = Object.values(round2Results.value).flatMap((r) => r.responseTimes)
+    session.value.round2_practice.averageResponseTime =
+      times.length > 0 ? Math.round(times.reduce((sum, t) => sum + t, 0) / times.length) : 0
+    session.value.round2_practice.timeSpent =
+      Math.round((Date.now() - sessionStartTime.value) / 1000) -
+      (session.value.round1_learning?.timeSpent || 0)
     session.value.round2_practice.completed = true
   }
-  
+
   startRound3()
 }
 
@@ -1501,17 +1565,17 @@ async function startRound3() {
   currentRound.value = 3
   round3CurrentIndex.value = 0
   round3Results.value = {}
-  
+
   if (session.value.round3_assessment) {
-    session.value.round3_assessment.problemsAssessed = round3Problems.value.map(p => p.problemId)
+    session.value.round3_assessment.problemsAssessed = round3Problems.value.map((p) => p.problemId)
   }
-  
+
   if (round3Problems.value.length === 0) {
     // No problems to assess - finish session
     finishSession()
     return
   }
-  
+
   showNextRound3Problem()
 }
 
@@ -1520,11 +1584,11 @@ async function showNextRound3Problem() {
     finishRound3()
     return
   }
-  
+
   round3Answer.value = ''
   round3StartTime.value = Date.now()
   round3TimeRemaining.value = 10
-  
+
   clearRound3Timer()
   round3TimerInterval.value = window.setInterval(() => {
     round3TimeRemaining.value--
@@ -1532,63 +1596,60 @@ async function showNextRound3Problem() {
       submitRound3Answer()
     }
   }, 1000)
-  
+
   await nextTick()
   round3Input.value?.focus()
 }
 
 async function submitRound3Answer() {
   if (!currentRound3Problem.value) return
-  
+
   clearRound3Timer()
-  
+
   const responseTime = Date.now() - round3StartTime.value
-  const isCorrect = String(round3Answer.value || '').trim() === currentRound3Problem.value.correctAnswer
-  
+  const isCorrect =
+    String(round3Answer.value || '').trim() === currentRound3Problem.value.correctAnswer
+
   const problemId = currentRound3Problem.value.problemId
   const previousLevel = currentRound3Problem.value.proficiencyLevel
-  
+
   round3Results.value[problemId] = {
     correct: isCorrect,
     responseTime,
     previousLevel,
-    maintainedLevel: true  // Will be updated after proficiency recalc
+    maintainedLevel: true, // Will be updated after proficiency recalc
   }
-  
+
   // Update problem in progress
-  await updateProblemInProgress(
-    authStore.currentUser!.uid,
-    currentOperation.value,
-    problemId,
-    {
-      correct: isCorrect,
-      responseTime,
-      source: 'digital-assessment'
-    }
-  )
-  
+  await updateProblemInProgress(authStore.currentUser!.uid, currentOperation.value, problemId, {
+    correct: isCorrect,
+    responseTime,
+    source: 'digital-assessment',
+  })
+
   // Move to next
   round3CurrentIndex.value++
-  
+
   // Brief pause before next question
-  await new Promise(resolve => setTimeout(resolve, 500))
+  await new Promise((resolve) => setTimeout(resolve, 500))
   showNextRound3Problem()
 }
 
 function finishRound3() {
   if (session.value.round3_assessment) {
     session.value.round3_assessment.results = round3Results.value
-    const correct = Object.values(round3Results.value).filter(r => r.correct).length
+    const correct = Object.values(round3Results.value).filter((r) => r.correct).length
     session.value.round3_assessment.accuracy = (correct / round3Problems.value.length) * 100
-    const times = Object.values(round3Results.value).map(r => r.responseTime)
-    session.value.round3_assessment.averageResponseTime = times.length > 0 
-      ? Math.round(times.reduce((sum, t) => sum + t, 0) / times.length)
-      : 0
-    session.value.round3_assessment.timeSpent = Math.round((Date.now() - sessionStartTime.value) / 1000) - 
-      ((session.value.round1_learning?.timeSpent || 0) + (session.value.round2_practice?.timeSpent || 0))
+    const times = Object.values(round3Results.value).map((r) => r.responseTime)
+    session.value.round3_assessment.averageResponseTime =
+      times.length > 0 ? Math.round(times.reduce((sum, t) => sum + t, 0) / times.length) : 0
+    session.value.round3_assessment.timeSpent =
+      Math.round((Date.now() - sessionStartTime.value) / 1000) -
+      ((session.value.round1_learning?.timeSpent || 0) +
+        (session.value.round2_practice?.timeSpent || 0))
     session.value.round3_assessment.completed = true
   }
-  
+
   finishSession()
 }
 
@@ -1598,16 +1659,16 @@ function finishRound3() {
 
 async function finishSession() {
   clearAllTimers()
-  
+
   totalSessionTime.value = Date.now() - sessionStartTime.value
-  
+
   // Determine session quality
-  const completionRate = (
-    (session.value.round1_learning?.completed ? 1 : 0) +
-    (session.value.round2_practice?.completed ? 1 : 0) +
-    (session.value.round3_assessment?.completed ? 1 : 0)
-  ) / 3
-  
+  const completionRate =
+    ((session.value.round1_learning?.completed ? 1 : 0) +
+      (session.value.round2_practice?.completed ? 1 : 0) +
+      (session.value.round3_assessment?.completed ? 1 : 0)) /
+    3
+
   let quality: 'excellent' | 'good' | 'fair' | 'incomplete' = 'good'
   if (completionRate === 1 && (session.value.round2_practice?.accuracy || 0) >= 80) {
     quality = 'excellent'
@@ -1618,17 +1679,17 @@ async function finishSession() {
   } else {
     quality = 'incomplete'
   }
-  
+
   session.value.sessionQuality = quality
   session.value.engagementScore = Math.round(completionRate * 100)
-  
+
   // Reload progress to see updated proficiencies
   await loadProgressSilently()
-  
+
   // Determine promotions
   // (This would check which problems moved up levels)
-  promotionsEarned.value = []  // TODO: Calculate from before/after comparison
-  
+  promotionsEarned.value = [] // TODO: Calculate from before/after comparison
+
   // Save session to Firestore
   try {
     await createPracticeSession({
@@ -1637,7 +1698,7 @@ async function finishSession() {
       operation: currentOperation.value,
       sessionDate: Timestamp.now(),
       dayOfWeek: new Date().getDay(),
-      weekNumber: 1,  // TODO: Calculate actual week number
+      weekNumber: 1, // TODO: Calculate actual week number
       completed: completionRate === 1,
       completionPercentage: completionRate * 100,
       totalTimeSpent: Math.round(totalSessionTime.value / 1000),
@@ -1648,11 +1709,11 @@ async function finishSession() {
       demotionsOccurred: [],
       consecutiveDaysUpdated: {},
       sessionQuality: quality,
-      engagementScore: session.value.engagementScore || 0
+      engagementScore: session.value.engagementScore || 0,
     } as any)
-    
+
     console.log('✅ Practice session saved')
-    
+
     // Mark assignment as complete if accessed via assignment
     if (assignmentId.value) {
       try {
@@ -1666,13 +1727,13 @@ async function finishSession() {
   } catch (error) {
     console.error('Error saving session:', error)
   }
-  
+
   sessionComplete.value = true
 }
 
 async function loadProgressSilently() {
   if (!authStore.currentUser) return
-  
+
   try {
     progress.value = await getFluencyProgress(authStore.currentUser.uid, currentOperation.value)
   } catch (error) {
@@ -1733,9 +1794,9 @@ function getNewLevel(problemId: string): string {
 function generateProblemsForSubLevel(subLevel: SubLevel, studentUid: string): ProblemProgress[] {
   const config = getSubLevelConfig(subLevel)
   if (!config) return []
-  
+
   const allProblems: ProblemProgress[] = []
-  
+
   if (config.operation === 'addition') {
     for (let num1 = 2; num1 <= 20; num1++) {
       for (let num2 = 2; num2 <= 20; num2++) {
@@ -1746,50 +1807,85 @@ function generateProblemsForSubLevel(subLevel: SubLevel, studentUid: string): Pr
       }
     }
   }
-  
+
   return allProblems
 }
 
 function problemBelongsToSubLevel(problem: ProblemProgress, subLevel: SubLevel): boolean {
   const config = getSubLevelConfig(subLevel)
   if (!config || problem.operation !== config.operation) return false
-  
+
   let result: number
   if (problem.operation === 'addition') result = problem.num1 + problem.num2
   else if (problem.operation === 'subtraction') result = problem.num1 - problem.num2
   else if (problem.operation === 'multiplication') result = problem.num1 * problem.num2
   else result = problem.num1 / problem.num2
-  
+
   return config.problemFilter(problem.num1, problem.num2, result)
 }
 
-function createProblemProgress(num1: number, num2: number, operation: OperationType, studentUid: string): ProblemProgress {
+function createProblemProgress(
+  num1: number,
+  num2: number,
+  operation: OperationType,
+  studentUid: string,
+): ProblemProgress {
   const problemId = `${num1}_${operation}_${num2}_${studentUid}`
   const now = Timestamp.now()
-  
-  let correctAnswer = '', displayText = ''
+
+  let correctAnswer = '',
+    displayText = ''
   if (operation === 'addition') {
     correctAnswer = (num1 + num2).toString()
     displayText = `${num1} + ${num2}`
   }
-  
+
   return {
-    problemId, num1, num2, operation, correctAnswer, displayText,
-    category: '', factFamily: '', difficulty: 1, proficiencyLevel: 'doesNotKnow',
-    last5Attempts: [], proficiencyCalculation: { correctOutOfLast5: 0, averageTimeOfLast5: null, last5Trend: 'stable', confidenceLevel: 'low' },
-    consecutiveCorrectDays: 0, daysInCurrentLevel: 0, totalAttempts: 0, correctAttempts: 0,
-    responseTimes: [], averageResponseTime: null, fastestResponseTime: null, slowestResponseTime: null,
-    firstAttemptDate: now, lastAttemptDate: now,
-    dateEnteredEmerging: null, dateEnteredApproaching: null, dateEnteredProficient: null, dateEnteredMastered: null,
-    dailyResults: [], commonErrors: [], errorPattern: null, needsStrategyInstruction: false,
-    flaggedForReview: false, regressionCount: 0, lastRegressionDate: null
+    problemId,
+    num1,
+    num2,
+    operation,
+    correctAnswer,
+    displayText,
+    category: '',
+    factFamily: '',
+    difficulty: 1,
+    proficiencyLevel: 'doesNotKnow',
+    last5Attempts: [],
+    proficiencyCalculation: {
+      correctOutOfLast5: 0,
+      averageTimeOfLast5: null,
+      last5Trend: 'stable',
+      confidenceLevel: 'low',
+    },
+    consecutiveCorrectDays: 0,
+    daysInCurrentLevel: 0,
+    totalAttempts: 0,
+    correctAttempts: 0,
+    responseTimes: [],
+    averageResponseTime: null,
+    fastestResponseTime: null,
+    slowestResponseTime: null,
+    firstAttemptDate: now,
+    lastAttemptDate: now,
+    dateEnteredEmerging: null,
+    dateEnteredApproaching: null,
+    dateEnteredProficient: null,
+    dateEnteredMastered: null,
+    dailyResults: [],
+    commonErrors: [],
+    errorPattern: null,
+    needsStrategyInstruction: false,
+    flaggedForReview: false,
+    regressionCount: 0,
+    lastRegressionDate: null,
   }
 }
 
 // Advanced deduplication
 function deduplicateByProblemId(problems: ProblemProgress[]): ProblemProgress[] {
   const seen = new Set<string>()
-  return problems.filter(p => {
+  return problems.filter((p) => {
     if (seen.has(p.problemId)) return false
     seen.add(p.problemId)
     return true
@@ -1799,7 +1895,7 @@ function deduplicateByProblemId(problems: ProblemProgress[]): ProblemProgress[] 
 function deduplicateByProblemIdAndText(problems: ProblemProgress[]): ProblemProgress[] {
   const seenIds = new Set<string>()
   const seenTexts = new Set<string>()
-  return problems.filter(p => {
+  return problems.filter((p) => {
     const isDup = seenIds.has(p.problemId) || seenTexts.has(p.displayText)
     if (!isDup) {
       seenIds.add(p.problemId)
@@ -1811,12 +1907,12 @@ function deduplicateByProblemIdAndText(problems: ProblemProgress[]): ProblemProg
 
 function sampleRandomUnique(problems: ProblemProgress[], count: number): ProblemProgress[] {
   if (problems.length <= count) return deduplicateByProblemIdAndText(problems)
-  
+
   const shuffled = shuffleArray([...problems])
   const sampled: ProblemProgress[] = []
   const seenIds = new Set<string>()
   const seenTexts = new Set<string>()
-  
+
   for (const problem of shuffled) {
     if (sampled.length >= count) break
     if (!seenIds.has(problem.problemId) && !seenTexts.has(problem.displayText)) {
@@ -1825,19 +1921,19 @@ function sampleRandomUnique(problems: ProblemProgress[], count: number): Problem
       sampled.push(problem)
     }
   }
-  
+
   return sampled
 }
 
 // Visual helper functions
 function shouldShowVisuals(problem: ProblemProgress | undefined): boolean {
   if (!problem) return false
-  
+
   if (problem.operation === 'addition' || problem.operation === 'subtraction') {
     const answer = getAnswerNumber(problem)
     return answer <= 20 && answer >= 0
   }
-  
+
   return false
 }
 
@@ -1850,10 +1946,10 @@ function getAdditionArc(problem: ProblemProgress | undefined): string {
   if (!problem) return ''
   const num1 = problem.num1
   const num2 = problem.num2
-  const startX = 30 + (num1 * 25)
-  const endX = 30 + ((num1 + num2) * 25)
+  const startX = 30 + num1 * 25
+  const endX = 30 + (num1 + num2) * 25
   const arcHeight = 20
-  
+
   return `M ${startX} 35 Q ${(startX + endX) / 2} ${35 - arcHeight} ${endX} 35`
 }
 
@@ -1861,7 +1957,7 @@ function proceedToRecall() {
   round1Answer.value = ''
   round1Phase.value = 'consolidation'
   consolidationTimeRemaining.value = 5
-  
+
   // Countdown with animation
   const consolidationInterval = setInterval(() => {
     consolidationTimeRemaining.value--
@@ -1877,18 +1973,18 @@ function proceedToRecall() {
 }
 
 // Multiplication array helpers
-function getArrayDots(problem: ProblemProgress | undefined): Array<{ row: number, col: number }> {
+function getArrayDots(problem: ProblemProgress | undefined): Array<{ row: number; col: number }> {
   if (!problem) return []
   const rows = problem.num1
   const cols = problem.num2
-  const dots: Array<{ row: number, col: number }> = []
-  
+  const dots: Array<{ row: number; col: number }> = []
+
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       dots.push({ row: r, col: c })
     }
   }
-  
+
   return dots
 }
 
@@ -1898,12 +1994,16 @@ function getDivisionGroups(problem: ProblemProgress | undefined): Array<{ dots: 
   const total = problem.num1
   const groupSize = problem.num2
   const numGroups = parseInt(problem.correctAnswer)
-  
+
   const groups: Array<{ dots: number[] }> = []
   for (let g = 0; g < numGroups; g++) {
-    groups.push({ dots: Array(groupSize).fill(0).map((_, i) => i) })
+    groups.push({
+      dots: Array(groupSize)
+        .fill(0)
+        .map((_, i) => i),
+    })
   }
-  
+
   return groups
 }
 
@@ -1944,7 +2044,7 @@ function getDivisionWidth(problem: ProblemProgress | undefined): number {
   font-weight: bold;
   color: #1565c0;
   margin: 2rem 0;
-  text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .warmup-input {
@@ -1977,14 +2077,16 @@ function getDivisionWidth(problem: ProblemProgress | undefined): number {
   border-radius: 6px;
   overflow: hidden;
   margin: 0 auto 0.5rem auto;
-  box-shadow: inset 0 2px 4px rgba(0,0,0,0.15);
-  border: 2px solid rgba(0,0,0,0.1);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15);
+  border: 2px solid rgba(0, 0, 0, 0.1);
 }
 
 .timer-bar-fill {
   height: 100%;
   border-radius: 6px;
-  transition: width 1s linear, background-color 0.3s ease;
+  transition:
+    width 1s linear,
+    background-color 0.3s ease;
 }
 
 .timer-bar-fill.plenty-time {
@@ -2001,8 +2103,15 @@ function getDivisionWidth(problem: ProblemProgress | undefined): number {
 }
 
 @keyframes pulse-bar {
-  0%, 100% { opacity: 1; transform: scaleY(1); }
-  50% { opacity: 0.85; transform: scaleY(1.1); }
+  0%,
+  100% {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scaleY(1.1);
+  }
 }
 
 .timer-text {
@@ -2070,7 +2179,9 @@ function getDivisionWidth(problem: ProblemProgress | undefined): number {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Diagnostic Results Screen */
@@ -2078,7 +2189,7 @@ function getDivisionWidth(problem: ProblemProgress | undefined): number {
   background: white;
   padding: 3rem 2rem;
   border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .results-content {
@@ -2097,7 +2208,7 @@ function getDivisionWidth(problem: ProblemProgress | undefined): number {
   align-items: center;
   justify-content: center;
   border: 6px solid;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
 }
 
 .score-circle.excellent {
@@ -2189,7 +2300,7 @@ function getDivisionWidth(problem: ProblemProgress | undefined): number {
 .continue-btn:hover,
 .start-learning-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
 }
 
 .wrong-facts-preview {
@@ -2209,8 +2320,6 @@ function getDivisionWidth(problem: ProblemProgress | undefined): number {
   opacity: 0.6;
   pointer-events: none;
 }
-
-
 
 .practice-header {
   text-align: center;
@@ -2239,7 +2348,7 @@ function getDivisionWidth(problem: ProblemProgress | undefined): number {
   background: white;
   padding: 3rem 2rem;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   text-align: center;
 }
 
@@ -2290,7 +2399,7 @@ function getDivisionWidth(problem: ProblemProgress | undefined): number {
   background: white;
   padding: 2rem;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .progress-overview {
@@ -2483,7 +2592,7 @@ function getDivisionWidth(problem: ProblemProgress | undefined): number {
   background: white;
   padding: 2rem;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   min-height: 500px;
   display: flex;
   flex-direction: column;
@@ -2657,12 +2766,20 @@ function getDivisionWidth(problem: ProblemProgress | undefined): number {
   animation: bounce 1.4s ease-in-out infinite;
 }
 
-.thinking-dots .dot:nth-child(1) { animation-delay: 0s; }
-.thinking-dots .dot:nth-child(2) { animation-delay: 0.2s; }
-.thinking-dots .dot:nth-child(3) { animation-delay: 0.4s; }
+.thinking-dots .dot:nth-child(1) {
+  animation-delay: 0s;
+}
+.thinking-dots .dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.thinking-dots .dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
 
 @keyframes bounce {
-  0%, 80%, 100% {
+  0%,
+  80%,
+  100% {
     transform: scale(0);
     opacity: 0.5;
   }
@@ -2691,7 +2808,7 @@ function getDivisionWidth(problem: ProblemProgress | undefined): number {
 .answer-input-large:focus {
   outline: none;
   border-color: #0056b3;
-  box-shadow: 0 0 0 4px rgba(0,123,255,0.25);
+  box-shadow: 0 0 0 4px rgba(0, 123, 255, 0.25);
 }
 
 .feedback-icon {
@@ -2836,7 +2953,7 @@ function getDivisionWidth(problem: ProblemProgress | undefined): number {
   background: white;
   padding: 3rem 2rem;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   text-align: center;
 }
 
@@ -2970,4 +3087,3 @@ function getDivisionWidth(problem: ProblemProgress | undefined): number {
   background: #5a6268;
 }
 </style>
-
