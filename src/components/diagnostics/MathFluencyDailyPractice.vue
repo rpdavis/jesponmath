@@ -443,6 +443,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import { 
   getFluencyProgress, 
+  getAllFluencyProgress,
   getTodaysPracticeSession,
   createPracticeSession,
   updateProblemInProgress
@@ -700,37 +701,127 @@ async function loadProgress() {
   }
 }
 
-function preparePracticeSession() {
+async function preparePracticeSession() {
   if (!progress.value) return
   
   const banks = progress.value.problemBanks
   
-  // Round 1: Select 3 problems from "Does Not Know" (can expand to 5 if student doing well)
-  round1Problems.value = sampleRandom(banks.doesNotKnow, 3)
+  // Convert problem banks to flat array for sub-level utilities
+  let allProblems = [
+    ...banks.doesNotKnow,
+    ...banks.emerging,
+    ...banks.approaching,
+    ...banks.proficient,
+    ...banks.mastered
+  ]
   
-  // Round 2: Interleaved practice (80/20 split)
-  // Check if student has unlocked multiple operations
-  const hasPreviousOperation = false  // TODO: Check for previous operations
+  // ⭐ ADAPTIVE LOGIC: Check ALL sub-levels up to current and fill gaps
+  if (progress.value.currentSubLevel) {
+    const currentConfig = getSubLevelConfig(progress.value.currentSubLevel)
+    if (currentConfig) {
+      // Get all sub-levels in the operation up to and including current
+      const allOperationLevels = getSubLevelsForOperation(currentConfig.operation)
+        .filter(sl => sl.order <= currentConfig.order)
+        .sort((a, b) => a.order - b.order)
+      
+      console.log(`🔍 Checking ${allOperationLevels.length} sub-levels for gaps...`)
+      
+      // Check each sub-level for gaps
+      for (const levelConfig of allOperationLevels) {
+        const levelProblems = allProblems.filter(p => problemBelongsToSubLevel(p, levelConfig.id))
+        const expectedCount = levelConfig.totalProblems
+        
+        if (levelProblems.length < expectedCount) {
+          console.log(`⚠️ Gap detected in ${levelConfig.name}: ${levelProblems.length}/${expectedCount} problems`)
+          
+          // Generate missing problems
+          const allLevelProblems = generateProblemsForSubLevel(levelConfig.id, progress.value.studentUid)
+          const existingIds = new Set(levelProblems.map(p => p.problemId))
+          const missingProblems = allLevelProblems.filter(p => !existingIds.has(p.problemId))
+          
+          if (missingProblems.length > 0) {
+            console.log(`📝 Adding ${missingProblems.length} missing problems from ${levelConfig.name}`)
+            allProblems = [...allProblems, ...missingProblems]
+          }
+        } else {
+          console.log(`✅ ${levelConfig.name}: ${levelProblems.length}/${expectedCount} problems complete`)
+        }
+      }
+    }
+  }
   
-  if (hasPreviousOperation) {
-    // 80% current, 20% maintenance
-    const currentOpProblems = [
-      ...sampleRandom(banks.emerging, 7),
-      ...sampleRandom(banks.approaching, 5)
-    ]
-    // const maintenanceProblems = [get 3 from previous operation]
-    round2Problems.value = shuffleArray(currentOpProblems)
+  // Use sub-level aware selection if available
+  if (progress.value.currentSubLevel && allProblems.length > 0) {
+    const selection = selectDailyPracticeProblems(
+      allProblems,
+      progress.value.currentSubLevel,
+      progress.value.completedSubLevels,
+      15
+    )
+    
+    // Round 1: Focus on "Does Not Know" from current sub-level
+    const currentSubLevelProblems = filterProblemsBySubLevel(allProblems, progress.value.currentSubLevel)
+    const doesNotKnowInLevel = currentSubLevelProblems.filter(p => p.proficiencyLevel === 'doesNotKnow')
+    round1Problems.value = sampleRandom(doesNotKnowInLevel, Math.min(3, doesNotKnowInLevel.length))
+    
+    // Round 2: Mix current level and maintenance
+    const round2Pool = [...selection.currentLevelProblems, ...selection.maintenanceProblems]
+    
+    // ⭐ ADD CHALLENGE PROBLEMS
+    try {
+      const allProgress = await getAllFluencyProgress(authStore.currentUser!.uid)
+      const challengeProblems = selectChallengeProblems(
+        currentOperation.value,
+        progress.value.currentSubLevel,
+        allProgress,
+        4
+      )
+      
+      round2Problems.value = shuffleArray([...round2Pool, ...challengeProblems])
+      
+      console.log('🎯 Challenge problems added:', {
+        total: challengeProblems.length,
+        nextLevel: challengeProblems.filter(p => p.challengeType === 'next-level').length,
+        previousOp: challengeProblems.filter(p => p.challengeType === 'previous-operation').length
+      })
+    } catch (error) {
+      console.error('Error selecting challenge problems:', error)
+      round2Problems.value = shuffleArray(round2Pool)
+    }
+    
+    round2Stack.value = [...round2Problems.value]
+    
+    // Round 3: Quick assessment from current sub-level
+    const emergingInLevel = currentSubLevelProblems.filter(p => p.proficiencyLevel === 'emerging' || p.proficiencyLevel === 'approaching')
+    const proficientInLevel = currentSubLevelProblems.filter(p => p.proficiencyLevel === 'proficient')
+    const masteredInLevel = currentSubLevelProblems.filter(p => p.proficiencyLevel === 'mastered')
+    
+    round3Problems.value = shuffleArray([
+      ...sampleRandom(emergingInLevel, Math.min(5, emergingInLevel.length)),
+      ...sampleRandom(proficientInLevel, Math.min(3, proficientInLevel.length)),
+      ...sampleRandom(masteredInLevel, Math.min(2, masteredInLevel.length))
+    ])
+    
+    console.log('📚 Sub-level practice session prepared')
   } else {
-    // 100% current operation (70% emerging, 20% proficient, 10% mastered)
+    // Fallback: Original logic
+    round1Problems.value = sampleRandom(banks.doesNotKnow, 3)
+    
     round2Problems.value = shuffleArray([
       ...sampleRandom(banks.emerging, 7),
       ...sampleRandom(banks.approaching, 3),
       ...sampleRandom(banks.proficient, 3),
       ...sampleRandom(banks.mastered, 2)
     ])
+    
+    round2Stack.value = [...round2Problems.value]
+    
+    round3Problems.value = shuffleArray([
+      ...sampleRandom(banks.emerging, 5),
+      ...sampleRandom(banks.proficient, 3),
+      ...sampleRandom(banks.mastered, 2)
+    ])
   }
-  
-  round2Stack.value = [...round2Problems.value]
   
   // Track mix composition
   if (session.value.round2_practice) {
@@ -740,13 +831,6 @@ function preparePracticeSession() {
       mastered: round2Problems.value.filter(p => p.proficiencyLevel === 'mastered').length
     }
   }
-  
-  // Round 3: Quick assessment (sample from all levels)
-  round3Problems.value = shuffleArray([
-    ...sampleRandom(banks.emerging, 5),
-    ...sampleRandom(banks.proficient, 3),
-    ...sampleRandom(banks.mastered, 2)
-  ])
 }
 
 function startPractice() {
@@ -1481,8 +1565,63 @@ function getProblemDisplay(problemId: string): string {
 }
 
 function getNewLevel(problemId: string): string {
-  // TODO: Get actual new level from updated progress
   return 'PROFICIENT'
+}
+
+function generateProblemsForSubLevel(subLevel: SubLevel, studentUid: string): ProblemProgress[] {
+  const config = getSubLevelConfig(subLevel)
+  if (!config) return []
+  
+  const allProblems: ProblemProgress[] = []
+  
+  if (config.operation === 'addition') {
+    for (let num1 = 2; num1 <= 20; num1++) {
+      for (let num2 = 2; num2 <= 20; num2++) {
+        const sum = num1 + num2
+        if (config.problemFilter(num1, num2, sum)) {
+          allProblems.push(createProblemProgress(num1, num2, config.operation, studentUid))
+        }
+      }
+    }
+  }
+  
+  return allProblems
+}
+
+function problemBelongsToSubLevel(problem: ProblemProgress, subLevel: SubLevel): boolean {
+  const config = getSubLevelConfig(subLevel)
+  if (!config || problem.operation !== config.operation) return false
+  
+  let result: number
+  if (problem.operation === 'addition') result = problem.num1 + problem.num2
+  else if (problem.operation === 'subtraction') result = problem.num1 - problem.num2
+  else if (problem.operation === 'multiplication') result = problem.num1 * problem.num2
+  else result = problem.num1 / problem.num2
+  
+  return config.problemFilter(problem.num1, problem.num2, result)
+}
+
+function createProblemProgress(num1: number, num2: number, operation: OperationType, studentUid: string): ProblemProgress {
+  const problemId = `${num1}_${operation}_${num2}_${studentUid}`
+  const now = Timestamp.now()
+  
+  let correctAnswer = '', displayText = ''
+  if (operation === 'addition') {
+    correctAnswer = (num1 + num2).toString()
+    displayText = `${num1} + ${num2}`
+  }
+  
+  return {
+    problemId, num1, num2, operation, correctAnswer, displayText,
+    category: '', factFamily: '', difficulty: 1, proficiencyLevel: 'doesNotKnow',
+    last5Attempts: [], proficiencyCalculation: { correctOutOfLast5: 0, averageTimeOfLast5: null, last5Trend: 'stable', confidenceLevel: 'low' },
+    consecutiveCorrectDays: 0, daysInCurrentLevel: 0, totalAttempts: 0, correctAttempts: 0,
+    responseTimes: [], averageResponseTime: null, fastestResponseTime: null, slowestResponseTime: null,
+    firstAttemptDate: now, lastAttemptDate: now,
+    dateEnteredEmerging: null, dateEnteredApproaching: null, dateEnteredProficient: null, dateEnteredMastered: null,
+    dailyResults: [], commonErrors: [], errorPattern: null, needsStrategyInstruction: false,
+    flaggedForReview: false, regressionCount: 0, lastRegressionDate: null
+  }
 }
 </script>
 
