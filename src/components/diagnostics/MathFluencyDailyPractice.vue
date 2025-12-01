@@ -905,9 +905,9 @@ function startDiagnosticRound() {
 }
 
 function generateDiagnosticProblems(): ProblemProgress[] {
-  if (!progress.value) return []
+  if (!progress.value?.currentSubLevel) return []
   
-  const allProblems = [
+  const allProblemsRaw = [
     ...progress.value.problemBanks.doesNotKnow,
     ...progress.value.problemBanks.emerging,
     ...progress.value.problemBanks.approaching,
@@ -915,9 +915,16 @@ function generateDiagnosticProblems(): ProblemProgress[] {
     ...progress.value.problemBanks.mastered
   ]
   
-  const sampled = sampleRandom(allProblems, Math.min(20, allProblems.length))
+  const allProblems = deduplicateByProblemIdAndText(allProblemsRaw)
   
-  console.log(`🎯 Diagnostic: ${sampled.length} problems selected`)
+  if (allProblemsRaw.length !== allProblems.length) {
+    console.warn(`⚠️ Removed ${allProblemsRaw.length - allProblems.length} duplicates`)
+  }
+  
+  const subLevelProblems = filterProblemsBySubLevel(allProblems, progress.value.currentSubLevel)
+  const sampled = sampleRandomUnique(subLevelProblems, Math.min(20, subLevelProblems.length))
+  
+  console.log(`🎯 Diagnostic: ${sampled.length} problems`)
   
   return sampled
 }
