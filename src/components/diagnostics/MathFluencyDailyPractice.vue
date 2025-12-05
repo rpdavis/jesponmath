@@ -43,11 +43,11 @@ h4>
         </div>
       </div>
 
-s="view-progress-btn">View My Progress →</button>
+      <button @click="viewProgress" class="view-progress-btn">View My Progress →</button>
     </div>
 
     <!-- Start Screen -->
-hFluencyStartScreen
+    <MathFluencyStartScreen
       v-else-if="!practiceStarted"
       :current-operation="currentOperation"
       :distribution="distribution"
@@ -58,37 +58,20 @@ hFluencyStartScreen
       :round2-count="round2Problems.length"
       :round3-count="round3Problems.length"
       @start-practice="startPractice"
+    />
 
 
 
     <!-- WARMUP ROUND -->
-    <div v-if="practiceStarted && currentRound === 0" class="round-section warmup-round">
-      <div class="round-header-bar">
-        <h3>🏃 Warmup</h3>
-        <p>Type these numbers</p>
-      </div>
-
-      <div class="warmup-content">
-        <p class="warmup-instruction">Type this number:</p>
-        <div class="warmup-number-display">
-          {{ warmupNumbers[warmupCurrentIndex] }}
-        </div>
-        <input
-          ref="warmupInput"
-          v-model="warmupAnswer"
-          type="number"
-          class="answer-input-large warmup-input"
-          placeholder="?"
-          @keyup.enter="submitWarmupAnswer"
-          autofocus
-        />
-        <p class="warmup-progress">{{ warmupCurrentIndex + 1 }} / 3</p>
-      </div>
-    </div>
+    <MathFluencyWarmupRound
+      v-if="practiceStarted && currentRound === 0"
+      :numbers="warmupNumbers"
+      @complete="handleWarmupComplete"
+    />
 
     <!-- DIAGNOSTIC ROUND -->
-    <div v-if=acticeStarted && currentRound === 0.5" class="round-section diagnostic-round">
-      <div clas="round-header-bar">
+    <div v-if="practiceStarted && currentRound === 0.5" class="round-section diagnostic-round">
+      <div class="round-header-bar">
         <h3>🎯 Quick Check</h3>
         <p>{{ diagnosticCurrentIndx + 1 }}/{{ diagnosticProblems.length }}</p>
       </div>
@@ -1060,26 +1043,10 @@ tion startPractice() {
 // WARMUP ROUND
 ==========================================================================
 
-function submitWarmupAnswer() {
-  const typed = String(warmupAnswer.value || '').trim()
-  const expected = warmupNumbers.value[warmupCurrentIndex.value].toString()
-
-  if (typed === expected) {
-    warmupCurrentIndex.value++
-    warmupAnswer.value = ''
-
-  if (warmupCurrentIndex.value >= warmupNumbers.value.length) {
-      // Warmup complete - start diagnostic
-    currentRound.value = 0.5
-      startDiagnosticRound()
-    } else {
-      nextTick(() => {
-        warmupInput.value?.focus()
-      })
-    }
-  } else {
-    warmupAnswer.value = ''
-}
+function handleWarmupComplete() {
+  // Warmup complete - start diagnostic
+  currentRound.value = 0.5
+  startDiagnosticRound()
 }
 
 // =============================================================================
