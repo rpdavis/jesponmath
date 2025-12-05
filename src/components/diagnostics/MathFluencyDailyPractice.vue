@@ -425,8 +425,8 @@ Problem.correctAnswer }}
           <p class="feedback-next">Let's see it again...</p>
           <p class="feedback-countdown">{{ feedbackTimeRemaining }}s</p>
         </div>
-
-
+      </div>
+    </div>
 
     <!-- ROUND 2: Practice -->
     <div v-if="practiceStarted && currentRound === 2" class="round-section round-2">
@@ -437,7 +437,7 @@ Problem.correctAnswer }}
       </div>
 
       <div class="practice-question">
-iv class="question-display-large">
+        <div class="question-display-large">
           {{ currentRound2Problem?.displayText }}
         </div>
         <input
@@ -447,7 +447,8 @@ iv class="question-display-large">
           class="answer-input-large"
           placeholder="?"
           @keyup.enter="submitRound2Answer"
-
+          autofocus
+        />
 
         <p class="practice-timer">{{ round2TimeRemaining }}s</p>
 
@@ -491,7 +492,7 @@ iv class="question-display-large">
 
       <div class="assessment-question">
         <div class="question-display-large">
-          {{ curtRound3Problem?.displayText }}
+          {{ currentRound3Problem?.displayText }}
         </div>
         <input
           ref="round3Input"
@@ -499,8 +500,8 @@ iv class="question-display-large">
           type="number"
           class="answer-input-large"
           placeholder="?"
-Round3Answer"
-autofocus
+          @keyup.enter="submitRound3Answer"
+          autofocus
         />
         <p class="assessment-timer">{{ round3TimeRemaining }}s</p>
 
@@ -509,7 +510,8 @@ autofocus
         </button>
       </div>
 
-e">No feedback during assessment - keep going!</p>
+      <p class="assessment-note">No feedback during assessment - keep going!</p>
+    </div>
 
 
     <!-- Session Complete -->
@@ -520,39 +522,38 @@ e">No feedback during assessment - keep going!</p>
         <h3>Today You:</h3>
         <div class="summary-achievements">
           <div
-            class="achievement-item"
-  v-if="
-earning?.newlyLearned &&
-    session.round1_learning.newlyLearned.length > 0
-            "
-          >
-            <span class="achievement-icon">📚</span>
-d {{ session.round1_learning.newlyLearned.length }} new facts</span>
-  </div>
-          <div class="achievement-item">
-            <span class="achievement-icon">💪</span>
-            <span
-              >Pticed {{ session.round2_practice?.problemsPresented?.length || 0 }} facts</span
+            <div
+              class="achievement-item"
+              v-if="
+                session.round1_learning?.newlyLearned &&
+                session.round1_learning.newlyLearned.length > 0
+              "
             >
-</div>
-          <div class="achievement-itm">
+              <span class="achievement-icon">📚</span>
+              <span>Learned {{ session.round1_learning.newlyLearned.length }} new facts</span>
+            </div>
+            <div class="achievement-item">
+              <span class="achievement-icon">💪</span>
+              <span>Practiced {{ session.round2_practice?.problemsPresented?.length || 0 }} facts</span>
+            </div>
+          <div class="achievement-item">
             <span class="achievement-icon">✓</span>
             <span>{{ session.round2_practice?.accuracy || 0 }}% accuracy in practice</span>
           </div>
-  <div class="achievement-item" v-if="promotionsEarned.length > 0">
-vement-icon">⭐</span>
-  <span>{{ promotionsEarned.length }} facts promoted!</span>
+          <div class="achievement-item" v-if="promotionsEarned.length > 0">
+            <span class="achievement-icon">⭐</span>
+            <span>{{ promotionsEarned.length }} facts promoted!</span>
           </div>
         </div>
 
         <div v-if="promotionsEarned.length > 0" class="promotions-list">
-          <h4>Facts Promoted Today:<h4>
+          <h4>Facts Promoted Today:</h4>
           <div
             v-for="problemId in promotionsEarned.slice(0, 5)"
             :key="problemId"
-tem"
->
-  <span class="promotion-icon">🎊</span>
+            class="promotion-item"
+          >
+            <span class="promotion-icon">🎊</span>
             <span>{{ getProblemDisplay(problemId) }} is now {{ getNewLevel(problemId) }}!</span>
           </div>
           <p v-if="promotionsEarned.length > 5">...and {{ promotionsEarned.length - 5 }} more!</p>
@@ -563,19 +564,19 @@ tem"
           <p class="session-time">Total Time: {{ Math.round(totalSessionTime / 60) }} minutes</p>
         </div>
 
-review">
-<h4>Tomorrow's Goal:</h4>
+        <div class="tomorrow-preview">
+          <h4>Tomorrow's Goal:</h4>
           <p>Practice {{ Math.min(15, distribution.emerging + distribution.doesNotKnow) }} facts</p>
         </div>
       </div>
 
-complete-actions">
-  <button @click="viewProgress" class="progress-btn">See My Progress</button>
+      <div class="complete-actions">
+        <button @click="viewProgress" class="progress-btn">See My Progress</button>
         <button @click="finishSession" class="done-btn">Done for Today</button>
       </div>
     </div>
   </div>
->
+</template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
