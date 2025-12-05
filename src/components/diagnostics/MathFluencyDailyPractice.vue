@@ -89,438 +89,49 @@
     />
 
     <!-- ROUND 1: Learning -->
-    <div v-if="practiceStarted && currentRound === 1" class="round-section round-1">
-      <div class="round-header-bar">
-        <h3>Round 1: Learning New Facts</h3>
-        <p>{{ round1CurrentIndex + 1 }}/{{ round1Problems.length }} facts</p>
-      </div>
-
-      <!-- Encoding Phase -->
-      <div v-if="round1Phase === 'encoding'" class="encoding-phase">
-        <p class="phase-instruction">Learn this fact:</p>
-
-        <!-- Fact Display with Answer Highlighted -->
-        <div class="fact-display-large">
-          <span class="fact-problem"
-            >{{ currentRound1Problem?.displayText.replace(' = ?', '') }} =
-          </span>
-          <span class="fact-answer">{{ currentRound1Problem?.correctAnswer }}</span>
-        </div>
-
-        <!-- Visual Representations -->
-        <div v-if="shouldShowVisuals(currentRound1Problem)" class="visual-representations">
-          <!-- Ten-Frame Visual (for addition/subtraction) -->
-          <div
-            v-if="
-              currentRound1Problem?.operation === 'addition' ||
-              currentRound1Problem?.operation === 'subtraction'
-            "
-            class="visual-section"
-          >
-            <h4>Ten-Frame:</h4>
-            <svg :width="230" :height="200" class="ten-frame-visual">
-              <!-- Ten-frame grid -->
-              <rect
-                v-for="i in 10"
-                :key="'frame-' + i"
-                :x="((i - 1) % 5) * 40 + 10"
-                :y="Math.floor((i - 1) / 5) * 40 + 10"
-                width="35"
-                height="35"
-                fill="none"
-                stroke="#94a3b8"
-                stroke-width="2"
-                rx="4"
-              />
-
-              <!-- Dots with animation -->
-              <circle
-                v-for="i in Math.min(10, getAnswerNumber(currentRound1Problem))"
-                :key="'dot1-' + i"
-                :cx="((i - 1) % 5) * 40 + 27.5"
-                :cy="Math.floor((i - 1) / 5) * 40 + 27.5"
-                r="12"
-                :fill="i <= (currentRound1Problem?.num1 || 0) ? '#3b82f6' : '#10b981'"
-                class="animated-dot"
-                :style="{ animationDelay: `${i * 0.1}s` }"
-      />
-
-frame if answer > 10 -->
-    <g v-if="getAnswerNumber(currentRound1Problem) > 10">
-                <rect
-                  v-for="i in 10"
-          :key="'frame2-' + i"
-                  :x="((i - 1) % 5) * 40 + 10"
-                  :y="Math.floor((i - 1) / 5) * 40 + 110"
-                  width="35"
-                  height="35"
-                  fill="none"
-                  stroke="#94a3b8"
-                  stroke-width="2"
-        rx="4"
-                />
-                <circle
-                  v-for="i in getAnswerNumber(currentRound1Problem) - 10"
-                  :key="'dot2-' + i"
-                  :cx="((i - 1) % 5) * 40 + 27.5"
-                  :cy="Math.floor((i - 1) / 5) * 40 + 127.5"
-                  r="12"
-                  fill="#10b981"
-                  class="animated-dot"
-                  :style="{ animationDelay: `${(10 + i) * 0.1}s` }"
-                />
-              </g>
-            </svg>
-
-
- Multiplication: Array/Matrix Visual -->
-          <div v-if="currentRound1Problem?.operation === 'multiplication'" class="visual-section">
-            <h4>Array Visual:</h4>
-            <svg
-              :width="currentRound1Problem.num2 * 30 + 40"
-              :height="currentRound1Problem.num1 * 30 + 60"
-              class="array-visual"
-            >
-              <!-- Draw array of dots -->
-              <circle
-  v-for="(dot, index) in getArrayDots(currentRound1Problem)"
-                :key="'array-' + index"
-                :cx="20 + dot.col * 30"
-                :cy="20 + dot.row * 30"
-                r="10"
-                fill="#8b5cf6"
-                class="animated-dot"
-                :style="{ animationDelay: `${index * 0.05}s` }"
-              />
-            </svg>
-            <p class="visual-explanation">
-              {{ currentRound1Problem.num1 }} groups of {{ currentRound1Problem.num2 }} =
-Problem.correctAnswer }}
-  </p>
-          </div>
-
-          <!-- Division: Grouped Circles Visual -->
-          <div v-if="currentRound1Problem?.operation === 'division'" class="visual-section">
-            <h4>Division Groups:</h4>
-            <svg
-              :width="getDivisionWidth(currentRound1Problem)"
-              :height="200"
-              class="division-visual"
-            >
-              <g
-                v-for="(group, groupIndex) in getDivisionGroups(currentRound1Problem)"
-                :key="'group-' + groupIndex"
-              >
-                <rect
-                  :x="groupIndex * 80 + 10"
-                  y="30"
-                  width="60"
-                  height="150"
-                  fill="#fef3c7"
-                  stroke="#f59e0b"
-                  stroke-width="2"
-                  stroke-dasharray="5,5"
-                  rx="8"
-                />
-                <circle
-                  v-for="(dot, dotIndex) in group.dots"
-                  :key="'dot-' + groupIndex + '-' + dotIndex"
-                  :cx="groupIndex * 80 + 20 + (dotIndex % 2) * 30"
-                  :cy="45 + Math.floor(dotIndex / 2) * 30"
-                  r="10"
-                  fill="#f59e0b"
-                  class="animated-dot"
-                  :style="{
-                    animationDelay: `${(groupIndex * group.dots.length + dotIndex) * 0.05}s`,
-                  }"
-                />
-              </g>
-            </svg>
-            <p class="visual-explanation">
-              {{ currentRound1Problem.num1 }} ÷ {{ currentRound1Problem.num2 }} =
-              {{ currentRound1Problem.correctAnswer }} groups
-            </p>
-          </div>
-
-          <!-- Number Line Visual -->
-          <div class="visual-section">
-            <h4>Number Line:</h4>
-            <svg :width="Math.max(650, (getAnswerNumber(currentRound1Problem) + 3) * 25 + 60)" :height="80" class="number-line-visual">
-              <!-- Number line -->
-              <line
-                x1="30"
-                y1="40"
-                x2="30"
-                y2="40"
-                stroke="#94a3b8"
-                stroke-width="3"
-                stroke-linecap="round"
-              />
-
-              <!-- Tick marks and numbers -->
-              <g
-                v-for="i in Math.min(21, getAnswerNumber(currentRound1Problem) + 3)"
-                :key="'tick-' + i"
-              >
-                <line
-                  :x1="30 + i * 25"
-                  :y1="35"
-                  :x2="30 + i * 25"
-                  :y2="45"
-                  stroke="#64748b"
-                  stroke-width="2"
-                />
-                <text :x="30 + i * 25" y="60" text-anchor="middle" font-size="12" fill="#475569">
-                  {{ i }}
-                </text>
-              </g>
-
-              <!-- Animated arc showing the addition -->
-              <path
-                v-if="currentRound1Problem?.operation === 'addition'"
-                :d="getAdditionArc(currentRound1Problem)"
-                fill="none"
-                stroke="#3b82f6"
-                stroke-width="3"
-                marker-end="url(#arrowhead)"
-                class="animated-arc"
-              />
-
-              <!-- Arrow marker -->
-              <defs>
-                <marker
-                  id="arrowhead"
-                  markerWidth="10"
-                  markerHeight="10"
-                  refX="9"
-                  refY="3"
-                  orient="auto"
-                >
-                  <polygon points="0 0, 10 3, 0 6" fill="#3b82f6" />
-                </marker>
-              </defs>
-            </svg>
-          </div>
-        </div>
-
-        <!-- NO TIMER - Student paced! -->
-        <button @click="proceedToRecall" class="next-btn">I've Got It! Next →</button>
-      </div>
-
-        <!-- Consolidation Phase (5 seconds with animation) -->
-        <div v-if="round1Phase === 'consolidation'" class="consolidation-phase">
-          <p class="phase-instruction">Get ready to recall...</p>
-        <div class="consolidation-animation">
-          <div class="thinking-dots">
-            <span class="dot"></span>
-            <span class="dot"></span>
-            <span class="dot"></span>
-          </div>
-          <p class="consolidation-message">Think about it...</p>
-        </div>
-        <div class="countdown-display">{{ consolidationTimeRemaining }}</div>
-      </div>
-
-      <!-- Recall Phase -->
-      <div v-if="round1Phase === 'recall'" class="recall-phase">
-        <p class="phase-instruction">Now you try!</p>
-        <div class="question-display-large">
-          {{ currentRound1Problem?.displayText }}
-        </div>
-        <input
-          ref="round1Input"
-          v-model="round1Answer"
-  type="number"
-          class="answer-input-large"
-          placeholder="?"
-          @keyup.enter="submitRound1Answer"
-          autofocus
-        />
-        <p class="recall-timer">{{ recallTimeRemaining }}s remaining</p>
-      </div>
-
-      <!-- Feedback Phase -->
-      <div v-if="round1Phase === 'feedback'" class="feedback-phase">
-        <div v-if="round1LastCorrect" class="feedback-correct">
-          <div class="feedback-icon">✅</div>
-          <div class="feedback-message">Correct!</div>
-          <div class="feedback-fact">
-            {{
-              currentRound1Problem?.displayText.replace(
-                ' = ?',
-                ` = ${currentRound1Problem.correctAnswer}`,
-              )
-            }}
-          </div>
-          <p class="feedback-next">Great! Moving to next fact...</p>
-          <p class="feedback-countdown">{{ feedbackTimeRemaining }}s</p>
-        </div>
-
-        <div v-else class="feedback-incorrect">
-          <div class="feedback-icon">❌</div>
-          <div class="feedback-message">
-            The answer is {{ currentRound1Problem?.correctAnswer }}
-          </div>
-          <div class="feedback-fact">
-            {{
-              currentRound1Problem?.displayText.replace(
-                ' = ?',
-                ` = ${currentRound1Problem.correctAnswer}`,
-              )
-            }}
-          </div>
-          <p class="feedback-next">Let's see it again...</p>
-          <p class="feedback-countdown">{{ feedbackTimeRemaining }}s</p>
-        </div>
-      </div>
-    </div>
+    <MathFluencyRound1Learning
+      v-if="practiceStarted && currentRound === 1"
+      :problems="round1Problems"
+      :current-index="round1CurrentIndex"
+      :phase="round1Phase"
+      :consolidation-time-remaining="consolidationTimeRemaining"
+      :recall-time-remaining="recallTimeRemaining"
+      :feedback-time-remaining="feedbackTimeRemaining"
+      :answer="round1Answer"
+      :last-correct="round1LastCorrect"
+      @proceed-to-recall="proceedToRecall"
+      @submit-answer="submitRound1Answer"
+    />
 
     <!-- ROUND 2: Practice -->
-    <div v-if="practiceStarted && currentRound === 2" class="round-section round-2">
-      <div class="round-header-bar">
-        <h3>Round 2: Practice</h3>
-        <p>{{ round2CurrentIndex + 1 }}/{{ round2Problems.length }} problems</p>
-        <p class="mix-info">Mixed: {{ round2MixInfo }}</p>
-      </div>
-
-      <div class="practice-question">
-        <div class="question-display-large">
-          {{ currentRound2Problem?.displayText }}
-        </div>
-        <input
-          ref="round2Input"
-          v-model="round2Answer"
-          type="number"
-          class="answer-input-large"
-          placeholder="?"
-          @keyup.enter="submitRound2Answer"
-          autofocus
-        />
-
-        <p class="practice-timer">{{ round2TimeRemaining }}s</p>
-
-        <button @click="submitRound2Answer" class="submit-btn" :disabled="!round2Answer">
-          Submit
-        </button>
-
-
-      <!-- Immediate Feedback -->
-      <div v-if="round2ShowingFeedback" class="round2-feedback">
-        <div v-if="round2LastCorrect" class="feedback-correct-inline">
-<span class="feedback-icon-inline">✅</span>
-          <span v-if="round2LastTime < 6000">Great! Fast and accurate!</span>
-          <span v-else>Correct! Try to get faster.</span>
-        </div>
-        <div v-else class="feedback-incorrect-inline">
-          <span class="feedback-icon-inline">❌</span>
-          <span>The answer is {{ currentRound2Problem?.correctAnswer }}</span>
-  <span class="retry-note">(Will appear again this round)</span>
-        </div>
-      </div>
-
-      <div class="round2-stats">
-        <div class="stat-mini">
-          <span>Correct:</span>
-          <span class="stat-value-mini">{{ round2Correct }}</span>
-        </div>
-        <div class="stat-mini">
-          <span>Accuracy:</span>
-          <span class="stat-value-mini">{{ round2Accuracy }}%</span>
-        </div>
-      </div>
-    </div>
+    <MathFluencyRound2Practice
+      v-if="practiceStarted && currentRound === 2"
+      :problems="round2Problems"
+      :mix-info="round2MixInfo"
+      @answer="handleRound2Answer"
+      @complete="finishRound2"
+    />
 
     <!-- ROUND 3: Quick Assessment -->
-    <div v-if="practiceStarted && currentRound === 3" class="round-section round-3">
-      <div class="round-header-bar">
-        <h3>Round 3: Quick Check</h3>
-        <p>{{ round3CurrentIndex + 1 }}/{{ round3Problems.length }} problems</p>
-      </div>
-
-      <div class="assessment-question">
-        <div class="question-display-large">
-          {{ currentRound3Problem?.displayText }}
-        </div>
-        <input
-          ref="round3Input"
-          v-model="round3Answer"
-          type="number"
-          class="answer-input-large"
-          placeholder="?"
-          @keyup.enter="submitRound3Answer"
-          autofocus
-        />
-        <p class="assessment-timer">{{ round3TimeRemaining }}s</p>
-
-        <button @click="submitRound3Answer" class="submit-btn" :disabled="!round3Answer">
-          Submit
-        </button>
-      </div>
-
-      <p class="assessment-note">No feedback during assessment - keep going!</p>
-    </div>
+    <MathFluencyRound3Assessment
+      v-if="practiceStarted && currentRound === 3"
+      :problems="round3Problems"
+      :time-per-problem="10"
+      @answer="handleRound3Answer"
+      @complete="finishSession"
+    />
 
 
     <!-- Session Complete -->
-    <div v-if="sessionComplete" class="complete-section">
-      <h2>🎉 Great Practice Session!</h2>
-
-      <div class="session-summary">
-        <h3>Today You:</h3>
-        <div class="summary-achievements">
-          <div
-            class="achievement-item"
-            v-if="
-              session.round1_learning?.newlyLearned &&
-              session.round1_learning.newlyLearned.length > 0
-            "
-          >
-              <span class="achievement-icon">📚</span>
-              <span>Learned {{ session.round1_learning.newlyLearned.length }} new facts</span>
-            </div>
-            <div class="achievement-item">
-              <span class="achievement-icon">💪</span>
-              <span>Practiced {{ session.round2_practice?.problemsPresented?.length || 0 }} facts</span>
-            </div>
-          <div class="achievement-item">
-            <span class="achievement-icon">✓</span>
-            <span>{{ session.round2_practice?.accuracy || 0 }}% accuracy in practice</span>
-          </div>
-          <div class="achievement-item" v-if="promotionsEarned.length > 0">
-            <span class="achievement-icon">⭐</span>
-            <span>{{ promotionsEarned.length }} facts promoted!</span>
-          </div>
-        </div>
-
-        <div v-if="promotionsEarned.length > 0" class="promotions-list">
-          <h4>Facts Promoted Today:</h4>
-          <div
-            v-for="problemId in promotionsEarned.slice(0, 5)"
-            :key="problemId"
-            class="promotion-item"
-          >
-            <span class="promotion-icon">🎊</span>
-            <span>{{ getProblemDisplay(problemId) }} is now {{ getNewLevel(problemId) }}!</span>
-          </div>
-          <p v-if="promotionsEarned.length > 5">...and {{ promotionsEarned.length - 5 }} more!</p>
-        </div>
-
-        <div class="session-quality-display">
-          <h4>Session Quality: {{ sessionQualityDisplay }}</h4>
-          <p class="session-time">Total Time: {{ Math.round(totalSessionTime / 60) }} minutes</p>
-        </div>
-
-        <div class="tomorrow-preview">
-          <h4>Tomorrow's Goal:</h4>
-          <p>Practice {{ Math.min(15, distribution.emerging + distribution.doesNotKnow) }} facts</p>
-        </div>
-      </div>
-
-      <div class="complete-actions">
-        <button @click="viewProgress" class="progress-btn">See My Progress</button>
-        <button @click="finishSession" class="done-btn">Done for Today</button>
-      </div>
-    </div>
+    <MathFluencySessionComplete
+      v-if="sessionComplete"
+      :session="session"
+      :promotions-earned="promotionsEarned"
+      :total-time="totalSessionTime"
+      :distribution="distribution"
+      @view-progress="viewProgress"
+      @finish="finishSession"
+    />
   </div>
 </template>
 
@@ -528,7 +139,7 @@ Problem.correctAnswer }}
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
- {
+import {
   getFluencyProgress,
   getAllFluencyProgress,
   getTodaysPracticeSession,
@@ -568,7 +179,7 @@ import MathFluencySessionComplete from './mathFluency/rounds/MathFluencySessionC
 import MathFluencyTimerBar from './mathFluency/visuals/MathFluencyTimerBar.vue'
 import MathFluencyTenFrame from './mathFluency/visuals/MathFluencyTenFrame.vue'
 import MathFluencyNumberLine from './mathFluency/visuals/MathFluencyNumberLine.vue'
-athFluencyArrayGrid from './mathFluency/visuals/MathFluencyArrayGrid.vue'
+import MathFluencyArrayGrid from './mathFluency/visuals/MathFluencyArrayGrid.vue'
 import MathFluencyDivisionGroups from './mathFluency/visuals/MathFluencyDivisionGroups.vue'
 
 const router = useRouter()
@@ -578,7 +189,7 @@ const authStore = useAuthStore()
 // State
 const loading = ref(true)
 const completedToday = ref(false)
-acticeStarted = ref(false)
+const practiceStarted = ref(false)
 const sessionComplete = ref(false)
 const currentRound = ref(0)
 const progress = ref<MathFluencyProgress | null>(null)
@@ -591,8 +202,8 @@ const warmupCurrentIndex = ref(0)
 const warmupAnswer = ref('')
 const warmupInput = ref<HTMLInputElement | null>(null)
 
-e
-agnosticProblems = ref<ProblemProgress[]>([])
+// Diagnostic State
+const diagnosticProblems = ref<ProblemProgress[]>([])
 const diagnosticCurrentIndex = ref(0)
 const diagnosticAnswer = ref('')
 const diagnosticResults = ref<{ [problemId: string]: { correct: boolean; responseTime: number } }>(
@@ -603,14 +214,14 @@ const diagnosticTimeRemaining = ref(10)
 const diagnosticTimerInterval = ref<number | null>(null)
 const diagnosticStartTime = ref(0)
 const diagnosticSubmitting = ref(false)
-agnosticShowingQuestion = ref(true)
+const diagnosticShowingQuestion = ref(true)
 
 // Round 1: Learning State
 const round1Phase = ref<'encoding' | 'consolidation' | 'recall' | 'feedback'>('encoding')
 const round1Problems = ref<ProblemProgress[]>([])
-round1CurrentIndex = ref(0)
- = ref('')
-round1RecallAttempt = ref(0) // 1 or 2
+const round1CurrentIndex = ref(0)
+const round1Answer = ref('')
+const round1RecallAttempt = ref(0) // 1 or 2
 const round1LastCorrect = ref(false)
 const round1AttemptsLog = ref<{ [problemId: string]: any }>({})
 const round1LearnedToday = ref<string[]>([])
@@ -621,7 +232,7 @@ const encodingTimeRemaining = ref(5)
 const consolidationTimeRemaining = ref(5) // 5 seconds to think
 const recallTimeRemaining = ref(15)
 const feedbackTimeRemaining = ref(10)
-round1TimerInterval = ref<number | null>(null)
+const round1TimerInterval = ref<number | null>(null)
 
 // Round 2: Practice State
 const round2Problems = ref<ProblemProgress[]>([])
@@ -686,9 +297,9 @@ const session = ref<Partial<MathFluencyPracticeSession>>({
 // Computed
 const currentOperation = computed(() => progress.value?.operation || 'addition')
 
-const distribtion = coted(
+const distribution = computed(
   () =>
-    progress.value.proficiencyDistribution || {
+    progress.value?.proficiencyDistribution || {
       doesNotKnow: 0,
       emerging: 0,
       approaching: 0,
@@ -698,7 +309,7 @@ const distribtion = coted(
     },
 )
 
-const proficiencyPercetage = computed(() => progress.value?.proficiencyPercentage || 0)
+const proficiencyPercentage = computed(() => progress.value?.proficiencyPercentage || 0)
 
 const practiceStreak = computed(() => progress.value?.consecutivePracticeDays || 0)
 
@@ -1403,18 +1014,46 @@ und2Results.value[problemId].returnedToStack = true
   showNextRound2Problem()
 
 
+// Handler for Round 2 component events
+async function handleRound2Answer(problemId: string, answer: string, responseTime: number, isCorrect: boolean) {
+  // Update problem in progress
+  await updateProblemInProgress(authStore.currentUser!.uid, currentOperation.value, problemId, {
+    correct: isCorrect,
+    responseTime,
+    source: 'digital-practice',
+  })
+
+  // Log result
+  if (!round2Results.value[problemId]) {
+    round2Results.value[problemId] = {
+      attempts: 0,
+      correct: false,
+      responseTimes: [],
+      returnedToStack: false,
+    }
+  }
+  round2Results.value[problemId].attempts++
+  round2Results.value[problemId].responseTimes.push(responseTime)
+  round2Results.value[problemId].correct = isCorrect
+
+  round2Total.value++
+  if (isCorrect) {
+    round2Correct.value++
+  }
+}
+
 function finishRound2() {
   if (session.value.round2_practice) {
     session.value.round2_practice.results = round2Results.value
     session.value.round2_practice.accuracy = round2Accuracy.value
-  const times = Object.values(round2Results.value).flatMap((r) => r.responseTimes)
+    const times = Object.values(round2Results.value).flatMap((r) => r.responseTimes)
     session.value.round2_practice.averageResponseTime =
-times.length > 0 ? Math.round(times.reduce((sum, t) => sum + t, 0) / times.length) : 0
-  session.value.round2_practice.timeSpent =
+      times.length > 0 ? Math.round(times.reduce((sum, t) => sum + t, 0) / times.length) : 0
+    session.value.round2_practice.timeSpent =
       Math.round((Date.now() - sessionStartTime.value) / 1000) -
       (session.value.round1_learning?.timeSpent || 0)
     session.value.round2_practice.completed = true
-
+  }
 
   startRound3()
 }
@@ -1463,41 +1102,30 @@ if (round3TimeRemaining.value <= 0) {
   round3Input.value?.focus()
 }
 
-function submitRound3Answer() {
-if (!currentRound3Problem.value) return
+// Handler for Round 3 component events
+async function handleRound3Answer(problemId: string, answer: string, responseTime: number) {
+  const problem = round3Problems.value.find((p) => p.problemId === problemId)
+  if (!problem) return
 
-rRound3Timer()
+  const isCorrect = String(answer || '').trim() === problem.correctAnswer
+  const previousLevel = problem.proficiencyLevel
 
-  const responseTime = Date.now() - round3StartTime.value
-  const isCorrect =
-ring(round3Answer.value || '').trim() === currentRound3Problem.value.correctAnswer
-
-  const problemId = currentRound3Problem.value.problemId
-  const previousLevel = currentRound3Problem.value.proficiencyLevel
-
-d3Results.value[problemId] = {
+  round3Results.value[problemId] = {
     correct: isCorrect,
     responseTime,
-vel,
-maintainedLevel: true, // Will be updated after proficiency recalc
+    previousLevel,
+    maintainedLevel: true, // Will be updated after proficiency recalc
   }
 
-// Update problem in progress
+  // Update problem in progress
   await updateProblemInProgress(authStore.currentUser!.uid, currentOperation.value, problemId, {
     correct: isCorrect,
     responseTime,
-source: 'digital-assessment',
+    source: 'digital-assessment',
   })
-
-  // Move to next
-und3CurrentIndex.value++
-
-ause before next question
-ait new Promise((resolve) => setTimeout(resolve, 500))
-  showNextRound3Problem()
 }
 
-nction finishRound3() {
+function finishRound3() {
   if (session.value.round3_assessment) {
 ssion.value.round3_assessment.results = round3Results.value
   const correct = Object.values(round3Results.value).filter((r) => r.correct).length
