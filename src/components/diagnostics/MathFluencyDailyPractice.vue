@@ -73,7 +73,7 @@ h4>
     <div v-if="practiceStarted && currentRound === 0.5" class="round-section diagnostic-round">
       <div class="round-header-bar">
         <h3>🎯 Quick Check</h3>
-        <p>{{ diagnosticCurrentIndx + 1 }}/{{ diagnosticProblems.length }}</p>
+        <p>{{ diagnosticCurrentIndex + 1 }}/{{ diagnosticProblems.length }}</p>
       </div>
 
       <div v-if="diagnosticShowingQuestion" class="diagnostic-question">
@@ -82,14 +82,14 @@ h4>
     :key="'timer-' + diagnosticCurrentIndex"
             class="timer-bar-fill"
             :class="timerColorClass"
-            :syle="{ width: `${(diagnosticTimeRemaining / 10) * 100}%` }"
+            :style="{ width: `${(diagnosticTimeRemaining / 10) * 100}%` }"
           ></div>
         </div>
         <p class="timer-text">{{ diagnosticTimeRemaining }}s</p>
 
         <div class="question-display-large">
-nosticProblem?.displayText }}
-</div>
+          {{ currentDiagnosticProblem?.displayText }}
+        </div>
 
         <input
           ref="diagnosticInput"
@@ -100,22 +100,21 @@ nosticProblem?.displayText }}
           placeholder="?"
           @keyup.enter="() => submitDiagnosticAnswer(false)"
           :disabled="diagnosticSubmitting"
-
-/>
+        />
 
         <button
-          @click="() => submtDiagnosticAnswer(false)"
+          @click="() => submitDiagnosticAnswer(false)"
           class="submit-btn"
           :disabled="!diagnosticAnswer || diagnosticSubmitting"
         >
           {{ diagnosticSubmitting ? '✓' : 'Submit' }}
-
-</div>
-
-iv v-else class="processing-transition">
-        <div clss="processing-spinner"></div>
-        <p>Processing...</p>
+        </button>
       </div>
+
+    <div v-else class="processing-transition">
+      <div class="processing-spinner"></div>
+      <p>Processing...</p>
+    </div>
     </div>
 
     <!-- DIAGNOSTIC RESULTS -->
@@ -185,14 +184,14 @@ iv v-else class="processing-transition">
                 stroke="#94a3b8"
                 stroke-width="2"
                 rx="4"
-
+              />
 
               <!-- Dots with animation -->
               <circle
                 v-for="i in Math.min(10, getAnswerNumber(currentRound1Problem))"
                 :key="'dot1-' + i"
- - 1) % 5) * 40 + 27.5"
-        :cy="Math.floor((i - 1) / 5) * 40 + 27.5"
+                :cx="((i - 1) % 5) * 40 + 27.5"
+                :cy="Math.floor((i - 1) / 5) * 40 + 27.5"
                 r="12"
                 :fill="i <= (currentRound1Problem?.num1 || 0) ? '#3b82f6' : '#10b981'"
                 class="animated-dot"
@@ -215,8 +214,8 @@ frame if answer > 10 -->
                 />
                 <circle
                   v-for="i in getAnswerNumber(currentRound1Problem) - 10"
-
-    :cx="((i - 1) % 5) * 40 + 27.5"
+                  :key="'dot2-' + i"
+                  :cx="((i - 1) % 5) * 40 + 27.5"
                   :cy="Math.floor((i - 1) / 5) * 40 + 127.5"
                   r="12"
                   fill="#10b981"
@@ -257,90 +256,90 @@ Problem.correctAnswer }}
           <div v-if="currentRound1Problem?.operation === 'division'" class="visual-section">
             <h4>Division Groups:</h4>
             <svg
-rentRound1Problem)"
-:height="200"
+              :width="getDivisionWidth(currentRound1Problem)"
+              :height="200"
               class="division-visual"
             >
-    <g
-                v-for="(gr, groupIdex) in getDivisionGroups(currentRound1Problem)"
-                :key="'grop-' + groupex"
+              <g
+                v-for="(group, groupIndex) in getDivisionGroups(currentRound1Problem)"
+                :key="'group-' + groupIndex"
               >
                 <rect
-                  :x="groupIndex *+ 10"
+                  :x="groupIndex * 80 + 10"
                   y="30"
-                  wid"60"
-    height="150"
-                  fill="e"
-                  stroke"#f59e0b"
-                  strke-width="2
-                  stroke-dasharry="55"
+                  width="60"
+                  height="150"
+                  fill="#fef3c7"
+                  stroke="#f59e0b"
+                  stroke-width="2"
+                  stroke-dasharray="5,5"
                   rx="8"
                 />
                 <circle
-                  v-for="(dot, dotndex) in group.dots"
-ndex + '-' + dotIndex"
-    :cx="groupIndex * 80 + 20 + (dotIndex % 2) * 30"
-                  :cy"45 + Math.floor(dotIndex / 2) * 30"
+                  v-for="(dot, dotIndex) in group.dots"
+                  :key="'dot-' + groupIndex + '-' + dotIndex"
+                  :cx="groupIndex * 80 + 20 + (dotIndex % 2) * 30"
+                  :cy="45 + Math.floor(dotIndex / 2) * 30"
                   r="10"
-                  fill="f59e0b"
+                  fill="#f59e0b"
                   class="animated-dot"
                   :style="{
                     animationDelay: `${(groupIndex * group.dots.length + dotIndex) * 0.05}s`,
                   }"
                 />
-
-svg>
- class="visual-explanation">
+              </g>
+            </svg>
+            <p class="visual-explanation">
               {{ currentRound1Problem.num1 }} ÷ {{ currentRound1Problem.num2 }} =
               {{ currentRound1Problem.correctAnswer }} groups
             </p>
           </div>
 
           <!-- Number Line Visual -->
-ection">
-  <h4>Number Line:</h4>
+          <div class="visual-section">
+            <h4>Number Line:</h4>
             <svg :width="Math.max(650, (getAnswerNumber(currentRound1Problem) + 3) * 25 + 60)" :height="80" class="number-line-visual">
-<!-- Number line -->
+              <!-- Number line -->
               <line
                 x1="30"
-                y1="4
-                :x2="20"
+                y1="40"
+                x2="30"
                 y2="40"
                 stroke="#94a3b8"
                 stroke-width="3"
                 stroke-linecap="round"
-    />
+              />
 
               <!-- Tick marks and numbers -->
               <g
-etAnswerNumber(currentRound1Problem) + 3)"
-  :key="'tick-' + i"
+                v-for="i in Math.min(21, getAnswerNumber(currentRound1Problem) + 3)"
+                :key="'tick-' + i"
               >
                 <line
                   :x1="30 + i * 25"
                   :y1="35"
-
-    :y2="45"
+                  :x2="30 + i * 25"
+                  :y2="45"
                   stroke="#64748b"
                   stroke-width="2"
                 />
                 <text :x="30 + i * 25" y="60" text-anchor="middle" font-size="12" fill="#475569">
-    {{ i }}
+                  {{ i }}
                 </text>
               </g>
 
-    <!-- Animated arc showing the addition -->
+              <!-- Animated arc showing the addition -->
               <path
-  v-if="currentRound1Problem?.operation === 'addition'"
+                v-if="currentRound1Problem?.operation === 'addition'"
                 :d="getAdditionArc(currentRound1Problem)"
                 fill="none"
                 stroke="#3b82f6"
                 stroke-width="3"
-                markend="url(#arrowhead)"
-                class"animated-arc"
+                marker-end="url(#arrowhead)"
+                class="animated-arc"
               />
 
-    <!-- Arrow marker -->
+              <!-- Arrow marker -->
               <defs>
                 <marker
                   id="arrowhead"
@@ -348,10 +347,10 @@ etAnswerNumber(currentRound1Problem) + 3)"
                   markerHeight="10"
                   refX="9"
                   refY="3"
-                  orint="auto"
-
-  <polygon points="0 0, 10 3, 0 6" fill="#3b82f6" />
-                </marke
+                  orient="auto"
+                >
+                  <polygon points="0 0, 10 3, 0 6" fill="#3b82f6" />
+                </marker>
               </defs>
             </svg>
           </div>
@@ -361,9 +360,9 @@ etAnswerNumber(currentRound1Problem) + 3)"
         <button @click="proceedToRecall" class="next-btn">I've Got It! Next →</button>
       </div>
 
-lidation Phase (5 seconds with animation) -->
-ation'" class="consolidation-phase">
-ss="phaseinstruction">Get ready to recall...</p>
+        <!-- Consolidation Phase (5 seconds with animation) -->
+        <div v-if="round1Phase === 'consolidation'" class="consolidation-phase">
+          <p class="phase-instruction">Get ready to recall...</p>
         <div class="consolidation-animation">
           <div class="thinking-dots">
             <span class="dot"></span>
@@ -372,14 +371,14 @@ ss="phaseinstruction">Get ready to recall...</p>
           </div>
           <p class="consolidation-message">Think about it...</p>
         </div>
-tdown-display">{{ consolidationTimeRemaining }}</div>
-div>
+        <div class="countdown-display">{{ consolidationTimeRemaining }}</div>
+      </div>
 
       <!-- Recall Phase -->
       <div v-if="round1Phase === 'recall'" class="recall-phase">
         <p class="phase-instruction">Now you try!</p>
         <div class="question-display-large">
-          {{ currentRound1Problem?.displayTex}
+          {{ currentRound1Problem?.displayText }}
         </div>
         <input
           ref="round1Input"
