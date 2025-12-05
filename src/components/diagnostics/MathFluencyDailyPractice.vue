@@ -78,8 +78,8 @@ h4>
 
       <div v-if="diagnosticShowingQuestion" class="diagnostic-question">
         <div class="timer-bar-container">
-
-    :key="'timer-' + diagnosticCurrentIndex"
+          <div
+            :key="'timer-' + diagnosticCurrentIndex"
             class="timer-bar-fill"
             :class="timerColorClass"
             :style="{ width: `${(diagnosticTimeRemaining / 10) * 100}%` }"
@@ -120,7 +120,7 @@ h4>
     <!-- DIAGNOSTIC RESULTS -->
     <div v-if="practiceStarted && currentRound === 0.75" class="diagnostic-results-screen">
       <div class="results-content">
-  <h2>📊 Quick Check Complete!</h2>
+        <h2>📊 Quick Check Complete!</h2>
 
         <div class="score-circle" :class="getDiagnosticScoreClass(diagnosticScore)">
           <div class="score-number">{{ diagnosticScore }}%</div>
