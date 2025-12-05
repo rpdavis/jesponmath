@@ -20,7 +20,7 @@
       </p>
 
       <div class="today-summary">
-h4>
+        <h4>Today's Summary</h4>
         <div class="summary-stats">
           <div class="stat">
             <span class="stat-label">Facts Learned:</span>
@@ -111,10 +111,10 @@ h4>
         </button>
       </div>
 
-    <div v-else class="processing-transition">
-      <div class="processing-spinner"></div>
-      <p>Processing...</p>
-    </div>
+      <div v-else class="processing-transition">
+        <div class="processing-spinner"></div>
+        <p>Processing...</p>
+      </div>
     </div>
 
     <!-- DIAGNOSTIC RESULTS -->
@@ -522,13 +522,12 @@ Problem.correctAnswer }}
         <h3>Today You:</h3>
         <div class="summary-achievements">
           <div
-            <div
-              class="achievement-item"
-              v-if="
-                session.round1_learning?.newlyLearned &&
-                session.round1_learning.newlyLearned.length > 0
-              "
-            >
+            class="achievement-item"
+            v-if="
+              session.round1_learning?.newlyLearned &&
+              session.round1_learning.newlyLearned.length > 0
+            "
+          >
               <span class="achievement-icon">📚</span>
               <span>Learned {{ session.round1_learning.newlyLearned.length }} new facts</span>
             </div>
