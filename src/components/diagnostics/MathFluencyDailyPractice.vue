@@ -79,28 +79,14 @@
     />
 
     <!-- DIAGNOSTIC RESULTS -->
-    <div v-if="practiceStarted && currentRound === 0.75" class="diagnostic-results-screen">
-      <div class="results-content">
-        <h2>📊 Quick Check Complete!</h2>
-
-        <div class="score-circle" :class="getDiagnosticScoreClass(diagnosticScore)">
-          <div class="score-number">{{ diagnosticScore }}%</div>
-          <div class="score-label">{{ diagnosticCorrect }}/{{ diagnosticProblems.length }}</div>
-        </div>
-
-        <div v-if="diagnosticWrongProblems.length === 0" class="perfect-score">
-          <h3>🎉 Perfect!</h3>
-          <p>Moving to practice...</p>
-          <button @click="continueCurrentLevel" class="continue-btn">Start Practice →</button>
-        </div>
-
-        <div v-else class="learning-preview">
-          <h3>📚 Let's Learn {{ diagnosticWrongProblems.length }} Facts</h3>
-          <p>You got {{ diagnosticCorrect }}/{{ diagnosticProblems.length }} correct</p>
-          <button @click="continueCurrentLevel" class="start-learning-btn">Start Learning →</button>
-        </div>
-      </div>
-    </div>
+    <MathFluencyDiagnosticResults
+      v-if="practiceStarted && currentRound === 0.75"
+      :score="diagnosticScore"
+      :correct="diagnosticCorrect"
+      :total="diagnosticProblems.length"
+      :wrong-problems="diagnosticWrongProblems"
+      @continue="continueCurrentLevel"
+    />
 
     <!-- ROUND 1: Learning -->
     <div v-if="practiceStarted && currentRound === 1" class="round-section round-1">
