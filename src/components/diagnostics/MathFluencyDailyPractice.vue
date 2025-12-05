@@ -70,52 +70,13 @@
     />
 
     <!-- DIAGNOSTIC ROUND -->
-    <div v-if="practiceStarted && currentRound === 0.5" class="round-section diagnostic-round">
-      <div class="round-header-bar">
-        <h3>🎯 Quick Check</h3>
-        <p>{{ diagnosticCurrentIndex + 1 }}/{{ diagnosticProblems.length }}</p>
-      </div>
-
-      <div v-if="diagnosticShowingQuestion" class="diagnostic-question">
-        <div class="timer-bar-container">
-          <div
-            :key="'timer-' + diagnosticCurrentIndex"
-            class="timer-bar-fill"
-            :class="timerColorClass"
-            :style="{ width: `${(diagnosticTimeRemaining / 10) * 100}%` }"
-          ></div>
-        </div>
-        <p class="timer-text">{{ diagnosticTimeRemaining }}s</p>
-
-        <div class="question-display-large">
-          {{ currentDiagnosticProblem?.displayText }}
-        </div>
-
-        <input
-          ref="diagnosticInput"
-          v-model="diagnosticAnswer"
-          type="number"
-          class="answer-input-large"
-          :class="{ submitting: diagnosticSubmitting }"
-          placeholder="?"
-          @keyup.enter="() => submitDiagnosticAnswer(false)"
-          :disabled="diagnosticSubmitting"
-        />
-
-        <button
-          @click="() => submitDiagnosticAnswer(false)"
-          class="submit-btn"
-          :disabled="!diagnosticAnswer || diagnosticSubmitting"
-        >
-          {{ diagnosticSubmitting ? '✓' : 'Submit' }}
-        </button>
-      </div>
-
-      <div v-else class="processing-transition">
-        <div class="processing-spinner"></div>
-        <p>Processing...</p>
-      </div>
-    </div>
+    <MathFluencyDiagnosticRound
+      v-if="practiceStarted && currentRound === 0.5"
+      :problems="diagnosticProblems"
+      :time-per-problem="10"
+      @answer="handleDiagnosticAnswer"
+      @complete="handleDiagnosticComplete"
+    />
 
     <!-- DIAGNOSTIC RESULTS -->
     <div v-if="practiceStarted && currentRound === 0.75" class="diagnostic-results-screen">
@@ -1097,7 +1058,28 @@ rogress.value.problemBanks.doesNotKnow,
   console.log(`🎯 Diagnostic: ${sampled.length} problems`)
 
   return sampled
+}
 
+// Diagnostic Round Event Handlers
+function handleDiagnosticAnswer(
+  problemId: string,
+  answer: string,
+  responseTime: number,
+  isCorrect: boolean,
+) {
+  // Store the result
+  diagnosticResults.value[problemId] = {
+    correct: isCorrect,
+    responseTime,
+  }
+}
+
+function handleDiagnosticComplete() {
+  // Diagnostic complete - show results (USER MUST CLICK)
+  currentRound.value = 0.75
+  diagnosticShowingQuestion.value = true
+  console.log('📊 Diagnostic complete - showing results, waiting for click')
+}
 
 async function startDiagnosticTimer() {
 TimeRemaining.value = 10
