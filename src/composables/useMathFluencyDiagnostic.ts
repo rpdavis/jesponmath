@@ -149,7 +149,7 @@ export function useMathFluencyDiagnostic(
         console.log('📊 Diagnostic complete - showing results, waiting for click')
       } else {
         diagnosticShowingQuestion.value = true
-        nextTick(() => {
+        nextTick().then(() => {
           startDiagnosticTimer()
           diagnosticInput.value?.focus()
         })
