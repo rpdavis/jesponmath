@@ -3,18 +3,20 @@
     <div class="ordering-instructions">
       <p class="instruction-text">
         <span class="instruction-icon">↔️</span>
-        Drag the items below to put them in order from 
-        <strong>{{ orderDirection === 'ascending' ? 'least to greatest' : 'greatest to least' }}</strong>
+        Drag the items below to put them in order
+        <strong v-if="orderDirection === 'ascending'"> from least to greatest</strong>
+        <strong v-else-if="orderDirection === 'descending'"> from greatest to least</strong>
+        <strong v-else> in the correct order</strong>
       </p>
     </div>
-    
+
     <!-- Drop Zone -->
     <div class="ordering-drop-zone" ref="dropZone">
-      <div 
-        v-for="(item, index) in orderedItems" 
+      <div
+        v-for="(item, index) in orderedItems"
         :key="`ordered-${index}`"
         class="ordered-item"
-        :class="{ 
+        :class="{
           'drag-over': dragOverIndex === index,
           'dragging': draggedItem === item && draggedIndex === index
         }"
@@ -29,10 +31,10 @@
         <div class="item-number">{{ index + 1 }}</div>
         <div class="drag-handle">⋮⋮</div>
       </div>
-      
+
       <!-- Empty slots for remaining items -->
-      <div 
-        v-for="n in (props.items.length - orderedItems.length)" 
+      <div
+        v-for="n in (props.items.length - orderedItems.length)"
         :key="`empty-${n}`"
         class="empty-slot"
         :class="{ 'drag-over': dragOverIndex === (orderedItems.length + n - 1) }"
@@ -46,13 +48,13 @@
         </div>
       </div>
     </div>
-    
+
     <!-- Available Items -->
     <div class="available-items" v-if="availableItems.length > 0">
       <h4 class="available-title">Available Items:</h4>
       <div class="items-grid">
-        <div 
-          v-for="(item, index) in availableItems" 
+        <div
+          v-for="(item, index) in availableItems"
           :key="`available-${index}`"
           class="available-item"
           draggable="true"
@@ -63,11 +65,11 @@
         </div>
       </div>
     </div>
-    
+
     <!-- Reset Button -->
     <div class="ordering-actions">
-      <button 
-        @click="resetOrdering" 
+      <button
+        @click="resetOrdering"
         class="reset-button"
         :disabled="orderedItems.length === 0"
       >
@@ -84,7 +86,7 @@ import { renderLatexInText } from '@/utils/latexUtils';
 interface Props {
   items: string[];
   correctOrder: string[];
-  orderDirection?: 'ascending' | 'descending';
+  orderDirection?: 'ascending' | 'descending' | 'manual';
   maxItems?: number;
   modelValue?: string[];
 }
@@ -128,7 +130,7 @@ const handleDragStart = (item: string, index: number, source: 'ordered' | 'avail
   draggedItem.value = item;
   draggedIndex.value = index;
   draggedSource.value = source;
-  
+
   // Add visual feedback
   if (source === 'ordered') {
     // Item is being dragged from ordered area
@@ -156,13 +158,13 @@ const handleDragLeave = () => {
 
 const handleDrop = (targetIndex: number) => {
   if (!draggedItem.value) return;
-  
+
   // Don't do anything if dropping on the same position
   if (draggedSource.value === 'ordered' && draggedIndex.value === targetIndex) {
     handleDragEnd();
     return;
   }
-  
+
   // Remove item from current position
   if (draggedSource.value === 'ordered' && draggedIndex.value >= 0 && draggedIndex.value < orderedItems.value.length) {
     // Moving within ordered items - remove from old position first
@@ -178,7 +180,7 @@ const handleDrop = (targetIndex: number) => {
       availableItems.value.splice(availableIndex, 1);
     }
   }
-  
+
   // Insert item at new position
   if (targetIndex >= orderedItems.value.length) {
     // Adding to end
@@ -187,13 +189,13 @@ const handleDrop = (targetIndex: number) => {
     // Inserting at specific position
     orderedItems.value.splice(targetIndex, 0, draggedItem.value);
   }
-  
+
   // Update available items
   availableItems.value = props.items.filter(item => !orderedItems.value.includes(item));
-  
+
   // Emit update
   emit('update:modelValue', [...orderedItems.value]);
-  
+
   // Reset drag state
   handleDragEnd();
 };
@@ -451,16 +453,16 @@ defineExpose({
     flex-direction: column;
     align-items: center;
   }
-  
+
   .ordered-item, .empty-slot {
     width: 100%;
     max-width: 200px;
   }
-  
+
   .items-grid {
     justify-content: center;
   }
-  
+
   .available-item {
     width: 100%;
     max-width: 150px;

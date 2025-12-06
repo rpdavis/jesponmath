@@ -55,8 +55,8 @@
             </div>
           </div>
         </div>
-        
-        
+
+
         <div v-if="!started" class="start-prompt">
           <div class="start-card">
             <div class="start-icon">🚀</div>
@@ -105,14 +105,14 @@
               <h4>{{ getUploadTitle() }}</h4>
             </div>
             <p>{{ assessment.fileUploadInstructions }}</p>
-            
+
             <!-- Multi-page progress -->
             <div v-if="assessment.requireMultiplePages" class="multi-page-progress">
               <div class="page-progress">
                 <span class="progress-label">Pages captured:</span>
                 <span class="progress-count">{{ uploadedFiles.length }}/{{ assessment.requiredPageCount || 2 }}</span>
               </div>
-              
+
               <!-- Page labels -->
               <div v-if="assessment.pageLabels?.length" class="page-labels-list">
                 <div v-for="(label, index) in assessment.pageLabels" :key="index" class="page-label">
@@ -123,9 +123,9 @@
                 </div>
               </div>
             </div>
-            
+
             <div class="upload-area">
-              <input 
+              <input
                 ref="fileInput"
                 type="file"
                 :accept="getAcceptedFileTypes()"
@@ -133,17 +133,17 @@
                 @change="handleFileUpload"
                 class="file-input"
               />
-              
+
               <div class="upload-buttons">
-                <button 
+                <button
                   type="button"
                   @click="fileInput?.click()"
                   class="upload-btn file-btn"
                 >
                   📁 Choose Files
                 </button>
-                
-                <button 
+
+                <button
                   type="button"
                   @click="showCamera = true"
                   class="upload-btn camera-btn"
@@ -151,7 +151,7 @@
                   📷 Take Photo
                 </button>
               </div>
-              
+
               <div v-if="uploadedFiles.length > 0" class="uploaded-files">
                 <h5>Uploaded Files:</h5>
                 <div v-for="(file, index) in uploadedFiles" :key="index" class="uploaded-file">
@@ -160,7 +160,7 @@
                   <button @click="removeFile(file)" class="remove-file-btn">×</button>
                 </div>
               </div>
-              
+
               <div v-if="assessment.requireFileUpload && uploadedFiles.length === 0" class="upload-required">
                 ⚠️ File upload is required to submit this assessment
               </div>
@@ -172,8 +172,8 @@
             <button @click="previousQuestion" class="nav-button back-button">
               ← Back to Questions
             </button>
-            <button 
-              @click="submitAssessment" 
+            <button
+              @click="submitAssessment"
               class="nav-button submit-button"
               :disabled="assessment.requireFileUpload && uploadedFiles.length === 0"
             >
@@ -194,7 +194,7 @@
           <div v-if="currentQuestion" class="question-card">
             <div class="question-header">
               <h3>Question {{ currentQuestionIndex + 1 }}</h3>
-              
+
               <!-- Progress Bar (inline center) -->
               <div class="progress-compact-inline">
                 <span class="progress-text">{{ currentQuestionIndex + 1 }}/{{ assessment.questions?.length }}</span>
@@ -202,11 +202,11 @@
                   <div class="progress-fill" :style="{ width: progressPercentage + '%' }"></div>
                 </div>
               </div>
-              
+
               <div class="question-meta">
                 <div v-if="currentQuestion.standard" class="question-standards">
-                  <span 
-                    v-for="standard in parseStandards(currentQuestion.standard)" 
+                  <span
+                    v-for="standard in parseStandards(currentQuestion.standard)"
                     :key="standard"
                     class="question-standard-tag"
                   >{{ standard }}</span>
@@ -214,19 +214,19 @@
                 <div class="question-points">{{ currentQuestion.points }} point{{ currentQuestion.points !== 1 ? 's' : '' }}</div>
               </div>
             </div>
-            
+
             <div class="question-content">
               <div class="question-text" v-html="renderLatexInText(currentQuestion.questionText)"></div>
-              
+
               <!-- Multiple Choice -->
               <div v-if="currentQuestion.questionType === 'multiple-choice'" class="answer-options">
-                <label 
-                  v-for="(option, index) in currentQuestion.options" 
+                <label
+                  v-for="(option, index) in currentQuestion.options"
                   :key="index"
                   class="option-label"
                 >
-                  <input 
-                    type="radio" 
+                  <input
+                    type="radio"
                     :name="`question-${currentQuestion.id}`"
                     :value="index.toString()"
                     v-model="answers[currentQuestion.id]"
@@ -271,8 +271,8 @@
               <!-- True/False -->
               <div v-else-if="currentQuestion.questionType === 'true-false'" class="true-false-options">
                 <label class="option-label">
-                  <input 
-                    type="radio" 
+                  <input
+                    type="radio"
                     :name="`question-${currentQuestion.id}`"
                     value="true"
                     v-model="answers[currentQuestion.id]"
@@ -280,8 +280,8 @@
                   <span>True</span>
                 </label>
                 <label class="option-label">
-                  <input 
-                    type="radio" 
+                  <input
+                    type="radio"
                     :name="`question-${currentQuestion.id}`"
                     value="false"
                     v-model="answers[currentQuestion.id]"
@@ -296,21 +296,21 @@
                 <div class="matching-container">
                   <div class="matching-left">
                     <h4>Items to Match:</h4>
-                    <div 
-                      v-for="(leftItem, index) in currentQuestion.leftItems" 
+                    <div
+                      v-for="(leftItem, index) in currentQuestion.leftItems"
                       :key="index"
                       class="matching-item left-item"
                       :class="{ 'matched': getMatchForLeftItem(leftItem) }"
                     >
                       <span class="item-text" v-html="renderLatexInText(leftItem)"></span>
-                      <select 
+                      <select
                         :value="getMatchForLeftItem(leftItem)"
                         @change="updateMatch(leftItem, ($event.target as HTMLSelectElement)?.value || '')"
                         class="match-select"
                       >
                         <option value="">Select match...</option>
-                        <option 
-                          v-for="rightItem in currentQuestion.rightItems" 
+                        <option
+                          v-for="rightItem in currentQuestion.rightItems"
                           :key="rightItem"
                           :value="rightItem"
                         v-html="renderLatexInText(rightItem)"></option>
@@ -319,8 +319,8 @@
                   </div>
                   <div class="matching-right">
                     <h4>Available Matches:</h4>
-                    <div 
-                      v-for="rightItem in currentQuestion.rightItems" 
+                    <div
+                      v-for="rightItem in currentQuestion.rightItems"
                       :key="rightItem"
                       class="matching-item right-item"
                       :class="{ 'used': isRightItemUsed(rightItem) }"
@@ -335,13 +335,13 @@
               <div v-else-if="currentQuestion.questionType === 'rank-order'" class="rank-order-question">
                 <p class="rank-instruction">
                   Drag the items below to put them in the correct order
-                  ({{ currentQuestion.orderType === 'ascending' ? 'smallest to largest' : 
-                      currentQuestion.orderType === 'descending' ? 'largest to smallest' : 
+                  ({{ currentQuestion.orderType === 'ascending' ? 'smallest to largest' :
+                      currentQuestion.orderType === 'descending' ? 'largest to smallest' :
                       'correct sequence' }}):
                 </p>
                 <div class="rank-container">
-                  <div 
-                    v-for="(item, index) in getRankOrderItems()" 
+                  <div
+                    v-for="(item, index) in getRankOrderItems()"
                     :key="item"
                     class="rank-item"
                     draggable="true"
@@ -362,13 +362,13 @@
               <div v-else-if="currentQuestion.questionType === 'checkbox'" class="checkbox-question">
                 <p class="checkbox-instruction">Select all correct answers:</p>
                 <div class="checkbox-options">
-                  <label 
-                    v-for="(option, index) in currentQuestion.options" 
+                  <label
+                    v-for="(option, index) in currentQuestion.options"
                     :key="index"
                     class="checkbox-label"
                   >
-                    <input 
-                      type="checkbox" 
+                    <input
+                      type="checkbox"
                       :value="index.toString()"
                       :checked="getCheckboxAnswers(currentQuestion.id).includes(index.toString())"
                       @change="toggleCheckboxAnswer(currentQuestion.id, index.toString())"
@@ -401,37 +401,37 @@
 
           <!-- Navigation -->
           <div class="navigation-section">
-            <button 
-              @click="previousQuestion" 
+            <button
+              @click="previousQuestion"
               :disabled="currentQuestionIndex === 0"
               class="nav-button prev-button"
             >
               ← Previous
             </button>
-            
+
             <div class="question-indicator">
-              <span 
-                v-for="(question, index) in assessment.questions" 
+              <span
+                v-for="(question, index) in assessment.questions"
                 :key="question.id"
                 class="question-dot"
-                :class="{ 
+                :class="{
                   'current': index === currentQuestionIndex,
                   'answered': answers[question.id] !== undefined && answers[question.id] !== ''
                 }"
                 @click="goToQuestion(index)"
               ></span>
             </div>
-            
-            <button 
+
+            <button
               v-if="!isLastQuestion"
-              @click="nextQuestion" 
+              @click="nextQuestion"
               class="nav-button next-button"
             >
               Next →
             </button>
-            <button 
+            <button
               v-else
-              @click="nextQuestion" 
+              @click="nextQuestion"
               class="nav-button review-button"
             >
               Review & Submit →
@@ -442,7 +442,7 @@
     </div>
 
     <!-- Camera Capture Modal -->
-    <CameraCapture 
+    <CameraCapture
       v-if="showCamera"
       @close="showCamera = false"
       @photoTaken="handlePhotoTaken"
@@ -523,11 +523,42 @@ const loadAssessment = async () => {
   try {
     const assessmentId = route.params.id as string;
     console.log('📝 Loading assessment for taking:', assessmentId);
-    
+
     const data = await getAssessment(assessmentId);
     if (data) {
+      // Normalize correctHorizontalOrder for horizontal ordering questions (handles Firestore object conversion)
+      if (data.questions) {
+        data.questions.forEach((question: any) => {
+          if (question.questionType === 'horizontal-ordering' && question.correctHorizontalOrder) {
+            // Ensure it's an array
+            if (!Array.isArray(question.correctHorizontalOrder)) {
+              // Try to convert to array
+              if (typeof question.correctHorizontalOrder === 'string') {
+                question.correctHorizontalOrder = question.correctHorizontalOrder.split(',').map((item: string) => item.trim()).filter((item: string) => item.length > 0);
+              } else if (typeof question.correctHorizontalOrder === 'object' && question.correctHorizontalOrder !== null) {
+                // Firestore might convert arrays to objects with numeric keys
+                try {
+                  const keys = Object.keys(question.correctHorizontalOrder).sort((a, b) => parseInt(a) - parseInt(b));
+                  question.correctHorizontalOrder = keys.map(key => String(question.correctHorizontalOrder[key])).filter((item: string) => item);
+                } catch (e) {
+                  console.warn('Failed to normalize correctHorizontalOrder:', e);
+                  question.correctHorizontalOrder = [];
+                }
+              } else {
+                question.correctHorizontalOrder = [];
+              }
+            }
+            console.log('📋 Normalized correctHorizontalOrder for question:', question.id, {
+              original: question.correctHorizontalOrder,
+              normalized: question.correctHorizontalOrder,
+              type: Array.isArray(question.correctHorizontalOrder) ? 'array' : typeof question.correctHorizontalOrder
+            });
+          }
+        });
+      }
+
       assessment.value = data;
-      
+
       // Check if any questions require photo upload
       const hasPhotoRequirement = data.questions?.some(q => q.requiresPhoto)
       if (hasPhotoRequirement && !data.allowFileUpload) {
@@ -538,29 +569,29 @@ const loadAssessment = async () => {
         assessment.value = data
         console.log('📷 Photo upload enabled - questions require showing work')
       }
-      
+
       // Check for existing results to determine if this is a retake
       if (authStore.currentUser?.uid) {
         const studentId = authStore.currentUser.uid || authStore.currentUser.googleId || authStore.currentUser.seisId;
-        
+
         if (studentId) {
           try {
             const allStudentResults = await getAssessmentResultsByStudent(studentId);
           existingResults.value = allStudentResults.filter(result => result.assessmentId === assessmentId);
-          
+
           if (existingResults.value.length > 0) {
             isRetake.value = true;
             attemptNumber.value = existingResults.value.length + 1;
-            
+
             console.log(`🔄 This is attempt #${attemptNumber.value} for this assessment`);
             console.log('📊 Previous results:', existingResults.value.length);
-            
+
             // Check if retakes are allowed
             if (!assessment.value.allowRetakes) {
               error.value = 'This assessment does not allow retakes. You have already completed it.';
               return;
             }
-            
+
             // Check if max retakes exceeded
             if (assessment.value.maxRetakes && assessment.value.maxRetakes > 0) {
               if (existingResults.value.length >= assessment.value.maxRetakes + 1) { // +1 because first attempt isn't a retake
@@ -568,7 +599,7 @@ const loadAssessment = async () => {
                 return;
               }
             }
-            
+
             showRetakeWarning.value = true;
           }
         } catch (resultsError) {
@@ -576,12 +607,12 @@ const loadAssessment = async () => {
         }
         }
       }
-      
+
       // Initialize timer if time limit exists
       if (assessment.value.timeLimit) {
         timeRemaining.value = assessment.value.timeLimit * 60; // Convert to seconds
       }
-      
+
       console.log('✅ Assessment loaded:', assessment.value.title);
     } else {
       error.value = 'Assessment not found or not assigned to you.';
@@ -603,7 +634,7 @@ const startAssessment = async () => {
       alert(
         `Assessment in progress\n\nYou have answered ${Object.keys(savedProgress.answers).length} of ${assessment.value.questions?.length || 0} questions.\n\nYou will continue where you left off.`
       );
-      
+
       // Automatically restore saved progress
       answers.value = savedProgress.answers;
       currentQuestionIndex.value = savedProgress.currentQuestionIndex;
@@ -613,13 +644,13 @@ const startAssessment = async () => {
       console.log('✅ Resumed from saved progress');
     }
   }
-  
+
   started.value = true;
   showingInstructions.value = false;
   if (!startTime.value) {
     startTime.value = new Date();
   }
-  
+
   // Start timer if time limit exists
   if (assessment.value?.timeLimit) {
     timerInterval = setInterval(() => {
@@ -629,7 +660,7 @@ const startAssessment = async () => {
       }
     }, 1000);
   }
-  
+
   console.log('🚀 Assessment started');
 };
 
@@ -642,7 +673,7 @@ const nextQuestion = async () => {
   if (started.value && assessment.value?.id) {
     await saveProgress();
   }
-  
+
   if (currentQuestionIndex.value < (assessment.value?.questions?.length || 0) - 1) {
     currentQuestionIndex.value++;
   } else {
@@ -656,7 +687,7 @@ const previousQuestion = async () => {
   if (started.value && assessment.value?.id) {
     await saveProgress();
   }
-  
+
   if (onFinalScreen.value) {
     onFinalScreen.value = false;
     // Go back to last question
@@ -671,7 +702,7 @@ const goToQuestion = async (index: number) => {
   if (started.value && assessment.value?.id) {
     await saveProgress();
   }
-  
+
   currentQuestionIndex.value = index;
 };
 
@@ -682,21 +713,21 @@ const uploadFilesToStorage = async (files: File[], studentUid: string, assessmen
       const timestamp = Date.now();
       const fileExtension = file.name.split('.').pop() || 'unknown';
       const filename = `${timestamp}_${file.name}`;
-      
+
       // Create storage path: assessments/{studentUid}/{assessmentId}/{filename}
       const filePath = `assessments/${studentUid}/${assessmentId}/${filename}`;
       const fileRef = storageRef(storage, filePath);
-      
+
       console.log('📤 Uploading file:', file.name, 'to', filePath);
-      
+
       // Upload file
       const snapshot = await uploadBytes(fileRef, file);
-      
+
       // Get download URL
       const downloadURL = await getDownloadURL(snapshot.ref);
-      
+
       console.log('✅ File uploaded successfully:', downloadURL);
-      
+
       // Return file metadata matching UploadedFile interface
       return {
         id: `${timestamp}_${Math.random().toString(36).substr(2, 9)}`,
@@ -713,33 +744,33 @@ const uploadFilesToStorage = async (files: File[], studentUid: string, assessmen
       throw new Error(`Failed to upload ${file.name}`);
     }
   });
-  
+
   return Promise.all(uploadPromises);
 };
 
 const submitAssessment = async () => {
   try {
     console.log('📤 Submitting assessment...');
-    
+
     // Calculate time spent
-    const timeSpent = startTime.value ? 
+    const timeSpent = startTime.value ?
       Math.round((new Date().getTime() - startTime.value.getTime()) / 1000 / 60) : 0;
-    
+
     // Calculate score and create responses
     let correctAnswers = 0;
     const totalQuestions = assessment.value?.questions?.length || 0;
     const responses: any[] = [];
-    
+
     assessment.value?.questions?.forEach((question, index) => {
       const userAnswer = answers.value[question.id] || ''; // Use question.id instead of index
       let isCorrect = false;
-      
+
       // Handle different question types for answer comparison
       if (question.questionType === 'multiple-choice') {
         // For multiple choice, userAnswer is the option index, correctAnswer should be index
         // Primary check: compare option indices directly
         isCorrect = userAnswer === question.correctAnswer;
-        
+
         // Fallback: if correct answer is text instead of index, try text comparison
         if (!isCorrect) {
           const selectedOptionText = question.options?.[parseInt(userAnswer as string)] || '';
@@ -748,7 +779,7 @@ const submitAssessment = async () => {
             isCorrect = areAnswersEquivalent(selectedOptionText, question.correctAnswer);
           }
         }
-        
+
         // Also check acceptable answers for multiple choice
         if (!isCorrect && question.acceptableAnswers && question.acceptableAnswers.length > 0) {
           for (const acceptableAnswer of question.acceptableAnswers) {
@@ -758,7 +789,7 @@ const submitAssessment = async () => {
               console.log(`✅ Multiple choice matched acceptable answer index: ${acceptableAnswer}`);
               break;
             }
-            
+
             // Then check text match with KaTeX handling
             const selectedOptionText = question.options?.[parseInt(userAnswer as string)] || '';
             if (selectedOptionText && areAnswersEquivalent(selectedOptionText, acceptableAnswer)) {
@@ -768,7 +799,7 @@ const submitAssessment = async () => {
             }
           }
         }
-        
+
         // Enhanced debug logging for multiple choice
         console.log(`🔍 Multiple Choice Debug for Question ${index + 1}:`, {
           userAnswerIndex: userAnswer,
@@ -789,7 +820,7 @@ const submitAssessment = async () => {
         if (question.correctMatches && typeof userAnswer === 'object' && !Array.isArray(userAnswer) && userAnswer !== null && !('numerator' in userAnswer)) {
           const userMatches = userAnswer as { [key: string]: string };
           const correctMatches = question.correctMatches;
-          
+
           // Check if all correct matches are present and accurate
           let allCorrect = true;
           for (const [leftItem, correctRightItem] of Object.entries(correctMatches)) {
@@ -798,7 +829,7 @@ const submitAssessment = async () => {
               break;
             }
           }
-          
+
           // Also check that no extra incorrect matches were made
           if (allCorrect) {
             for (const [leftItem, userRightItem] of Object.entries(userMatches)) {
@@ -808,7 +839,7 @@ const submitAssessment = async () => {
               }
             }
           }
-          
+
           isCorrect = allCorrect;
         }
       } else if (question.questionType === 'rank-order') {
@@ -816,7 +847,7 @@ const submitAssessment = async () => {
         if (question.correctOrder && Array.isArray(userAnswer)) {
           const userOrder = userAnswer as string[];
           const correctOrder = question.correctOrder;
-          
+
           // Check if arrays are same length and in same order
           isCorrect = userOrder.length === correctOrder.length &&
                      userOrder.every((item, index) => item === correctOrder[index]);
@@ -826,7 +857,7 @@ const submitAssessment = async () => {
         if (question.correctAnswers && Array.isArray(userAnswer)) {
           const userAnswers = userAnswer as string[];
           const correctAnswers = question.correctAnswers;
-          
+
           // Check if arrays have same length and contain same elements
           isCorrect = userAnswers.length === correctAnswers.length &&
                      userAnswers.every(answer => correctAnswers.includes(answer)) &&
@@ -834,73 +865,136 @@ const submitAssessment = async () => {
         }
       } else if (question.questionType === 'horizontal-ordering') {
         // For horizontal ordering questions, check if items are in correct order
-        if (question.correctHorizontalOrder) {
-          // Handle both array and comma-separated string formats
+        // Use correctAnswer as primary (space-separated string), fallback to correctHorizontalOrder
+        let correctOrder: string[] = [];
+
+        // Try to get correct order from correctAnswer first (primary field)
+        if (question.correctAnswer && typeof question.correctAnswer === 'string') {
+          // Parse space-separated string to array
+          correctOrder = question.correctAnswer.split(/\s+/).filter(item => item.length > 0);
+          console.log('📋 Using correctAnswer (primary):', {
+            correctAnswer: question.correctAnswer,
+            parsed: correctOrder
+          });
+        } else if (Array.isArray(question.correctHorizontalOrder)) {
+          // Fallback to correctHorizontalOrder for backward compatibility
+          correctOrder = question.correctHorizontalOrder;
+          console.log('📋 Using correctHorizontalOrder (fallback):', correctOrder);
+        } else if (question.correctHorizontalOrder) {
+          // Handle case where correctHorizontalOrder might be serialized as a string (Firestore can serialize arrays)
+          const correctHorizontalOrderValue = question.correctHorizontalOrder as unknown;
+          if (typeof correctHorizontalOrderValue === 'string') {
+            if (correctHorizontalOrderValue.includes(',')) {
+              correctOrder = correctHorizontalOrderValue.split(',').map((item: string) => item.trim()).filter((item: string) => item.length > 0);
+            } else {
+              correctOrder = correctHorizontalOrderValue.split(/\s+/).filter((item: string) => item.length > 0);
+            }
+          }
+        }
+
+        if (correctOrder.length === 0) {
+          console.error('❌ No correct order found for horizontal ordering question:', question.id);
+          isCorrect = false;
+        } else {
+          // Normalize user answer - handle both array, comma-separated, and space-separated formats
           let userOrder: string[] = [];
-          
+
           if (Array.isArray(userAnswer)) {
             userOrder = userAnswer as string[];
           } else if (typeof userAnswer === 'string') {
-            // If it's a comma-separated string, split it into an array
-            // Handle cases like "$-17$,-24,$|-45|$,$|53|$"
-            userOrder = userAnswer.split(',').map(item => item.trim()).filter(item => item.length > 0);
+            // Normalize user answer - handle both comma-separated and space-separated formats
+            // Check if it's comma-separated or space-separated
+            if (userAnswer.includes(',')) {
+              // Comma-separated: "-6,-|-5|,17,|-20|"
+              userOrder = userAnswer.split(',').map(item => item.trim()).filter(item => item.length > 0);
+            } else {
+              // Space-separated: "-6 -|-5| 17 |-20|"
+              userOrder = userAnswer.split(/\s+/).filter(item => item.length > 0);
+            }
+            console.log('📋 Normalized user answer:', {
+              original: userAnswer,
+              normalized: userOrder
+            });
           } else {
             isCorrect = false;
           }
-          
-          const correctOrder = question.correctHorizontalOrder;
-          
+
           // Check if arrays are same length
           if (userOrder.length !== correctOrder.length) {
-            isCorrect = false;
-            console.log('📊 Horizontal Ordering: Length mismatch', {
-              userLength: userOrder.length,
-              correctLength: correctOrder.length,
-              userOrder,
-              correctOrder
-            });
-          } else {
-            // Compare each item using enhanced matching (handles equivalent values, whitespace, LaTeX, etc.)
-            isCorrect = userOrder.every((userItem, index) => {
-              const correctItem = correctOrder[index];
-              
-              // First try exact match (handles LaTeX strings like "$\\frac{1}{2}$")
-              if (userItem === correctItem) {
-                return true;
-              }
-              
-              // Normalize LaTeX formatting first (remove $ wrappers, etc.)
-              let normalizedUser = userItem.trim();
-              let normalizedCorrect = correctItem.trim();
-              
-              // Strip LaTeX formatting if present
-              normalizedUser = normalizedUser.replace(/^\$\$?(.*?)\$\$?$/, '$1');
-              normalizedCorrect = normalizedCorrect.replace(/^\$\$?(.*?)\$\$?$/, '$1');
-              
-              // Try normalized comparison after stripping LaTeX
-              if (normalizedUser === normalizedCorrect) {
-                return true;
-              }
-              
-              // Try enhanced comparison (handles fractions, decimals, LaTeX expressions, etc.)
-              // This will handle cases like:
-              // - "$\\frac{1}{2}$" vs "$\\frac{2}{4}$" (equivalent fractions)
-              // - "$0.5$" vs "$\\frac{1}{2}$" (decimal vs fraction)
-              // - "$\\frac{1}{2}$" vs "1/2" (LaTeX vs plain text)
-              // - "$-17$" vs "-17" (LaTeX vs plain text)
-              // - "$|-45|$" vs "|-45|" (LaTeX vs plain text)
-              return areAnswersEquivalent(normalizedUser, normalizedCorrect);
-            });
-          }
-          
-          console.log('📊 Horizontal Ordering Check:', {
+              isCorrect = false;
+              console.log('📊 Horizontal Ordering: Length mismatch', {
+                questionId: question.id,
+                userLength: userOrder.length,
+                correctLength: correctOrder.length,
+                userOrder,
+                correctOrder
+              });
+            } else {
+              // Compare each item using enhanced matching (handles equivalent values, whitespace, LaTeX, etc.)
+              isCorrect = userOrder.every((userItem, index) => {
+                const correctItem = correctOrder[index];
+
+                console.log(`🔍 Comparing position ${index}:`, {
+                  questionId: question.id,
+                  userItem: `"${userItem}"`,
+                  correctItem: `"${correctItem}"`,
+                  exactMatch: userItem === correctItem,
+                  userType: typeof userItem,
+                  correctType: typeof correctItem
+                });
+
+                // First try exact match (handles LaTeX strings like "$\\frac{1}{2}$")
+                if (userItem === correctItem) {
+                  console.log(`✅ Position ${index}: Exact match`);
+                  return true;
+                }
+
+                // Normalize LaTeX formatting first (remove $ wrappers, etc.)
+                let normalizedUser = userItem.trim();
+                let normalizedCorrect = correctItem.trim();
+
+                // Strip LaTeX formatting if present
+                normalizedUser = normalizedUser.replace(/^\$\$?(.*?)\$\$?$/, '$1');
+                normalizedCorrect = normalizedCorrect.replace(/^\$\$?(.*?)\$\$?$/, '$1');
+
+                console.log(`🔍 After LaTeX normalization position ${index}:`, {
+                  questionId: question.id,
+                  normalizedUser: `"${normalizedUser}"`,
+                  normalizedCorrect: `"${normalizedCorrect}"`,
+                  match: normalizedUser === normalizedCorrect
+                });
+
+                // Try normalized comparison after stripping LaTeX
+                if (normalizedUser === normalizedCorrect) {
+                  console.log(`✅ Position ${index}: Match after LaTeX normalization`);
+                  return true;
+                }
+
+                // Try enhanced comparison (handles fractions, decimals, LaTeX expressions, etc.)
+                const equivalent = areAnswersEquivalent(normalizedUser, normalizedCorrect);
+                console.log(`🔍 Position ${index} enhanced comparison:`, {
+                  questionId: question.id,
+                  normalizedUser: `"${normalizedUser}"`,
+                  normalizedCorrect: `"${normalizedCorrect}"`,
+                  equivalent
+                });
+                return equivalent;
+              });
+            }
+
+          console.log('📊 Horizontal Ordering Final Check:', {
+            questionId: question.id,
             userOrder,
             correctOrder,
             isCorrect,
+            userOrderType: Array.isArray(userOrder) ? 'array' : typeof userOrder,
+            correctOrderType: Array.isArray(correctOrder) ? 'array' : typeof correctOrder,
             matchDetails: userOrder.map((item, idx) => ({
-              user: item,
-              correct: correctOrder[idx],
-              matches: item === correctOrder[idx] || areAnswersEquivalent(item.trim(), correctOrder[idx].trim())
+              position: idx,
+              user: `"${item}"`,
+              correct: `"${correctOrder[idx]}"`,
+              exactMatch: item === correctOrder[idx],
+              normalizedMatch: item.trim().replace(/^\$\$?(.*?)\$\$?$/, '$1') === correctOrder[idx].trim().replace(/^\$\$?(.*?)\$\$?$/, '$1')
             }))
           });
         }
@@ -910,10 +1004,10 @@ const submitAssessment = async () => {
           // Trim whitespace from user answer before comparison
           const trimmedUserAnswer = userAnswer.trim();
           const trimmedCorrectAnswer = question.correctAnswer.trim();
-          
+
           // Use the enhanced answer comparison that handles HTML fractions
           isCorrect = areAnswersEquivalent(trimmedUserAnswer, trimmedCorrectAnswer);
-          
+
           // Debug logging for answer comparison
           console.log(`📝 Answer Comparison for Question ${index + 1}:`, {
             questionType: question.questionType,
@@ -923,7 +1017,7 @@ const submitAssessment = async () => {
             correctAnswer: trimmedCorrectAnswer,
             isCorrect: isCorrect
           });
-          
+
           // Also check acceptable answers if available
           if (!isCorrect && question.acceptableAnswers && question.acceptableAnswers.length > 0) {
             for (const acceptableAnswer of question.acceptableAnswers) {
@@ -940,9 +1034,9 @@ const submitAssessment = async () => {
           isCorrect = userAnswer.toString().trim().toLowerCase() === question.correctAnswer.toString().trim().toLowerCase();
         }
       }
-      
+
       const pointsEarned = isCorrect ? question.points : 0;
-      
+
       console.log(`🔍 Question ${index + 1} (${question.questionType}):`, {
         questionId: question.id,
         questionText: question.questionText.substring(0, 50) + '...',
@@ -952,11 +1046,11 @@ const submitAssessment = async () => {
         isCorrect: isCorrect,
         points: pointsEarned
       });
-      
+
       if (isCorrect) {
         correctAnswers++;
       }
-      
+
       // Build response object, only including standard if it exists
       // For horizontal ordering, ensure answer is saved as array, not comma-separated string
       let answerToSave: string | string[] | Fraction = userAnswer || '';
@@ -969,7 +1063,7 @@ const submitAssessment = async () => {
           answerToSave = Array.isArray(userAnswer) ? userAnswer : [];
         }
       }
-      
+
       const response: any = {
         questionId: question.id,
         studentAnswer: answerToSave, // Ensure it's never undefined
@@ -977,27 +1071,27 @@ const submitAssessment = async () => {
         pointsEarned: pointsEarned,
         standardSyncedAt: new Date()
       };
-      
+
       // Only add cachedStandard if it exists (avoid undefined)
       if (question.standard) {
         response.cachedStandard = question.standard;
       }
-      
+
       responses.push(response);
     });
-    
+
     const score = responses.reduce((sum, response) => sum + response.pointsEarned, 0);
     const totalPoints = assessment.value?.totalPoints || totalQuestions;
     const percentage = totalPoints > 0 ? Math.round((score / totalPoints) * 100) : 0;
-    
+
     // Upload files to Firebase Storage if any
     let uploadedFileData: any[] = [];
     if (uploadedFiles.value.length > 0 && authStore.currentUser?.uid && assessment.value?.id) {
       try {
         console.log('📤 Uploading', uploadedFiles.value.length, 'files to Storage...');
         uploadedFileData = await uploadFilesToStorage(
-          uploadedFiles.value, 
-          authStore.currentUser.uid, 
+          uploadedFiles.value,
+          authStore.currentUser.uid,
           assessment.value.id
         );
         console.log('✅ All files uploaded successfully');
@@ -1006,14 +1100,14 @@ const submitAssessment = async () => {
         alert('Warning: Some files failed to upload, but assessment will still be saved.');
       }
     }
-    
+
     // Handle retake logic based on retake mode
     let resultData: any;
-    
+
     if (isRetake.value && assessment.value?.retakeMode === 'combined') {
       // Combined mode - update existing result with new attempt
       const existingResult = existingResults.value[0]; // Use first (and should be only) result
-      
+
       const newAttempt = {
         attemptNumber: attemptNumber.value,
         responses: responses,
@@ -1023,7 +1117,7 @@ const submitAssessment = async () => {
         completedAt: new Date(),
         uploadedFiles: uploadedFileData
       };
-      
+
       // Update existing result with new attempt
       resultData = {
         ...existingResult,
@@ -1041,7 +1135,7 @@ const submitAssessment = async () => {
         feedback: existingResult.feedback || '',
         accommodationsUsed: existingResult.accommodationsUsed || []
       };
-      
+
       console.log('🔄 Combined mode - updating existing result with new attempt');
     } else {
       // Separate mode or first attempt - create new result
@@ -1059,21 +1153,21 @@ const submitAssessment = async () => {
         feedback: '',
         accommodationsUsed: [],
         uploadedFiles: uploadedFileData,
-        
+
         // Cached fields for faster queries and reporting
         assessmentCategory: assessment.value?.category || 'Other',
-        
+
         // Retake tracking
         attemptNumber: attemptNumber.value,
         isRetake: isRetake.value,
         previousAttempts: []
       };
-      
+
       // Only add goalId if it exists (avoid undefined)
       if (assessment.value?.goalId) {
         resultData.goalId = assessment.value.goalId;
       }
-      
+
       // Cache student's course info from their profile (if available) for grouping/reporting
       if (authStore.currentUser?.courseId) {
         resultData.studentCourseId = authStore.currentUser.courseId;
@@ -1087,20 +1181,20 @@ const submitAssessment = async () => {
       if (authStore.currentUser?.period) {
         resultData.studentPeriod = authStore.currentUser.period;
       }
-      
+
       console.log(`📝 ${isRetake.value ? 'Separate mode - creating new result for retake' : 'First attempt - creating new result'}`);
     }
-    
+
     console.log('💾 Saving assessment result:', resultData);
-    
+
     // Save assessment result to Firestore
     const resultId = await saveAssessmentResult(resultData);
-    
+
     console.log('✅ Assessment result saved successfully!', resultId);
-    
+
     // Clear saved progress after successful submission
     await clearSavedProgress();
-    
+
     // Update student's completedAssessments array
     if (authStore.currentUser?.uid) {
       try {
@@ -1114,13 +1208,13 @@ const submitAssessment = async () => {
         console.error('⚠️ Error updating student completedAssessments:', error);
       }
     }
-    
+
     // Show success message and redirect
     const fileMessage = uploadedFileData.length > 0 ? `\n${uploadedFileData.length} files uploaded` : '';
     alert(`Assessment submitted successfully!\nScore: ${score}/${totalQuestions} (${percentage}%)\nTime spent: ${timeSpent} minutes${fileMessage}`);
-    
+
     router.push('/assessments');
-    
+
   } catch (err: any) {
     console.error('❌ Error submitting assessment:', err);
     error.value = 'Failed to submit assessment. Please try again.';
@@ -1131,17 +1225,17 @@ const handleFileUpload = (event: Event) => {
   const target = event.target as HTMLInputElement;
   if (target.files) {
     const newFiles = Array.from(target.files);
-    
+
     // Validate file size and type
     for (const file of newFiles) {
       if (assessment.value?.maxFileSize && file.size > assessment.value.maxFileSize * 1024 * 1024) {
         alert(`File ${file.name} is too large. Maximum size is ${assessment.value.maxFileSize}MB.`);
         continue;
       }
-      
+
       uploadedFiles.value.push(file);
     }
-    
+
     // Clear input
     target.value = '';
   }
@@ -1164,11 +1258,11 @@ const selectFile = () => {
 
 const handlePhotoTaken = (file: File) => {
   console.log('📷 Photo received from camera:', file.name, file.size);
-  
+
   if (assessment.value?.requireMultiplePages) {
     // Multi-page mode: add to specific page
     capturedPages.value[currentPageIndex.value] = file;
-    
+
     // Check if we need more pages
     const requiredPages = assessment.value.requiredPageCount || 1;
     if (currentPageIndex.value < requiredPages - 1) {
@@ -1184,26 +1278,26 @@ const handlePhotoTaken = (file: File) => {
     // Single page mode: add directly
     uploadedFiles.value.push(file);
   }
-  
+
   console.log('📷 Closing camera modal');
   showCamera.value = false;
 };
 
 const getCurrentPageLabel = () => {
   if (!assessment.value?.requireMultiplePages) return undefined;
-  
+
   const pageLabels = assessment.value.pageLabels || [];
   return pageLabels[currentPageIndex.value] || `Page ${currentPageIndex.value + 1}`;
 };
 
 const getUploadTitle = () => {
   const required = assessment.value?.requireFileUpload ? '(Required)' : '(Optional)';
-  
+
   if (assessment.value?.requireMultiplePages) {
     const count = assessment.value.requiredPageCount || 1;
     return `Upload Your Work - ${count} Pages ${required}`;
   }
-  
+
   return `Upload Your Work ${required}`;
 };
 
@@ -1229,11 +1323,11 @@ const getScoreClass = (percentage: number): string => {
 
 const formatDate = (timestamp: any): string => {
   if (!timestamp) return 'N/A';
-  
+
   if (timestamp?.seconds) {
     return new Date(timestamp.seconds * 1000).toLocaleDateString();
   }
-  
+
   try {
     return new Date(timestamp).toLocaleDateString();
   } catch (error) {
@@ -1254,7 +1348,7 @@ const formatFileSize = (bytes: number): string => {
 
 const getAcceptedFileTypes = () => {
   if (!assessment.value?.allowedFileTypes?.length) return '*';
-  
+
   return assessment.value.allowedFileTypes
     .flatMap(type => type.split(','))
     .map(type => type.trim())
@@ -1275,7 +1369,7 @@ const getMatchForLeftItem = (leftItem: string): string => {
   if (!currentQuestion.value) return '';
   const questionId = currentQuestion.value.id;
   const matchingAnswer = answers.value[questionId] as any;
-  
+
   if (matchingAnswer && typeof matchingAnswer === 'object') {
     return matchingAnswer[leftItem] || '';
   }
@@ -1285,11 +1379,11 @@ const getMatchForLeftItem = (leftItem: string): string => {
 const updateMatch = (leftItem: string, rightItem: string) => {
   if (!currentQuestion.value) return;
   const questionId = currentQuestion.value.id;
-  
+
   if (!answers.value[questionId]) {
     answers.value[questionId] = {} as any;
   }
-  
+
   const matchingAnswer = answers.value[questionId] as any;
   if (rightItem === '') {
     delete matchingAnswer[leftItem];
@@ -1302,7 +1396,7 @@ const isRightItemUsed = (rightItem: string): boolean => {
   if (!currentQuestion.value) return false;
   const questionId = currentQuestion.value.id;
   const matchingAnswer = answers.value[questionId] as any;
-  
+
   if (matchingAnswer && typeof matchingAnswer === 'object') {
     return Object.values(matchingAnswer).includes(rightItem);
   }
@@ -1313,10 +1407,10 @@ const isRightItemUsed = (rightItem: string): boolean => {
 const getRankOrderItems = (): string[] => {
   if (!currentQuestion.value) return [];
   const questionId = currentQuestion.value.id;
-  
+
   // Get current order from answers, or use shuffled original items
   let currentOrder = answers.value[questionId] as any;
-  
+
   if (!currentOrder || !Array.isArray(currentOrder)) {
     // Initialize with shuffled items if not already set
     const items = [...(currentQuestion.value.itemsToRank || [])].filter(item => item.trim());
@@ -1328,7 +1422,7 @@ const getRankOrderItems = (): string[] => {
     answers.value[questionId] = items as any;
     return items;
   }
-  
+
   return currentOrder;
 };
 
@@ -1340,20 +1434,20 @@ const startDrag = (index: number, item: string) => {
 
 const dropItem = (dropIndex: number) => {
   if (draggedItemIndex === null || !currentQuestion.value) return;
-  
+
   const questionId = currentQuestion.value.id;
   const currentItems = getRankOrderItems();
-  
+
   if (draggedItemIndex !== dropIndex) {
     // Remove item from original position and insert at new position
     const draggedItem = currentItems[draggedItemIndex];
     const newOrder = [...currentItems];
     newOrder.splice(draggedItemIndex, 1);
     newOrder.splice(dropIndex, 0, draggedItem);
-    
+
     answers.value[questionId] = newOrder as any;
   }
-  
+
   draggedItemIndex = null;
 };
 
@@ -1371,7 +1465,7 @@ const getCheckboxAnswers = (questionId: string): string[] => {
 const toggleCheckboxAnswer = (questionId: string, value: string) => {
   const currentAnswers = getCheckboxAnswers(questionId);
   const index = currentAnswers.indexOf(value);
-  
+
   if (index > -1) {
     // Remove if already selected
     currentAnswers.splice(index, 1);
@@ -1379,7 +1473,7 @@ const toggleCheckboxAnswer = (questionId: string, value: string) => {
     // Add if not selected
     currentAnswers.push(value);
   }
-  
+
   answers.value[questionId] = currentAnswers as any;
 };
 
@@ -1389,8 +1483,41 @@ const getHorizontalOrderingAnswer = (questionId: string): string[] => {
   if (Array.isArray(answer)) {
     return answer as string[];
   }
-  // Initialize as empty array if not set
-  answers.value[questionId] = [] as any;
+
+  // Try to convert non-array values to arrays (handles backward compatibility)
+  if (answer !== undefined && answer !== null && answer !== '') {
+    // If it's a string (possibly comma-separated), try to split it
+    if (typeof answer === 'string') {
+      const converted = answer.split(',').map(item => item.trim()).filter(item => item.length > 0);
+      if (converted.length > 0) {
+        answers.value[questionId] = converted as any;
+        return converted;
+      }
+    }
+    // If it's an object (Firestore might convert arrays to objects with numeric keys)
+    if (typeof answer === 'object' && !Array.isArray(answer)) {
+      try {
+        // Try to convert object with numeric keys to array
+        const keys = Object.keys(answer).sort((a, b) => parseInt(a) - parseInt(b));
+        const converted = keys.map(key => String(answer[key as keyof typeof answer])).filter(item => item);
+        if (converted.length > 0) {
+          answers.value[questionId] = converted as any;
+          return converted;
+        }
+      } catch (e) {
+        console.warn('Failed to convert object to array for horizontal ordering:', e);
+      }
+    }
+  }
+
+  // Initialize as empty array only if truly not set
+  if (answer === undefined || answer === null || answer === '') {
+    answers.value[questionId] = [] as any;
+    return [];
+  }
+
+  // If we can't convert it, return empty array but don't overwrite the saved value
+  console.warn('Horizontal ordering answer is not an array and could not be converted:', answer);
   return [];
 };
 
@@ -1408,11 +1535,11 @@ onUnmounted(() => {
 // Progress persistence functions
 const saveProgress = async () => {
   if (!assessment.value?.id || !authStore.currentUser?.uid || !started.value) return;
-  
+
   try {
     const progressId = `${authStore.currentUser.uid}_${assessment.value.id}`;
     const progressRef = doc(db, 'assessmentProgress', progressId);
-    
+
     await setDoc(progressRef, {
       studentUid: authStore.currentUser.uid,
       assessmentId: assessment.value.id,
@@ -1423,7 +1550,7 @@ const saveProgress = async () => {
       uploadedFiles: uploadedFiles.value.map(f => ({ name: f.name, size: f.size })), // Store file metadata only
       inProgress: true
     }, { merge: true });
-    
+
     console.log('💾 Progress auto-saved');
   } catch (error) {
     console.error('Error saving progress:', error);
@@ -1433,26 +1560,55 @@ const saveProgress = async () => {
 
 const loadSavedProgress = async () => {
   if (!assessment.value?.id || !authStore.currentUser?.uid) return null;
-  
+
   try {
     const progressId = `${authStore.currentUser.uid}_${assessment.value.id}`;
     const progressRef = doc(db, 'assessmentProgress', progressId);
     const progressDoc = await getDoc(progressRef);
-    
+
     if (progressDoc.exists()) {
       const data = progressDoc.data();
-      
+
       // Only return progress if assessment is still in progress
       if (data.inProgress && data.answers && Object.keys(data.answers).length > 0) {
         console.log('📂 Found saved progress:', Object.keys(data.answers).length, 'answers');
+
+        // Normalize answers for horizontal ordering questions (handles backward compatibility)
+        const normalizedAnswers = { ...data.answers };
+        if (assessment.value?.questions) {
+          assessment.value.questions.forEach(question => {
+            if (question.questionType === 'horizontal-ordering' && normalizedAnswers[question.id]) {
+              const answer = normalizedAnswers[question.id];
+              // Ensure it's an array
+              if (!Array.isArray(answer)) {
+                // Try to convert to array
+                if (typeof answer === 'string') {
+                  normalizedAnswers[question.id] = answer.split(',').map(item => item.trim()).filter(item => item.length > 0);
+                } else if (typeof answer === 'object' && answer !== null) {
+                  // Firestore might convert arrays to objects with numeric keys
+                  try {
+                    const keys = Object.keys(answer).sort((a, b) => parseInt(a) - parseInt(b));
+                    normalizedAnswers[question.id] = keys.map(key => String(answer[key as keyof typeof answer])).filter(item => item);
+                  } catch (e) {
+                    console.warn('Failed to normalize horizontal ordering answer:', e);
+                    normalizedAnswers[question.id] = [];
+                  }
+                } else {
+                  normalizedAnswers[question.id] = [];
+                }
+              }
+            }
+          });
+        }
+
         return {
-          answers: data.answers,
+          answers: normalizedAnswers,
           currentQuestionIndex: data.currentQuestionIndex || 0,
           startTime: data.startTime
         };
       }
     }
-    
+
     return null;
   } catch (error) {
     console.error('Error loading saved progress:', error);
@@ -1462,7 +1618,7 @@ const loadSavedProgress = async () => {
 
 const clearSavedProgress = async () => {
   if (!assessment.value?.id || !authStore.currentUser?.uid) return;
-  
+
   try {
     const progressId = `${authStore.currentUser.uid}_${assessment.value.id}`;
     const progressRef = doc(db, 'assessmentProgress', progressId);
@@ -1470,7 +1626,7 @@ const clearSavedProgress = async () => {
       inProgress: false,
       clearedAt: new Date()
     }, { merge: true });
-    
+
     console.log('🗑️ Progress cleared');
   } catch (error) {
     console.error('Error clearing progress:', error);
@@ -2633,16 +2789,16 @@ onMounted(() => {
   .assessment-container {
     padding: 15px;
   }
-  
+
   .assessment-header {
     flex-direction: column;
     gap: 20px;
   }
-  
+
   .upload-buttons {
     flex-direction: column;
   }
-  
+
   .navigation-section {
     flex-direction: column;
     gap: 20px;
@@ -2823,11 +2979,11 @@ onMounted(() => {
     grid-template-columns: 1fr;
     gap: 20px;
   }
-  
+
   .rank-item {
     padding: 12px;
   }
-  
+
   .rank-content {
     font-size: 0.9rem;
   }
@@ -2907,7 +3063,7 @@ onMounted(() => {
   .checkbox-label {
     padding: 12px;
   }
-  
+
   .checkbox-text {
     font-size: 0.9rem;
   }

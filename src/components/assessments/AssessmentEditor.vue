@@ -16,23 +16,23 @@
       <!-- Basic Information -->
       <div class="form-section">
         <h2>📋 Basic Information</h2>
-        
+
         <div class="form-row">
           <div class="form-group">
             <label for="title">Assessment Title *</label>
-            <input 
+            <input
               id="title"
-              v-model="assessment.title" 
-              type="text" 
-              required 
+              v-model="assessment.title"
+              type="text"
+              required
               class="form-input"
               placeholder="e.g., Fractions and Decimals Assessment"
             >
           </div>
-          
+
           <div class="form-group full-width">
             <label>Overall Standard (optional)</label>
-            <StandardSelector 
+            <StandardSelector
               v-model="selectedStandard"
               :grade="assessment.gradeLevel.toString()"
               @update:modelValue="updateAssessmentStandard"
@@ -43,10 +43,10 @@
 
         <div class="form-group">
           <label for="description">Description *</label>
-          <textarea 
+          <textarea
             id="description"
-            v-model="assessment.description" 
-            required 
+            v-model="assessment.description"
+            required
             class="form-textarea"
             rows="3"
             placeholder="Brief description of what this assessment covers..."
@@ -63,7 +63,7 @@
               </option>
             </select>
           </div>
-          
+
           <div class="form-group">
             <label for="category">Category *</label>
             <select id="category" v-model="assessment.category" required class="form-select" @change="onCategoryChange">
@@ -76,23 +76,23 @@
               <option value="Other">Other</option>
             </select>
           </div>
-          
+
           <div class="form-group">
             <label for="timeLimit">Time Limit</label>
             <div class="time-limit-controls">
               <label class="checkbox-label">
-                <input 
-                  type="checkbox" 
+                <input
+                  type="checkbox"
                   v-model="noTimeLimit"
                   @change="toggleTimeLimit"
                 >
                 No time limit
               </label>
-              <input 
+              <input
                 v-if="!noTimeLimit"
                 id="timeLimit"
-                v-model.number="assessment.timeLimit" 
-                type="number" 
+                v-model.number="assessment.timeLimit"
+                type="number"
                 class="form-input"
                 min="1"
                 max="180"
@@ -107,7 +107,7 @@
         <div v-if="assessment.category === 'PA'" class="form-section goal-connection">
           <h3>🎯 Goal Connection</h3>
           <p class="section-description">Connect this progress assessment to an IEP goal for tracking student progress.</p>
-          
+
           <div class="form-group">
             <label for="goalSelect">Connect to Goal</label>
             <select id="goalSelect" v-model="assessment.goalId" class="form-select">
@@ -121,13 +121,13 @@
               <router-link to="/goals" target="_blank">Manage Goals →</router-link>
             </small>
           </div>
-          
+
           <div v-if="assessment.goalId" class="connected-goal-info">
             <div class="goal-card">
               <h4>📋 Connected Goal Details</h4>
               <div v-if="selectedGoalDetails" class="goal-details">
                 <div class="detail-row">
-                  <strong>Students:</strong> 
+                  <strong>Students:</strong>
                   <span v-if="selectedGoalDetails.assignedStudents?.length">
                     {{ selectedGoalDetails.assignedStudents.map(uid => getStudentName(uid)).join(', ') }}
                   </span>
@@ -159,22 +159,22 @@
         <div class="form-row">
           <div class="form-group">
             <label for="assignDate">Assign Date</label>
-            <input 
+            <input
               id="assignDate"
-              v-model="assignDateInput" 
-              type="datetime-local" 
+              v-model="assignDateInput"
+              type="datetime-local"
               class="form-input"
               @change="updateAssignDate"
             >
             <small class="form-help">When this assessment will be assigned to students</small>
           </div>
-          
+
           <div class="form-group">
             <label for="dueDate">Due Date</label>
-            <input 
+            <input
               id="dueDate"
-              v-model="dueDateInput" 
-              type="datetime-local" 
+              v-model="dueDateInput"
+              type="datetime-local"
               class="form-input"
               @change="updateDueDate"
             >
@@ -184,9 +184,9 @@
 
         <div class="form-group">
           <label for="instructions">Instructions for Students</label>
-          <textarea 
+          <textarea
             id="instructions"
-            v-model="assessment.instructions" 
+            v-model="assessment.instructions"
             class="form-textarea"
             rows="4"
             placeholder="Instructions that students will see before starting the assessment..."
@@ -197,11 +197,11 @@
       <!-- File Upload Settings -->
       <div class="form-section">
         <h2>📎 File Upload Settings</h2>
-        
+
         <div class="form-group">
           <label class="checkbox-label">
-            <input 
-              type="checkbox" 
+            <input
+              type="checkbox"
               v-model="assessment.allowFileUpload"
               @change="onFileUploadToggle"
             >
@@ -213,8 +213,8 @@
         <div v-if="assessment.allowFileUpload" class="file-upload-options">
           <div class="form-group">
             <label class="checkbox-label">
-              <input 
-                type="checkbox" 
+              <input
+                type="checkbox"
                 v-model="assessment.requireFileUpload"
               >
               Require file upload (mandatory)
@@ -225,8 +225,8 @@
           <!-- Multi-page photo options -->
           <div class="form-group">
             <label class="checkbox-label">
-              <input 
-                type="checkbox" 
+              <input
+                type="checkbox"
                 v-model="assessment.requireMultiplePages"
                 @change="onMultiplePageToggle"
               >
@@ -234,38 +234,38 @@
             </label>
             <small class="form-help">Students must capture multiple pages (great for multi-step work)</small>
           </div>
-          
+
           <div v-if="assessment.requireMultiplePages" class="multi-page-options">
             <div class="form-group">
               <label for="requiredPageCount">Number of Required Pages</label>
-              <select 
+              <select
                 id="requiredPageCount"
-                v-model="assessment.requiredPageCount" 
+                v-model="assessment.requiredPageCount"
                 class="form-select"
               >
                 <option v-for="n in 10" :key="n" :value="n">{{ n }} page{{ n > 1 ? 's' : '' }}</option>
               </select>
               <small class="form-help">How many pages students must capture</small>
             </div>
-            
+
             <div class="form-group">
               <label class="checkbox-label">
-                <input 
-                  type="checkbox" 
+                <input
+                  type="checkbox"
                   v-model="assessment.allowExtraPages"
                 >
                 Allow students to add extra pages beyond required
               </label>
               <small class="form-help">Students can capture additional pages if needed</small>
             </div>
-            
+
             <div class="form-group">
               <label>Page Labels (optional)</label>
               <div class="page-labels">
                 <div v-for="(label, index) in pageLabelsArray" :key="index" class="page-label-input">
                   <span class="page-number">Page {{ index + 1 }}:</span>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     v-model="pageLabelsArray[index]"
                     @input="updatePageLabels"
                     class="form-input"
@@ -279,9 +279,9 @@
 
           <div class="form-group">
             <label for="fileUploadInstructions">File Upload Instructions</label>
-            <textarea 
+            <textarea
               id="fileUploadInstructions"
-              v-model="assessment.fileUploadInstructions" 
+              v-model="assessment.fileUploadInstructions"
               class="form-textarea"
               rows="3"
               :placeholder="getFileUploadPlaceholder()"
@@ -291,10 +291,10 @@
           <div class="form-row">
             <div class="form-group">
               <label for="maxFileSize">Max File Size (MB)</label>
-              <input 
+              <input
                 id="maxFileSize"
-                v-model.number="assessment.maxFileSize" 
-                type="number" 
+                v-model.number="assessment.maxFileSize"
+                type="number"
                 class="form-input"
                 min="1"
                 max="50"
@@ -302,17 +302,17 @@
               >
               <small class="form-help">Maximum file size in megabytes (1-50 MB)</small>
             </div>
-            
+
             <div class="form-group">
               <label>Allowed File Types</label>
               <div class="file-types-selection">
-                <label 
-                  v-for="fileType in availableFileTypes" 
+                <label
+                  v-for="fileType in availableFileTypes"
                   :key="fileType.value"
                   class="checkbox-label"
                 >
-                  <input 
-                    type="checkbox" 
+                  <input
+                    type="checkbox"
                     :value="fileType.value"
                     v-model="assessment.allowedFileTypes"
                   >
@@ -321,12 +321,12 @@
               </div>
               <small class="form-help">Select which file types students can upload</small>
             </div>
-            
+
             <div class="form-group">
               <label for="photoOrientation">Photo Orientation</label>
-              <select 
+              <select
                 id="photoOrientation"
-                v-model="assessment.photoOrientation" 
+                v-model="assessment.photoOrientation"
                 class="form-select"
               >
                 <option value="portrait">📱 Portrait (Vertical)</option>
@@ -353,7 +353,7 @@
                 </div>
                 <div class="preview-info">
                   <small>
-                    Max size: {{ assessment.maxFileSize || 10 }}MB | 
+                    Max size: {{ assessment.maxFileSize || 10 }}MB |
                     Types: {{ (assessment.allowedFileTypes || []).join(', ') || 'All types' }}
                   </small>
                 </div>
@@ -366,11 +366,11 @@
       <!-- Retake Settings -->
       <div class="form-section">
         <h2>🔄 Retake Settings</h2>
-        
+
         <div class="form-group">
           <label class="checkbox-label">
-            <input 
-              type="checkbox" 
+            <input
+              type="checkbox"
               v-model="assessment.allowRetakes"
             >
             Allow students to retake this assessment
@@ -389,7 +389,7 @@
                 <option :value="5">5 retakes</option>
               </select>
             </div>
-            
+
             <div class="form-group">
               <label for="retakeMode">Retake Mode</label>
               <select id="retakeMode" v-model="assessment.retakeMode" class="form-select">
@@ -401,7 +401,7 @@
 
           <div class="form-group">
             <label for="retakeInstructions">Retake Instructions</label>
-            <textarea 
+            <textarea
               id="retakeInstructions"
               v-model="assessment.retakeInstructions"
               class="form-textarea"
@@ -439,7 +439,7 @@
       <!-- Student Assignment -->
       <div class="form-section">
         <h2>👥 Student Assignment</h2>
-        
+
         <div class="form-group">
           <label>Assign to Students</label>
           <div class="students-assignment">
@@ -448,7 +448,7 @@
               <div class="loading-spinner-small"></div>
               <span>Loading students...</span>
             </div>
-            
+
             <!-- Assignment Mode Selection -->
             <div v-else-if="availableStudents.length > 0" class="assignment-modes">
               <div class="assignment-mode-selector">
@@ -498,13 +498,13 @@
               <div v-if="assignmentMode === 'class'" class="class-selection">
                 <h4>Select Classes/Periods</h4>
                 <div class="class-checkboxes">
-                  <label 
-                    v-for="classGroup in uniqueClasses" 
+                  <label
+                    v-for="classGroup in uniqueClasses"
                     :key="classGroup.key"
                     class="class-checkbox"
                   >
-                    <input 
-                      type="checkbox" 
+                    <input
+                      type="checkbox"
                       :value="classGroup.key"
                       v-model="selectedClasses"
                       @change="updateStudentsByClass"
@@ -518,21 +518,21 @@
               <div v-if="assignmentMode === 'individual'" class="individual-selection">
                 <h4>Select Students</h4>
                 <div class="student-search">
-                  <input 
-                    v-model="studentSearchQuery" 
-                    type="text" 
-                    placeholder="Search students..." 
+                  <input
+                    v-model="studentSearchQuery"
+                    type="text"
+                    placeholder="Search students..."
                     class="form-input"
                   >
                 </div>
                 <div class="student-checkboxes">
-                  <label 
-                    v-for="student in filteredStudents" 
+                  <label
+                    v-for="student in filteredStudents"
                     :key="student.uid"
                     class="student-checkbox"
                   >
-                    <input 
-                      type="checkbox" 
+                    <input
+                      type="checkbox"
                       :value="student.uid"
                       v-model="selectedStudents"
                     >
@@ -542,7 +542,7 @@
                 </div>
               </div>
             </div>
-            
+
             <!-- No students state -->
             <div v-else class="no-students-available">
               <p>{{ permissions.isAdmin ? 'No students in the system yet.' : 'No students assigned to you yet.' }}</p>
@@ -550,7 +550,7 @@
                 {{ permissions.isAdmin ? 'Add students first, then create assessments.' : 'Contact your administrator to assign students to you.' }}
               </small>
             </div>
-            
+
             <div class="assignment-summary">
               <strong>{{ getSelectedStudentsCount() }} student(s) will receive this assessment</strong>
               <small class="form-help">{{ getAssignmentSummaryText() }}</small>
@@ -561,13 +561,13 @@
         <div class="form-group">
           <label>Accommodations</label>
           <div class="accommodations-grid">
-            <label 
-              v-for="accommodation in availableAccommodations" 
+            <label
+              v-for="accommodation in availableAccommodations"
               :key="accommodation"
               class="accommodation-checkbox"
             >
-              <input 
-                type="checkbox" 
+              <input
+                type="checkbox"
                 :value="accommodation"
                 v-model="assessment.accommodations"
               >
@@ -575,14 +575,14 @@
             </label>
           </div>
           <div class="custom-accommodation">
-            <input 
+            <input
               v-model="customAccommodation"
               type="text"
               class="form-input"
               placeholder="Add custom accommodation..."
               @keyup.enter="addCustomAccommodation"
             >
-            <button 
+            <button
               type="button"
               @click="addCustomAccommodation"
               class="add-button"
@@ -604,16 +604,16 @@
         </div>
 
         <div class="questions-list">
-          <div 
-            v-for="(question, index) in assessment.questions" 
+          <div
+            v-for="(question, index) in assessment.questions"
             :key="question.id"
             class="question-item"
           >
             <div class="question-header">
               <h3>Question {{ index + 1 }}</h3>
               <div class="question-actions">
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   @click="moveQuestion(index, -1)"
                   :disabled="index === 0"
                   class="move-button"
@@ -621,8 +621,8 @@
                 >
                   ↑
                 </button>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   @click="moveQuestion(index, 1)"
                   :disabled="index === assessment.questions.length - 1"
                   class="move-button"
@@ -630,8 +630,8 @@
                 >
                   ↓
                 </button>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   @click="removeQuestion(index)"
                   class="remove-button"
                   title="Remove Question"
@@ -644,8 +644,8 @@
             <div class="question-content">
               <div class="form-group">
                 <label>Question Text *</label>
-                <LaTeXEditor 
-                  v-model="question.questionText" 
+                <LaTeXEditor
+                  v-model="question.questionText"
                   :rows="3"
                   placeholder="Enter the question... Use $...$ for inline math or $$...$$ for display math (e.g., What is $x^2 + 5x - 6$?)"
                 />
@@ -656,10 +656,10 @@
                 <div class="accordion-header" @click="toggleQuestionStandardsAccordion(question.id)">
                   <label>📏 Standards for this Question</label>
                   <div class="accordion-toggle">
-                    <span 
-                      class="current-standard" 
+                    <span
+                      class="current-standard"
                       v-if="question.standard"
-                      :class="{ 
+                      :class="{
                         'custom-standard': question.standard.startsWith('CUSTOM:'),
                         'ccss-standard': !question.standard.startsWith('CUSTOM:')
                       }"
@@ -672,14 +672,14 @@
                     </span>
                   </div>
                 </div>
-                
+
                 <div v-if="expandedStandards[question.id]" class="accordion-content">
-                  <StandardSelector 
+                  <StandardSelector
                     :modelValue="getQuestionStandardSelection(question)"
                     :grade="assessment.gradeLevel.toString()"
                     @update:modelValue="updateQuestionStandard(question, $event)"
                   />
-                  
+
                   <div class="standards-help">
                     <small>💡 <strong>Tip:</strong> This question will count toward the selected standard in gradebook and progress tracking.</small>
                   </div>
@@ -689,7 +689,7 @@
               <div class="form-row">
                 <div class="form-group">
                   <label>Question Type *</label>
-                  <select v-model="question.questionType" required class="form-select">
+                  <select v-model="question.questionType" required class="form-select" @change="handleQuestionTypeChange(question, index)">
                     <option value="">Select Type</option>
                     <option value="multiple-choice">Multiple Choice</option>
                     <option value="true-false">True/False</option>
@@ -703,13 +703,13 @@
                     <option value="horizontal-ordering">Horizontal Ordering</option>
                   </select>
                 </div>
-                
+
                 <div class="form-group">
                   <label>Points *</label>
-                  <input 
-                    v-model.number="question.points" 
-                    type="number" 
-                    required 
+                  <input
+                    v-model.number="question.points"
+                    type="number"
+                    required
                     class="form-input"
                     min="1"
                     max="100"
@@ -721,12 +721,12 @@
               <div v-if="question.questionType === 'multiple-choice'" class="options-section">
                 <label>Answer Options</label>
                 <div class="options-list">
-                  <div 
-                    v-for="(option, optionIndex) in question.options" 
+                  <div
+                    v-for="(option, optionIndex) in question.options"
                     :key="optionIndex"
                     class="option-item"
                   >
-                    <LaTeXEditor 
+                    <LaTeXEditor
                       v-model="question.options![optionIndex]"
                       :rows="2"
                       :show-preview="false"
@@ -734,7 +734,7 @@
                       class="option-latex-editor"
                     />
                     <label class="correct-checkbox">
-                      <input 
+                      <input
                         type="radio"
                         :name="`correct-${question.id}`"
                         :value="optionIndex.toString()"
@@ -742,7 +742,7 @@
                       >
                       Correct
                     </label>
-                    <button 
+                    <button
                       type="button"
                       @click="removeOption(question, optionIndex)"
                       class="remove-option-button"
@@ -752,7 +752,7 @@
                     </button>
                   </div>
                 </div>
-                <button 
+                <button
                   type="button"
                   @click="addOption(question)"
                   class="add-option-button"
@@ -782,28 +782,28 @@
                 <div class="form-group">
                   <label>Correct Fraction Answers *</label>
                   <p class="help-text">Add all acceptable equivalent answers (e.g., 1/2, 2/4, 0.5)</p>
-                  
+
                   <div class="fraction-answers-list">
-                    <div 
-                      v-for="(answer, answerIndex) in question.correctFractionAnswers || []" 
+                    <div
+                      v-for="(answer, answerIndex) in question.correctFractionAnswers || []"
                       :key="answerIndex"
                       class="fraction-answer-item"
                     >
-                      <input 
+                      <input
                         v-model="question.correctFractionAnswers![answerIndex]"
                         type="text"
                         placeholder="e.g., 3/4 or 0.75 or 3"
                         class="form-input"
                       />
-                      <button 
+                      <button
                         type="button"
                         @click="removeFractionAnswer(index, answerIndex)"
                         class="remove-btn"
                       >×</button>
                     </div>
                   </div>
-                  
-                  <button 
+
+                  <button
                     type="button"
                     @click="addFractionAnswer(index)"
                     class="add-btn"
@@ -816,15 +816,15 @@
                 <div class="form-group">
                   <label>Matching Pairs *</label>
                   <p class="help-text">Create pairs of items that students need to match</p>
-                  
+
                   <div class="matching-pairs-list">
-                    <div 
-                      v-for="(pair, pairIndex) in question.matchingPairs || []" 
+                    <div
+                      v-for="(pair, pairIndex) in question.matchingPairs || []"
                       :key="pairIndex"
                       class="matching-pair-item"
                     >
                       <div class="pair-inputs">
-                        <LaTeXEditor 
+                        <LaTeXEditor
                           v-model="question.matchingPairs![pairIndex].left"
                           :rows="2"
                           :show-preview="false"
@@ -832,14 +832,14 @@
                           class="pair-latex-editor"
                         />
                         <span class="pair-connector">↔</span>
-                        <LaTeXEditor 
+                        <LaTeXEditor
                           v-model="question.matchingPairs![pairIndex].right"
                           :rows="2"
                           :show-preview="false"
                           placeholder="Right item (e.g., $0.5$)"
                           class="pair-latex-editor"
                         />
-                        <button 
+                        <button
                           type="button"
                           @click="removeMatchingPair(index, pairIndex)"
                           class="remove-btn"
@@ -847,8 +847,8 @@
                       </div>
                     </div>
                   </div>
-                  
-                  <button 
+
+                  <button
                     type="button"
                     @click="addMatchingPair(index)"
                     class="add-btn"
@@ -861,7 +861,7 @@
                 <div class="form-group">
                   <label>Items to Rank *</label>
                   <p class="help-text">Add items that students need to put in the correct order</p>
-                  
+
                   <div class="form-row">
                     <div class="form-group">
                       <label>Order Type</label>
@@ -872,35 +872,35 @@
                       </select>
                     </div>
                   </div>
-                  
+
                   <div class="rank-items-list">
-                    <div 
-                      v-for="(item, itemIndex) in question.itemsToRank || []" 
+                    <div
+                      v-for="(item, itemIndex) in question.itemsToRank || []"
                       :key="itemIndex"
                       class="rank-item"
                     >
                       <span class="item-number">{{ itemIndex + 1 }}.</span>
-                      <LaTeXEditor 
+                      <LaTeXEditor
                         v-model="question.itemsToRank![itemIndex]"
                         :rows="2"
                         :show-preview="false"
                         placeholder="e.g., $\frac{3}{4}$, $0.75$, $\frac{2}{3}$"
                         class="rank-latex-editor"
                       />
-                      <button 
+                      <button
                         type="button"
                         @click="removeRankItem(index, itemIndex)"
                         class="remove-btn"
                       >×</button>
                     </div>
                   </div>
-                  
-                  <button 
+
+                  <button
                     type="button"
                     @click="addRankItem(index)"
                     class="add-btn"
                   >+ Add Item to Rank</button>
-                  
+
                   <div class="form-group" style="margin-top: 20px;">
                     <label>Correct Order *</label>
                     <p class="help-text">
@@ -909,16 +909,16 @@
                          'Drag items above to set the correct order, or enter the correct sequence manually' }}
                     </p>
                     <div v-if="question.orderType === 'custom'" class="correct-order-list">
-                      <div 
-                        v-for="(item, orderIndex) in question.correctOrder || []" 
+                      <div
+                        v-for="(item, orderIndex) in question.correctOrder || []"
                         :key="orderIndex"
                         class="correct-order-item"
                       >
                         <span class="order-number">{{ orderIndex + 1 }}.</span>
                         <select v-model="question.correctOrder![orderIndex]" class="form-select">
                           <option value="">Select item</option>
-                          <option 
-                            v-for="rankItem in question.itemsToRank || []" 
+                          <option
+                            v-for="rankItem in question.itemsToRank || []"
                             :key="rankItem"
                             :value="rankItem"
                           >{{ rankItem }}</option>
@@ -934,28 +934,28 @@
                 <div class="form-group">
                   <label>Answer Options *</label>
                   <p class="help-text">Add options and check all that should be correct answers</p>
-                  
+
                   <div class="checkbox-options-list">
-                    <div 
-                      v-for="(option, optionIndex) in question.options || []" 
+                    <div
+                      v-for="(option, optionIndex) in question.options || []"
                       :key="optionIndex"
                       class="checkbox-option-item"
                     >
                       <div class="option-row">
-                        <input 
+                        <input
                           type="checkbox"
                           :checked="isCorrectCheckboxAnswer(question, optionIndex)"
                           @change="toggleCorrectCheckboxAnswer(index, optionIndex)"
                           class="correct-checkbox"
                         />
-                        <LaTeXEditor 
+                        <LaTeXEditor
                           v-model="question.options![optionIndex]"
                           :rows="2"
                           :show-preview="false"
                           placeholder="Enter option... Use $...$ for math (e.g., $\frac{1}{2}$)"
                           class="option-latex-editor"
                         />
-                        <button 
+                        <button
                           type="button"
                           @click="removeOption(question, optionIndex)"
                           class="remove-btn"
@@ -966,13 +966,13 @@
                       </small>
                     </div>
                   </div>
-                  
-                  <button 
+
+                  <button
                     type="button"
                     @click="addOption(question)"
                     class="add-btn"
                   >+ Add Option</button>
-                  
+
                   <div class="correct-answers-summary">
                     <strong>Correct Answers Selected:</strong>
                     <span v-if="getCorrectCheckboxAnswers(question).length === 0" class="no-correct">
@@ -987,18 +987,25 @@
 
               <!-- Horizontal Ordering Configuration -->
               <div v-if="question.questionType === 'horizontal-ordering'" class="horizontal-ordering-config">
+                <!-- DEBUG -->
+                <div style="background: #f3f4f6; padding: 8px; margin-bottom: 8px; border-radius: 4px; font-size: 0.8rem; border: 2px solid #3b82f6;">
+                  🔍 DEBUG Horizontal Ordering Question:
+                  orderDirection={{ question.orderDirection || 'undefined' }},
+                  orderingItems={{ (question.orderingItems || []).length }},
+                  correctHorizontalOrder={{ (question.correctHorizontalOrder || []).length }}
+                </div>
                 <div class="form-group">
                   <label>Ordering Items *</label>
                   <p class="help-text">Add 2-8 items that students will drag to order horizontally</p>
-                  
+
                   <div class="ordering-items-list">
-                    <div 
-                      v-for="(item, itemIndex) in question.orderingItems || []" 
+                    <div
+                      v-for="(item, itemIndex) in question.orderingItems || []"
                       :key="itemIndex"
                       class="ordering-item"
                     >
                       <span class="item-number">{{ itemIndex + 1 }}.</span>
-                      <LaTeXEditor 
+                      <LaTeXEditor
                         v-model="question.orderingItems![itemIndex]"
                         :rows="2"
                         :show-preview="false"
@@ -1006,45 +1013,57 @@
                         class="ordering-latex-editor"
                         @update:modelValue="updateCorrectHorizontalOrder(question)"
                       />
-                      <button 
+                      <button
                         type="button"
                         @click="removeOrderingItem(index, itemIndex)"
                         class="remove-btn"
                       >×</button>
                     </div>
                   </div>
-                  
-                  <button 
+
+                  <button
                     type="button"
                     @click="addOrderingItem(index)"
                     class="add-btn"
                     :disabled="(question.orderingItems || []).length >= 8"
                   >+ Add Ordering Item</button>
-                  
+
                   <div class="form-group" style="margin-top: 20px;">
                     <label>Order Direction *</label>
-                    <select v-model="question.orderDirection" class="form-select">
+                    <select
+                      v-model="question.orderDirection"
+                      class="form-select"
+                      @change="() => { console.log('🎯 Order direction changed:', question.orderDirection, 'for question', question.id); updateCorrectHorizontalOrder(question); }"
+                    >
                       <option value="ascending">Ascending (least to greatest)</option>
                       <option value="descending">Descending (greatest to least)</option>
+                      <option value="manual">Manual (set order manually)</option>
                     </select>
+                    <small style="color: #6b7280; font-size: 0.8rem;">
+                      DEBUG: orderDirection = {{ question.orderDirection || 'undefined' }}
+                    </small>
                   </div>
-                  
-                  <div class="form-group">
+
+                  <div class="form-group" v-if="(question.orderDirection || 'ascending') === 'manual'">
+                    <!-- DEBUG -->
+                    <div style="background: #fef3c7; padding: 8px; margin-bottom: 8px; border-radius: 4px; font-size: 0.8rem;">
+                      🔍 DEBUG: Manual mode active (orderDirection = {{ question.orderDirection }})
+                    </div>
                     <label>Correct Order *</label>
                     <p class="help-text">
-                      Drag items above to set the correct order, or select the correct sequence manually
+                      Select the correct sequence manually using the dropdowns below
                     </p>
                     <div class="correct-order-list">
-                      <div 
-                        v-for="(item, orderIndex) in getCorrectOrderArray(question)" 
+                      <div
+                        v-for="(item, orderIndex) in getCorrectOrderArray(question)"
                         :key="orderIndex"
                         class="correct-order-item"
                       >
                         <span class="order-number">{{ orderIndex + 1 }}.</span>
                         <select v-model="question.correctHorizontalOrder![orderIndex]" class="form-select" @change="ensureCorrectOrderLength(question)">
                           <option value="">Select item</option>
-                          <option 
-                            v-for="orderingItem in (question.orderingItems || []).filter(i => i.trim())" 
+                          <option
+                            v-for="orderingItem in (question.orderingItems || []).filter(i => i.trim())"
                             :key="orderingItem"
                             :value="orderingItem"
                           >{{ orderingItem }}</option>
@@ -1052,11 +1071,35 @@
                       </div>
                     </div>
                   </div>
-                  
+
+                  <div v-else class="form-group">
+                    <!-- DEBUG -->
+                    <div style="background: #dbeafe; padding: 8px; margin-bottom: 8px; border-radius: 4px; font-size: 0.8rem;">
+                      🔍 DEBUG: Auto-calc mode (orderDirection = {{ question.orderDirection || 'undefined' }}, correctHorizontalOrder length = {{ (question.correctHorizontalOrder || []).length }})
+                    </div>
+                    <label>Correct Order (Auto-calculated)</label>
+                    <p class="help-text">
+                      The correct order is automatically calculated based on {{ (question.orderDirection || 'ascending') === 'ascending' ? 'ascending' : 'descending' }} order.
+                    </p>
+                    <div class="correct-order-display" v-if="question.correctHorizontalOrder && question.correctHorizontalOrder.length > 0">
+                      <div
+                        v-for="(item, orderIndex) in question.correctHorizontalOrder"
+                        :key="orderIndex"
+                        class="correct-order-item-display"
+                      >
+                        <span class="order-number">{{ orderIndex + 1 }}.</span>
+                        <span class="order-value" v-html="renderLatexInText(item)"></span>
+                      </div>
+                    </div>
+                    <div v-else class="help-text" style="color: #6b7280; font-style: italic;">
+                      Add ordering items above to see the auto-calculated order
+                    </div>
+                  </div>
+
                   <div class="ordering-summary">
                     <strong>Items to Order:</strong> {{ (question.orderingItems || []).length }} item(s)
                     <br>
-                    <strong>Correct Order Set:</strong> 
+                    <strong>Correct Order Set:</strong>
                     <span v-if="(question.correctHorizontalOrder || []).length === 0" class="no-correct">
                       ⚠️ No correct order set
                     </span>
@@ -1071,7 +1114,7 @@
               <div v-if="['short-answer', 'essay', 'number'].includes(question.questionType)" class="answer-section">
                 <div class="form-group">
                   <label>Primary Correct Answer *</label>
-                  <textarea 
+                  <textarea
                     v-model="question.correctAnswer"
                     class="form-textarea"
                     :rows="question.questionType === 'essay' ? 4 : 2"
@@ -1082,18 +1125,18 @@
                 <div v-if="question.questionType === 'short-answer' || question.questionType === 'multiple-choice'" class="form-group">
                   <label>Additional Acceptable Answers</label>
                   <div class="acceptable-answers">
-                    <div 
-                      v-for="(answer, answerIndex) in question.acceptableAnswers" 
+                    <div
+                      v-for="(answer, answerIndex) in question.acceptableAnswers"
                       :key="answerIndex"
                       class="acceptable-answer-item"
                     >
-                      <input 
+                      <input
                         v-model="question.acceptableAnswers![answerIndex]"
                         type="text"
                         class="form-input"
                         :placeholder="question.questionType === 'multiple-choice' ? 'Alternative answer text or option index...' : 'Alternative correct answer...'"
                       >
-                      <button 
+                      <button
                         type="button"
                         @click="removeAcceptableAnswer(question, answerIndex)"
                         class="remove-answer-button"
@@ -1101,7 +1144,7 @@
                         ×
                       </button>
                     </div>
-                    <button 
+                    <button
                       type="button"
                       @click="addAcceptableAnswer(question)"
                       class="add-answer-button"
@@ -1118,12 +1161,12 @@
                     </span>
                   </small>
                 </div>
-                
+
                 <!-- Equivalent Fractions Option -->
                 <div v-if="question.questionType === 'short-answer'" class="form-group">
                   <label class="checkbox-label">
-                    <input 
-                      type="checkbox" 
+                    <input
+                      type="checkbox"
                       v-model="question.acceptEquivalentFractions"
                       class="form-checkbox"
                     >
@@ -1139,7 +1182,7 @@
 
               <div class="form-group">
                 <label>Explanation (optional)</label>
-                <textarea 
+                <textarea
                   v-model="question.explanation"
                   class="form-textarea"
                   rows="2"
@@ -1199,7 +1242,7 @@
     <div v-if="error" class="error-message">
       {{ error }}
     </div>
-    
+
     <div v-if="success" class="success-message">
       {{ success }}
     </div>
@@ -1238,6 +1281,7 @@ import { hasExistingResults, migrateAssessmentResults, type MigrationResult } fr
 import type { Assessment, AssessmentQuestion, Goal } from '@/types/iep';
 import { parseStandards, formatStandardsForDisplay } from '@/utils/standardsUtils';
 import { getStudentClassName, getStudentPeriod } from '@/utils/studentGroupingUtils';
+import { renderLatexInText } from '@/utils/latexUtils';
 import type { Student as FirebaseStudent } from '@/types/users';
 import AssessmentUpdateWarning from '@/components/AssessmentUpdateWarning.vue';
 import LaTeXEditor from '@/components/LaTeXEditor.vue';
@@ -1275,7 +1319,7 @@ const availableStudents = ref<FirebaseStudent[]>([]);
 const availableGoals = ref<Goal[]>([]);
 const availableAccommodations = ref([
   'Extended time (1.5x)',
-  'Extended time (2x)', 
+  'Extended time (2x)',
   'Read aloud',
   'Large print',
   'Separate testing location',
@@ -1326,19 +1370,19 @@ const assessment = ref<Omit<Assessment, 'id' | 'createdAt' | 'updatedAt'>>({
   maxFileSize: 10,
   allowedFileTypes: ['jpg,jpeg,png', 'pdf'],
   photoOrientation: 'portrait',
-  
+
   // Multi-page photo settings
   requireMultiplePages: false,
   requiredPageCount: 2,
   pageLabels: [],
   allowExtraPages: true,
-  
+
   // Retake settings
   allowRetakes: false,
   maxRetakes: 1,
   retakeMode: 'separate',
   retakeInstructions: 'You may retake this assessment to improve your score.',
-  
+
   // Assignment dates
   assignDate: null,
   dueDate: null
@@ -1387,14 +1431,14 @@ const selectedGoalDetails = computed(() => {
 });
 
 const isValid = computed(() => {
-  return assessment.value.title.trim() && 
-         assessment.value.description.trim() && 
+  return assessment.value.title.trim() &&
+         assessment.value.description.trim() &&
          assessment.value.gradeLevel &&
          assessment.value.category &&
          assessment.value.questions.length > 0 &&
-         assessment.value.questions.every(q => 
-           q.questionText.trim() && 
-           q.questionType && 
+         assessment.value.questions.every(q =>
+           q.questionText.trim() &&
+           q.questionType &&
            q.points > 0 &&
            (q.questionType !== 'multiple-choice' || (q.options && q.options.length >= 2 && q.correctAnswer)) &&
          (q.questionType !== 'fraction' || (q.correctFractionAnswers && q.correctFractionAnswers.length > 0))
@@ -1408,22 +1452,22 @@ const canPreview = computed(() => {
 // Assignment-related computed properties
 const uniqueClasses = computed(() => {
   const classGroups = new Map<string, { label: string; count: number; students: FirebaseStudent[] }>();
-  
+
   availableStudents.value.forEach(student => {
     const className = getStudentClassName(student);
     const period = getStudentPeriod(student) || 'No Period';
     const key = `${className}|${period}`;
     const label = `${className} - ${period}`;
-    
+
     if (!classGroups.has(key)) {
       classGroups.set(key, { label, count: 0, students: [] });
     }
-    
+
     const group = classGroups.get(key)!;
     group.count++;
     group.students.push(student);
   });
-  
+
   return Array.from(classGroups.entries()).map(([key, group]) => ({
     key,
     label: group.label,
@@ -1434,9 +1478,9 @@ const uniqueClasses = computed(() => {
 
 const filteredStudents = computed(() => {
   if (!studentSearchQuery.value) return availableStudents.value;
-  
+
   const query = studentSearchQuery.value.toLowerCase();
-  return availableStudents.value.filter(student => 
+  return availableStudents.value.filter(student =>
     student.firstName.toLowerCase().includes(query) ||
     student.lastName.toLowerCase().includes(query) ||
     student.email.toLowerCase().includes(query) ||
@@ -1470,12 +1514,12 @@ const getAssignmentSummaryText = (): string => {
     case 'all':
       return 'All your students will receive this assessment';
     case 'class':
-      return selectedClasses.value.length > 0 ? 
-        `Students in ${selectedClasses.value.length} selected class(es)` : 
+      return selectedClasses.value.length > 0 ?
+        `Students in ${selectedClasses.value.length} selected class(es)` :
         'Select classes to assign to';
     case 'individual':
-      return selectedStudents.value.length > 0 ? 
-        'Individually selected students' : 
+      return selectedStudents.value.length > 0 ?
+        'Individually selected students' :
         'Search and select students';
     default:
       return '';
@@ -1485,7 +1529,7 @@ const getAssignmentSummaryText = (): string => {
 const updateStudentsByClass = () => {
   // Update selectedStudents based on selected classes
   const studentsInSelectedClasses: string[] = [];
-  
+
   selectedClasses.value.forEach(classKey => {
     const classGroup = uniqueClasses.value.find(c => c.key === classKey);
     if (classGroup) {
@@ -1496,7 +1540,7 @@ const updateStudentsByClass = () => {
       });
     }
   });
-  
+
   selectedStudents.value = studentsInSelectedClasses;
 };
 
@@ -1549,10 +1593,14 @@ const addQuestion = () => {
     orderType: 'ascending',
     // Initialize checkbox fields
     correctAnswers: [],
+    // Initialize horizontal ordering fields
+    orderingItems: [],
+    correctHorizontalOrder: [],
+    orderDirection: 'ascending',
     points: 1,
     explanation: ''
   };
-  
+
   assessment.value.questions.push(newQuestion);
 };
 
@@ -1661,7 +1709,7 @@ const removeRankItem = (questionIndex: number, itemIndex: number) => {
   if (question.itemsToRank) {
     const removedItem = question.itemsToRank[itemIndex];
     question.itemsToRank.splice(itemIndex, 1);
-    
+
     // Remove from correct order if it exists
     if (question.correctOrder) {
       const orderIndex = question.correctOrder.indexOf(removedItem);
@@ -1675,24 +1723,24 @@ const removeRankItem = (questionIndex: number, itemIndex: number) => {
 
 const updateCorrectOrder = (question: AssessmentQuestion) => {
   if (!question.itemsToRank) return;
-  
+
   if (question.orderType === 'ascending' || question.orderType === 'descending') {
     // Auto-sort for ascending/descending
     const sortedItems = [...question.itemsToRank].filter(item => item.trim());
-    
+
     // Try to sort numerically if possible
     sortedItems.sort((a, b) => {
       const numA = parseFloat(a);
       const numB = parseFloat(b);
-      
+
       if (!isNaN(numA) && !isNaN(numB)) {
         return question.orderType === 'ascending' ? numA - numB : numB - numA;
       }
-      
+
       // Fallback to string comparison
       return question.orderType === 'ascending' ? a.localeCompare(b) : b.localeCompare(a);
     });
-    
+
     question.correctOrder = sortedItems;
   } else if (question.orderType === 'custom') {
     // Initialize correct order array for custom ordering
@@ -1702,7 +1750,7 @@ const updateCorrectOrder = (question: AssessmentQuestion) => {
       // Ensure correct order has same length as items to rank
       const filteredItems = question.itemsToRank.filter(item => item.trim());
       question.correctOrder = question.correctOrder.filter(item => filteredItems.includes(item));
-      
+
       // Add any new items that aren't in correct order yet
       filteredItems.forEach(item => {
         if (!question.correctOrder!.includes(item)) {
@@ -1724,10 +1772,10 @@ const toggleCorrectCheckboxAnswer = (questionIndex: number, optionIndex: number)
   if (!question.correctAnswers) {
     question.correctAnswers = [];
   }
-  
+
   const optionIndexStr = optionIndex.toString();
   const currentIndex = question.correctAnswers.indexOf(optionIndexStr);
-  
+
   if (currentIndex > -1) {
     // Remove from correct answers
     question.correctAnswers.splice(currentIndex, 1);
@@ -1739,6 +1787,45 @@ const toggleCorrectCheckboxAnswer = (questionIndex: number, optionIndex: number)
 
 const getCorrectCheckboxAnswers = (question: AssessmentQuestion): string[] => {
   return question.correctAnswers || [];
+};
+
+// Handle question type changes
+const handleQuestionTypeChange = (question: AssessmentQuestion, questionIndex: number) => {
+  console.log('🔄 Question type changed:', {
+    questionIndex,
+    oldType: question.questionType,
+    newType: question.questionType
+  });
+
+  // Initialize horizontal ordering fields when type is set to horizontal-ordering
+  if (question.questionType === 'horizontal-ordering') {
+    console.log('📋 Initializing horizontal ordering question:', {
+      questionIndex,
+      hasOrderingItems: !!question.orderingItems,
+      hasCorrectHorizontalOrder: !!question.correctHorizontalOrder,
+      orderDirection: question.orderDirection
+    });
+
+    if (!question.orderingItems) {
+      question.orderingItems = [];
+    }
+    if (!question.correctHorizontalOrder) {
+      question.correctHorizontalOrder = [];
+    }
+    if (!question.orderDirection) {
+      question.orderDirection = 'ascending';
+      console.log('✅ Set default orderDirection to ascending');
+    }
+
+    console.log('📋 After initialization:', {
+      orderingItems: question.orderingItems,
+      correctHorizontalOrder: question.correctHorizontalOrder,
+      orderDirection: question.orderDirection
+    });
+
+    // Trigger update to calculate correct order
+    updateCorrectHorizontalOrder(question);
+  }
 };
 
 // Horizontal ordering question methods
@@ -1763,11 +1850,11 @@ const removeOrderingItem = (questionIndex: number, itemIndex: number) => {
 
 const getCorrectOrderArray = (question: AssessmentQuestion): string[] => {
   if (!question.orderingItems) return [];
-  
+
   // Use ALL ordering items (including empty ones) to determine the number of dropdowns
   // This ensures we always show the correct number of dropdowns matching the number of items
   const totalItems = question.orderingItems.length;
-  
+
   // Ensure correctHorizontalOrder exists and has the right length
   if (!question.correctHorizontalOrder) {
     // Initialize with empty strings to match the length
@@ -1786,7 +1873,7 @@ const getCorrectOrderArray = (question: AssessmentQuestion): string[] => {
       }
     }
   }
-  
+
   // Final safety check - ensure we return exactly the right length
   if (question.correctHorizontalOrder.length !== totalItems) {
     console.warn('getCorrectOrderArray: Length mismatch, fixing:', {
@@ -1799,7 +1886,7 @@ const getCorrectOrderArray = (question: AssessmentQuestion): string[] => {
       return existingValues[index] || '';
     });
   }
-  
+
   return question.correctHorizontalOrder;
 };
 
@@ -1808,47 +1895,132 @@ const ensureCorrectOrderLength = (question: AssessmentQuestion) => {
 };
 
 const updateCorrectHorizontalOrder = (question: AssessmentQuestion) => {
-  if (!question.orderingItems) return;
-  
-  // Ensure correctHorizontalOrder has the same length as orderingItems
-  // This ensures we always have the right number of dropdowns
+  console.log('🔧 updateCorrectHorizontalOrder called:', {
+    hasOrderingItems: !!question.orderingItems,
+    orderingItems: question.orderingItems,
+    orderDirection: question.orderDirection,
+    currentCorrectHorizontalOrder: question.correctHorizontalOrder
+  });
+
+  if (!question.orderingItems) {
+    console.log('⚠️ No orderingItems, returning early');
+    return;
+  }
+
+  // Initialize orderDirection if not set (for existing questions)
+  if (!question.orderDirection) {
+    question.orderDirection = 'ascending';
+    console.log('✅ Initialized orderDirection to ascending');
+  }
+
   const totalItems = question.orderingItems.length;
-  
-  if (!question.correctHorizontalOrder) {
-    // Initialize with empty strings to match the length
-    question.correctHorizontalOrder = new Array(totalItems).fill('');
-  } else {
-    // First, ensure the array length matches exactly
-    if (question.correctHorizontalOrder.length !== totalItems) {
-      if (question.correctHorizontalOrder.length < totalItems) {
-        // Add empty strings for new items
-        const needed = totalItems - question.correctHorizontalOrder.length;
-        question.correctHorizontalOrder.push(...new Array(needed).fill(''));
-      } else {
-        // Trim if items were removed - but preserve existing values
-        question.correctHorizontalOrder = question.correctHorizontalOrder.slice(0, totalItems);
-      }
-    }
-    
-    // Clean up: only clear entries that reference items that no longer exist in orderingItems
-    // Check against ALL items in orderingItems (including empty ones for position matching)
-    if (question.orderingItems) {
-      question.correctHorizontalOrder = question.correctHorizontalOrder.map((orderItem, index) => {
-        // If this position has a value, check if it still exists in orderingItems
-        if (orderItem && orderItem.trim()) {
-          // Check if this value still exists in orderingItems at any position
-          const stillExists = question.orderingItems!.some(item => item === orderItem);
-          if (!stillExists) {
-            // Value no longer exists, clear it
-            return '';
+  const validItems = question.orderingItems.filter(item => item.trim());
+
+  console.log('📊 Processing:', {
+    totalItems,
+    validItems,
+    orderDirection: question.orderDirection
+  });
+
+  // If orderDirection is ascending or descending, auto-calculate
+  if (question.orderDirection === 'ascending' || question.orderDirection === 'descending') {
+    console.log('🔄 Auto-calculating order for:', question.orderDirection);
+
+    // Auto-sort for ascending/descending
+    const sortedItems = [...validItems];
+
+    // Try to sort numerically if possible (handles LaTeX like $-17$, $0.75$, $|-5|$, $-|20|$, etc.)
+    sortedItems.sort((a, b) => {
+      // Extract numeric values, handling LaTeX formatting and absolute value notation
+      const extractNumber = (str: string): number => {
+        // Remove LaTeX dollar formatting ($, $$)
+        let cleaned = str.replace(/^\$+\$*|\$+$/g, '').trim();
+
+        // Handle absolute value notation: |x|, -|x|, |-x|
+        // Pattern matches: |number|, -|number|, |-number|
+        // Examples:
+        //   |-5| = |innerValue| = |(-5)| = 5
+        //   -|20| = -|innerValue| = -|20| = -20
+        //   -|-3| = -|innerValue| = -|(-3)| = -3
+        //   |5| = |innerValue| = |5| = 5
+        const absValuePattern = /^(-?)\|(-?\d+(?:\.\d+)?)\|$/;
+        const match = cleaned.match(absValuePattern);
+
+        if (match) {
+          // Found absolute value notation
+          const outerSign = match[1]; // '-' or '' (for -|x| or |x|)
+          const innerValue = parseFloat(match[2]); // The number inside the bars
+
+          if (!isNaN(innerValue)) {
+            // Calculate: outerSign + |innerValue|
+            // |-5|: outerSign='', innerValue=-5, absValue=5, return 5
+            // -|20|: outerSign='-', innerValue=20, absValue=20, return -20
+            // -|-3|: outerSign='-', innerValue=-3, absValue=3, return -3
+            // |5|: outerSign='', innerValue=5, absValue=5, return 5
+            const absValue = Math.abs(innerValue);
+            const result = outerSign === '-' ? -absValue : absValue;
+            console.log(`🔢 Absolute value calculation: "${str}" -> cleaned: "${cleaned}" -> ${outerSign ? outerSign : '+'}|${innerValue}| = ${result}`);
+            return result;
           }
         }
-        // Keep the existing value (even if empty)
-        return orderItem;
-      });
+
+        // Try to parse as regular number (handles cases like -5, 0.75, etc.)
+        const num = parseFloat(cleaned);
+        if (!isNaN(num)) {
+          console.log(`🔢 Regular number: "${str}" -> cleaned: "${cleaned}" -> ${num}`);
+        }
+        return isNaN(num) ? Infinity : num;
+      };
+
+      const numA = extractNumber(a);
+      const numB = extractNumber(b);
+
+      if (numA !== Infinity && numB !== Infinity) {
+        return question.orderDirection === 'ascending' ? numA - numB : numB - numA;
+      }
+
+      // Fallback to string comparison
+      return question.orderDirection === 'ascending' ? a.localeCompare(b) : b.localeCompare(a);
+    });
+
+    question.correctHorizontalOrder = sortedItems;
+    console.log('✅ Auto-calculated correctHorizontalOrder:', sortedItems);
+  } else if (question.orderDirection === 'manual') {
+    console.log('📝 Manual mode - setting up dropdowns');
+    // Manual mode: ensure correctHorizontalOrder has the right length
+    if (!question.correctHorizontalOrder) {
+      question.correctHorizontalOrder = new Array(totalItems).fill('');
+    } else {
+      // Ensure length matches
+      if (question.correctHorizontalOrder.length !== totalItems) {
+        if (question.correctHorizontalOrder.length < totalItems) {
+          const needed = totalItems - question.correctHorizontalOrder.length;
+          question.correctHorizontalOrder.push(...new Array(needed).fill(''));
+        } else {
+          question.correctHorizontalOrder = question.correctHorizontalOrder.slice(0, totalItems);
+        }
+      }
+
+      // Clean up: clear entries that reference items that no longer exist
+      if (question.orderingItems) {
+        question.correctHorizontalOrder = question.correctHorizontalOrder.map((orderItem) => {
+          if (orderItem && orderItem.trim()) {
+            const stillExists = question.orderingItems!.some(item => item === orderItem);
+            if (!stillExists) {
+              return '';
+            }
+          }
+          return orderItem;
+        });
+      }
+    }
+  } else {
+    // Default: initialize if not set
+    if (!question.correctHorizontalOrder) {
+      question.correctHorizontalOrder = new Array(totalItems).fill('');
     }
   }
-  
+
   // Final safety check: ensure length is exactly correct
   if (question.correctHorizontalOrder.length !== totalItems) {
     console.warn('Correct order length mismatch, fixing:', {
@@ -1856,11 +2028,24 @@ const updateCorrectHorizontalOrder = (question: AssessmentQuestion) => {
       actual: question.correctHorizontalOrder.length,
       orderingItems: question.orderingItems || []
     });
-    // Force rebuild to correct length
     const existingValues = [...question.correctHorizontalOrder];
     question.correctHorizontalOrder = new Array(totalItems).fill('').map((_, index) => {
       return existingValues[index] || '';
     });
+  }
+
+  // Sync correctHorizontalOrder to correctAnswer for consistency with existing code
+  // correctAnswer is now the primary field (like all other question types)
+  if (Array.isArray(question.correctHorizontalOrder) && question.correctHorizontalOrder.length > 0) {
+    // Convert array to space-separated string (matches database format)
+    question.correctAnswer = question.correctHorizontalOrder.join(' ');
+    console.log('✅ Synced correctHorizontalOrder to correctAnswer:', {
+      correctHorizontalOrder: question.correctHorizontalOrder,
+      correctAnswer: question.correctAnswer
+    });
+  } else {
+    // If no correct order set, clear correctAnswer
+    question.correctAnswer = '';
   }
 };
 
@@ -1873,31 +2058,31 @@ const updateQuestionStandards = (question: AssessmentQuestion) => {
 const proceedWithUpdate = async () => {
   showUpdateWarning.value = false;
   migrationInProgress.value = true;
-  
+
   try {
     // Perform the save first
     await performSave();
-    
+
     // Then migrate existing results
     if (isEditing.value) {
       console.log('🔄 Starting result migration...');
       const migrationResult = await migrateAssessmentResults(
-        assessmentId, 
+        assessmentId,
         {
           ...assessment.value,
           id: assessmentId,
           createdAt: new Date(),
           updatedAt: new Date()
-        }, 
+        },
         authStore.currentUser?.email || 'Unknown'
       );
-      
+
       // Show migration results
       if (migrationResult.updatedResults > 0) {
         const changes = migrationResult.scoreChanges;
         let changesSummary = `✅ Migration completed!\n\n`;
         changesSummary += `📊 ${migrationResult.updatedResults} student results updated\n\n`;
-        
+
         changes.forEach(change => {
           changesSummary += `👤 ${change.studentUid}:\n`;
           changesSummary += `   Score: ${change.oldScore} → ${change.newScore} (${change.oldPercentage}% → ${change.newPercentage}%)\n`;
@@ -1906,7 +2091,7 @@ const proceedWithUpdate = async () => {
           }
           changesSummary += `\n`;
         });
-        
+
         alert(changesSummary);
         success.value = `Assessment updated and ${migrationResult.updatedResults} student results re-graded!`;
       } else {
@@ -1960,7 +2145,7 @@ const onMultiplePageToggle = () => {
 
 const initializePageLabels = () => {
   const count = assessment.value.requiredPageCount || 2;
-  pageLabelsArray.value = Array(count).fill('').map((_, index) => 
+  pageLabelsArray.value = Array(count).fill('').map((_, index) =>
     assessment.value.pageLabels?.[index] || ''
   );
 };
@@ -2005,7 +2190,7 @@ const toggleQuestionStandardsAccordion = (questionId: string) => {
 
 const getQuestionStandardSelection = (question: AssessmentQuestion) => {
   if (!question.standard) return null;
-  
+
   // For now, return null to avoid type issues
   // The StandardSelector will handle the initial state
   return null;
@@ -2022,14 +2207,14 @@ const updateQuestionStandard = (question: AssessmentQuestion, standardSelection:
   } else {
     question.standard = '';
   }
-  
+
   // Update the standards array for compatibility
   updateQuestionStandards(question);
 };
 
 const getStandardDisplayName = (standardCode: string): string => {
   if (!standardCode) return 'No standard';
-  
+
   if (standardCode.startsWith('CUSTOM:')) {
     return standardCode.replace('CUSTOM:', ''); // Just the code, no "(Custom)"
   } else {
@@ -2039,21 +2224,54 @@ const getStandardDisplayName = (standardCode: string): string => {
 
 const loadAssessment = async () => {
   if (!isEditing.value) return;
-  
+
   try {
     // Try to load by document ID first
     let data = await getAssessment(assessmentId);
-    
+
     // If not found by document ID, try by goalId (for template assessments)
     if (!data) {
       data = await getAssessmentByGoalId(assessmentId);
     }
-    
+
     if (data) {
       // Copy all fields except id, createdAt, updatedAt
       const { id, createdAt, updatedAt, ...assessmentData } = data;
+
+      // DEBUG: Check for horizontal ordering questions
+      const horizontalOrderingQuestions = (data.questions || []).filter((q: AssessmentQuestion) => q.questionType === 'horizontal-ordering');
+      if (horizontalOrderingQuestions.length > 0) {
+        console.log('📋 Found horizontal ordering questions:', horizontalOrderingQuestions.length);
+        horizontalOrderingQuestions.forEach((q: AssessmentQuestion, idx: number) => {
+          console.log(`📋 Question ${idx + 1}:`, {
+            id: q.id,
+            orderDirection: q.orderDirection,
+            orderingItems: q.orderingItems,
+            correctHorizontalOrder: q.correctHorizontalOrder,
+            orderingItemsLength: (q.orderingItems || []).length,
+            correctHorizontalOrderLength: (q.correctHorizontalOrder || []).length
+          });
+        });
+      }
+
       assessment.value = assessmentData;
-      
+
+      // Initialize orderDirection for existing horizontal ordering questions
+      if (assessment.value.questions) {
+        assessment.value.questions.forEach((q: AssessmentQuestion) => {
+          if (q.questionType === 'horizontal-ordering') {
+            if (!q.orderDirection) {
+              console.log('🔧 Initializing orderDirection for question:', q.id);
+              q.orderDirection = 'ascending';
+            }
+            // Trigger update to calculate correct order if needed
+            if (q.orderingItems && q.orderingItems.length > 0) {
+              updateCorrectHorizontalOrder(q);
+            }
+          }
+        });
+      }
+
       // Initialize date inputs for editing
       if (data.assignDate) {
         assignDateInput.value = new Date(data.assignDate.seconds * 1000).toISOString().slice(0, 16);
@@ -2061,7 +2279,7 @@ const loadAssessment = async () => {
       if (data.dueDate) {
         dueDateInput.value = new Date(data.dueDate.seconds * 1000).toISOString().slice(0, 16);
       }
-      
+
       // Initialize quarter dropdown with existing value
       if (data.academicPeriod) {
         selectedQuarter.value = data.academicPeriod;
@@ -2070,13 +2288,13 @@ const loadAssessment = async () => {
         selectedQuarter.value = 'auto'; // Default for old assessments
         console.log('📅 No academicPeriod found, defaulting to auto-detect');
       }
-      
+
       // Set selected students based on current assignments (new approach)
       try {
         const currentlyAssigned = await getCurrentlyAssignedStudents(assessmentId);
         const assignedUids = currentlyAssigned.map(s => s.studentUid);
         selectedStudents.value = assignedUids;
-        
+
         // Set assignment mode based on selection
         if (assignedUids.length === 0) {
           assignmentMode.value = 'template';
@@ -2085,21 +2303,21 @@ const loadAssessment = async () => {
         } else {
           assignmentMode.value = 'individual';
         }
-        
+
         console.log(`📝 Pre-selected ${assignedUids.length} students for editing assessment`);
       } catch (error) {
         console.error('Error loading assigned students:', error);
         assignmentMode.value = 'template';
         selectedStudents.value = [];
       }
-      
+
       // Ensure all questions have the new fields for compatibility
       assessment.value.questions = assessment.value.questions.map(q => ({
         ...q,
         standard: q.standard || '',
         acceptableAnswers: q.acceptableAnswers || []
       }));
-      
+
       console.log('Loaded assessment with questions:', assessment.value.questions.length);
     } else {
       error.value = 'Assessment not found in database.';
@@ -2112,7 +2330,7 @@ const loadAssessment = async () => {
 
 const saveAssessment = async () => {
   if (!isValid.value) return;
-  
+
   // Check for existing results if editing
   if (isEditing.value) {
     try {
@@ -2140,61 +2358,61 @@ const performSave = async () => {
   saving.value = true;
   error.value = '';
   success.value = '';
-  
+
   let savedAssessmentId = assessmentId; // For editing mode
-  
+
   try {
     // Update total points
     assessment.value.totalPoints = totalPoints.value;
-    
+
     if (selectedStudents.value.length > 0) {
       // Debug logging
       console.log('🔍 Save with students - isEditing:', isEditing.value, 'selectedStudents:', selectedStudents.value.length, 'assessmentId:', assessmentId);
-      
+
       if (isEditing.value) {
         // EDITING MODE: Update the assessment template and manage student assignments
         console.log('✏️ EDITING MODE: Updating assessment template');
-        
+
         // First, update the assessment template (without student-specific fields)
         const assessmentData = {
           ...assessment.value,
           createdBy: authStore.currentUser?.uid,
           updatedAt: serverTimestamp(),
           // Set academic period on the assessment
-          academicPeriod: selectedQuarter.value === 'auto' 
-            ? getAutoDetectedAcademicPeriod() 
+          academicPeriod: selectedQuarter.value === 'auto'
+            ? getAutoDetectedAcademicPeriod()
             : selectedQuarter.value === 'all'
             ? 'all'
             : selectedQuarter.value
         };
-        
+
         // Remove any student-specific fields from template
         delete (assessmentData as any).studentSeisId;
         delete (assessmentData as any).studentUid;
-        
+
         await updateAssessment(assessmentId, assessmentData);
-        
+
         // Then, manage student assignments
         // Get currently assigned students for this assessment
         const currentlyAssigned = await getCurrentlyAssignedStudents(assessmentId);
         const currentlyAssignedUids = currentlyAssigned.map(s => s.studentUid);
-        
+
         // Students to add (in selectedStudents but not currently assigned)
         const studentsToAdd = selectedStudents.value.filter(uid => !currentlyAssignedUids.includes(uid));
-        
+
         // Students to remove (currently assigned but not in selectedStudents)
         const studentsToRemove = currentlyAssignedUids.filter(uid => !selectedStudents.value.includes(uid));
-        
+
         // Add new assignments
         for (const studentUid of studentsToAdd) {
           await assignAssessmentToStudent(assessmentId, studentUid, authStore.currentUser?.uid || 'system');
         }
-        
+
         // Remove old assignments
         for (const studentUid of studentsToRemove) {
           await unassignAssessmentFromStudent(assessmentId, studentUid);
         }
-        
+
         // Regrade all existing results with the updated assessment (e.g., new acceptable answers)
         let regradedCount = 0;
         try {
@@ -2206,7 +2424,7 @@ const performSave = async () => {
           console.warn('⚠️ Could not regrade existing results:', regradeError);
           // Don't fail the whole operation if regrading fails
         }
-        
+
         // Set success message
         if (regradedCount > 0) {
           success.value = `Assessment updated and assigned to ${selectedStudents.value.length} students! ${regradedCount} existing result(s) were regraded with updated questions.`;
@@ -2216,40 +2434,40 @@ const performSave = async () => {
       } else {
         // CREATION MODE: Create one assessment template and assign to students
         console.log('➕ CREATION MODE: Creating assessment template');
-        
+
         // Create the assessment template (without student-specific fields)
         const assessmentData = {
           ...assessment.value,
           createdBy: authStore.currentUser?.uid || 'system',
           // Set academic period on the assessment
-          academicPeriod: selectedQuarter.value === 'auto' 
-            ? getAutoDetectedAcademicPeriod() 
+          academicPeriod: selectedQuarter.value === 'auto'
+            ? getAutoDetectedAcademicPeriod()
             : selectedQuarter.value === 'all'
             ? 'all'
             : selectedQuarter.value
         };
-        
+
         console.log(`📅 Saving assessment with academicPeriod: ${assessmentData.academicPeriod}`);
-        
+
         // Ensure no student-specific fields in template
         delete (assessmentData as any).studentSeisId;
         delete (assessmentData as any).studentUid;
-        
+
         const newAssessmentId = await createAssessment(assessmentData);
         savedAssessmentId = newAssessmentId; // Update for goal connection
         console.log('✅ Created assessment template:', newAssessmentId);
-        
+
         // Assign to selected students
         // Note: Quarter is now stored on the assessment itself, not individual assignments
         for (const studentUid of selectedStudents.value) {
           await assignAssessmentToStudent(
-            newAssessmentId, 
-            studentUid, 
+            newAssessmentId,
+            studentUid,
             authStore.currentUser?.uid || 'system'
           );
           console.log('✅ Assigned to student:', studentUid);
         }
-        
+
         if (selectedStudents.value.length === 1) {
           success.value = 'Assessment created and assigned successfully!';
         } else {
@@ -2262,18 +2480,18 @@ const performSave = async () => {
         ...assessment.value,
         createdBy: authStore.currentUser?.uid || 'system',
         // Set academic period on the assessment
-        academicPeriod: selectedQuarter.value === 'auto' 
-          ? getAutoDetectedAcademicPeriod() 
+        academicPeriod: selectedQuarter.value === 'auto'
+          ? getAutoDetectedAcademicPeriod()
           : selectedQuarter.value === 'all'
           ? 'all'
           : selectedQuarter.value
       };
-      
+
       console.log(`📅 Saving template assessment with academicPeriod: ${templateData.academicPeriod}`);
-      
+
       if (isEditing.value) {
         await updateAssessment(assessmentId, templateData);
-        
+
         // Regrade all existing results with the updated assessment (e.g., new acceptable answers)
         try {
           const regradedCount = await regradeAssessmentResults(assessmentId, assessment.value as Assessment);
@@ -2294,7 +2512,7 @@ const performSave = async () => {
         success.value = 'Assessment template created successfully!';
       }
     }
-    
+
     // Handle goal connection for Progress Assessments
     if (assessment.value.category === 'PA' && assessment.value.goalId) {
       try {
@@ -2305,12 +2523,12 @@ const performSave = async () => {
         // Don't fail the whole operation for goal connection issues
       }
     }
-    
+
     // Redirect after short delay
     setTimeout(() => {
       router.push('/');
     }, 2000);
-    
+
   } catch (err) {
     console.error('Error saving assessment:', err);
     error.value = 'Failed to save assessment. Please try again.';
@@ -2342,7 +2560,7 @@ const printAssessment = () => {
   const printContent = generatePrintHTML();
   printWindow.document.write(printContent);
   printWindow.document.close();
-  
+
   // Wait for content to load, then trigger print
   printWindow.onload = () => {
     printWindow.focus();
@@ -2369,74 +2587,74 @@ const generatePrintHTML = (): string => {
         size: letter;
         margin: 0.5in;
       }
-      
+
       body {
         margin: 0;
         padding: 0;
       }
-      
+
       .page {
         page-break-after: always;
         page-break-inside: avoid;
       }
-      
+
       .page:last-child {
         page-break-after: auto;
       }
-      
+
       .question {
         page-break-inside: avoid;
       }
     }
-    
+
     body {
       font-family: 'Times New Roman', Times, serif;
       font-size: 12pt;
       line-height: 1.4;
       color: #000;
     }
-    
+
     .page {
       width: 100%;
       min-height: 10in;
       box-sizing: border-box;
     }
-    
+
     .header {
       text-align: center;
       border-bottom: 2px solid #000;
       padding-bottom: 10px;
       margin-bottom: 20px;
     }
-    
+
     .header h1 {
       margin: 0 0 5px 0;
       font-size: 18pt;
       font-weight: bold;
     }
-    
+
     .header .info {
       font-size: 10pt;
       margin: 5px 0;
     }
-    
+
     .student-info {
       display: flex;
       justify-content: space-between;
       margin-bottom: 20px;
       font-size: 11pt;
     }
-    
+
     .student-info .field {
       flex: 1;
       border-bottom: 1px solid #000;
       margin-right: 20px;
     }
-    
+
     .student-info .field:last-child {
       margin-right: 0;
     }
-    
+
     .question {
       margin-bottom: 20px;
       padding: 10px;
@@ -2444,7 +2662,7 @@ const generatePrintHTML = (): string => {
       border-radius: 4px;
       background: #f9f9f9;
     }
-    
+
     .question-header {
       display: flex;
       justify-content: space-between;
@@ -2452,22 +2670,22 @@ const generatePrintHTML = (): string => {
       margin-bottom: 10px;
       font-weight: bold;
     }
-    
+
     .question-number {
       font-size: 13pt;
     }
-    
+
     .question-points {
       font-size: 10pt;
       color: #666;
     }
-    
+
     .question-text {
       margin-bottom: 12px;
       font-size: 11pt;
       line-height: 1.6;
     }
-    
+
     .answer-space {
       border: 1px solid #000;
       min-height: 80px;
@@ -2475,27 +2693,27 @@ const generatePrintHTML = (): string => {
       background: white;
       margin-top: 10px;
     }
-    
+
     .answer-space.large {
       min-height: 120px;
     }
-    
+
     .options {
       margin: 10px 0;
     }
-    
+
     .option {
       margin: 8px 0;
       padding: 5px 0;
       font-size: 11pt;
     }
-    
+
     .option-label {
       display: inline-block;
       width: 30px;
       font-weight: bold;
     }
-    
+
     .instructions {
       background: #e8f4f8;
       border: 1px solid #b8d4e0;
@@ -2504,7 +2722,7 @@ const generatePrintHTML = (): string => {
       border-radius: 4px;
       font-size: 10pt;
     }
-    
+
     .footer {
       margin-top: 30px;
       text-align: center;
@@ -2513,7 +2731,7 @@ const generatePrintHTML = (): string => {
       border-top: 1px solid #ccc;
       padding-top: 10px;
     }
-    
+
     .standard-tag {
       display: inline-block;
       background: #e0e0e0;
@@ -2532,19 +2750,19 @@ const generatePrintHTML = (): string => {
       <div class="info">Grade ${assessment.value.gradeLevel} • ${assessment.value.category || 'Assessment'}</div>
       ${assessment.value.timeLimit ? `<div class="info">Time Limit: ${assessment.value.timeLimit} minutes</div>` : ''}
     </div>
-    
+
     <div class="student-info">
       <div class="field">Name: _______________________</div>
       <div class="field">Date: _______________________</div>
       <div class="field">Score: ______ / ${totalPoints.value}</div>
     </div>
-    
+
     ${assessment.value.instructions ? `
     <div class="instructions">
       <strong>Instructions:</strong> ${assessment.value.instructions}
     </div>
     ` : ''}
-    
+
     ${page1Questions.map((q, index) => `
       <div class="question">
         <div class="question-header">
@@ -2568,17 +2786,17 @@ const generatePrintHTML = (): string => {
         ${q.explanation ? `<div style="margin-top: 8px; font-size: 10pt; color: #666;"><em>Note: ${q.explanation}</em></div>` : ''}
       </div>
     `).join('')}
-    
+
     ${page2Questions.length === 0 ? `<div class="footer">Total: ${assessment.value.questions.length} Questions • ${totalPoints.value} Points</div>` : ''}
   </div>
-  
+
   ${page2Questions.length > 0 ? `
   <!-- Page 2 -->
   <div class="page">
     <div class="header">
       <h1>${assessment.value.title} (continued)</h1>
     </div>
-    
+
     ${page2Questions.map((q, index) => `
       <div class="question">
         <div class="question-header">
@@ -2602,7 +2820,7 @@ const generatePrintHTML = (): string => {
         ${q.explanation ? `<div style="margin-top: 8px; font-size: 10pt; color: #666;"><em>Note: ${q.explanation}</em></div>` : ''}
       </div>
     `).join('')}
-    
+
     <div class="footer">Total: ${assessment.value.questions.length} Questions • ${totalPoints.value} Points</div>
   </div>
   ` : ''}
@@ -2621,7 +2839,7 @@ const goBack = () => {
 const loadStudents = async () => {
   try {
     loadingStudents.value = true;
-    
+
     if (permissions.isAdmin) {
       // Admins can assign assessments to any student
       console.log('Loading all students for assessment assignment...');
@@ -2633,9 +2851,9 @@ const loadStudents = async () => {
     } else {
       availableStudents.value = [];
     }
-    
+
     console.log(`Loaded ${availableStudents.value.length} students for assessment assignment`);
-    
+
   } catch (err: any) {
     console.error('Error loading students for assessment:', err);
     error.value = 'Failed to load students. Assessments can still be created as templates.';
@@ -2656,9 +2874,9 @@ const loadGoals = async () => {
     } else {
       availableGoals.value = [];
     }
-    
+
     console.log(`Loaded ${availableGoals.value.length} goals for assessment connection`);
-    
+
   } catch (err: any) {
     console.error('Error loading goals for assessment:', err);
   }
@@ -3643,33 +3861,33 @@ onMounted(() => {
   .assessment-editor {
     padding: 15px;
   }
-  
+
   .editor-header {
     flex-direction: column;
     gap: 20px;
   }
-  
+
   .form-row {
     grid-template-columns: 1fr;
   }
-  
+
   .accommodations-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .summary-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .form-actions {
     flex-direction: column;
   }
-  
+
   .option-item {
     flex-wrap: wrap;
     gap: 8px;
   }
-  
+
   .question-actions {
     flex-wrap: wrap;
   }
@@ -3867,6 +4085,31 @@ onMounted(() => {
   font-size: 0.8rem;
   font-weight: bold;
   flex-shrink: 0;
+}
+
+.correct-order-display {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 12px;
+  background: #f0f9ff;
+  border: 2px solid #3b82f6;
+  border-radius: 8px;
+}
+
+.correct-order-item-display {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  background: white;
+  border-radius: 6px;
+}
+
+.order-value {
+  font-weight: 500;
+  color: #1f2937;
 }
 
 /* Checkbox question styles */
