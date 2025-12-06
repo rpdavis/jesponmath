@@ -287,7 +287,7 @@ const {
 
 // Computed for template
 const sessionQualityDisplay = computed(() =>
-  getSessionQualityDisplay(session.value.sessionQuality),
+  getSessionQualityDisplay(session.value.sessionQuality || 'good'),
 )
 
 // Event handlers

@@ -74,8 +74,8 @@ export function useMathFluencyPractice() {
       mixComposition: { emerging: 0, proficient: 0, mastered: 0 },
       results: {},
       accuracy: 0,
-      averResponseTime: 0,
-      timepent: 0,
+      averageResponseTime: 0,
+      timeSpent: 0,
       completed: false,
     },
     round3_assessment: {

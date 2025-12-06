@@ -31,7 +31,7 @@ export function getOperationSymbol(operation: OperationType | undefined): string
  * Get display text for session quality
  */
 export function getSessionQualityDisplay(
-  sessionQuality: MathFluencyPracticeSession['sessionQuality'],
+  sessionQuality: MathFluencyPracticeSession['sessionQuality'] | undefined | null,
 ): string {
   const qualities = {
     excellent: '🏆 Excellent',

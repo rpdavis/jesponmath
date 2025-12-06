@@ -4,7 +4,6 @@
 import { ref, computed, nextTick, type Ref } from 'vue'
 import { useAuthStore } from '@/stores/authStore'
 import { updateProblemInProgress } from '@/services/mathFluencyServices'
-import type { OperationType, MathFluencyPracticeSession } from '@/types/mathFluency'
 import type {
   ProblemProgress,
   OperationType,

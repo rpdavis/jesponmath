@@ -2,11 +2,10 @@
 // Handles diagnostic round logic, problem generation, and results
 
 import { ref, computed, nextTick, type Ref } from 'vue'
-import type { ProblemProgress, MathFluencyProgress, SubLevel } from '@/types/mathFluency'
+import type { ProblemProgress, MathFluencyProgress } from '@/types/mathFluency'
 import { filterProblemsBySubLevel } from '@/utils/subLevelUtils'
 import { sampleRandomUnique } from '@/utils/mathFluencyProblemGenerator'
 import { deduplicateByProblemIdAndText } from '@/utils/mathFluencyProblemUtils'
-import { nextTick } from 'vue'
 import { getDiagnosticScoreClass } from '@/utils/mathFluencyDisplayUtils'
 
 export function useMathFluencyDiagnostic(
@@ -72,7 +71,7 @@ export function useMathFluencyDiagnostic(
     }
 
     const subLevelProblems = filterProblemsBySubLevel(allProblems, progress.value.currentSubLevel)
-    const sampled = sampleRandomUnique(subLevelProblems, Math.min(20, subLevelProblems.length))
+    const sampled = sampleRandomUnique(subLevelProblems, Math.min(20, subLevelProblems.length)) as ProblemProgress[]
 
     console.log(`🎯 Diagnostic: ${sampled.length} problems`)
 
@@ -96,9 +95,8 @@ export function useMathFluencyDiagnostic(
 
     startDiagnosticTimer()
 
-    await nextTick(() => {
-      diagnosticInput.value?.focus()
-    })
+    await nextTick()
+    diagnosticInput.value?.focus()
   }
 
   async function startDiagnosticTimer() {
