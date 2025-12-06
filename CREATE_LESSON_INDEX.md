@@ -42,3 +42,12 @@ With the index, the query WORKS → Finds your completion → No redirect!
 
 
 
+
+
+
+
+
+
+
+
+

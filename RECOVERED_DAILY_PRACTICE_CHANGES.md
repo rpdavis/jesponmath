@@ -96,3 +96,12 @@ onMounted(async () => {
 The current version might not have warmup/diagnostic rounds at all if it was an older version. Check if these functions even exist before applying changes.
 
 
+
+
+
+
+
+
+
+
+

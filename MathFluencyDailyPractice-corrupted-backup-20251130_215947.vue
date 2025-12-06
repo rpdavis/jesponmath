@@ -1,10 +1,10 @@
 <template>
   <div class="daily-practice-container">
     <!-- Header -->
-    <div class="practice-header">
+    <!-- <div class="practice-header">
       <h2>🎯 Daily Math Facts Practice</h2>
       <p class="subtitle">Build automaticity through structured practice</p>
-    </div>
+    </div> -->
 
     <!-- Loading State -->
     <div v-if="loading" class="loading-section">
@@ -16,7 +16,7 @@
       <h3>✅ Practice Complete for Today!</h3>
       <p>You've already completed today's practice session.</p>
       <p class="completion-time">Completed at: {{ todaysSession?.completedAt?.toDate().toLocaleTimeString() }}</p>
-      
+
       <div class="today-summary">
         <h4>Today's Results:</h4>
         <div class="summary-stats">
@@ -44,7 +44,7 @@
     <div v-else-if="!practiceStarted" class="start-section">
       <div class="progress-overview">
 eOperation(currentOperation) }}</h3>
-        
+
         <div class="proficiency-bars">
           <div class="bar-item mastered">
 astered</span>
@@ -53,7 +53,7 @@ astered</span>
             </div>
             <span class="bar-count">{{ distribution.mastered }}</span>
           </div>
-          
+
           <div class="bar-item proficient">
             <span class="bar-label">🔵 Proficient</span>
             <div class="bar-container">
@@ -61,7 +61,7 @@ astered</span>
 
             <span class="bar-count">{{ distribution.proficient }}</span>
           </div>
-          
+
           <div class="bar-item approaching">
             <span class="bar-label">🟡 Approaching</span>
             <div class="bar-container">
@@ -69,7 +69,7 @@ astered</span>
             </div>
 n.approaching }}</span>
           </div>
-          
+
           <div class="bar-item emerging">
             <span class="bar-label">🟢 Emerging</span>
             <div class="bar-container">
@@ -77,7 +77,7 @@ n.approaching }}</span>
             </div>
 n.emerging }}</span>
           </div>
-          
+
           <div class="bar-item does-not-know">
             <span class="bar-label">🔴 Learning</span>
             <div class="bar-container">
@@ -162,15 +162,15 @@ cyPercentage }}% / 95%</span>
 
       <div v-if="diagnosticShowingQuestion" class="diagnostic-question">
         <div class="timer-bar-container">
-          <div 
+          <div
             :key="'timer-' + diagnosticCurrentIndex"
-            class="timer-bar-fill" 
+            class="timer-bar-fill"
             :class="timerColorClass"
             :style="{ width: `${(diagnosticTimeRemaining / 10) * 100}%` }"
           ></div>
         </div>
         <p class="timer-text">{{ diagnosticTimeRemaining }}s</p>
-        
+
         <div class="question-stacked">
           <div class="stack-top-number">{{ currentDiagnosticProblem?.num1 }}</div>
           <div class="stack-operation-row">
@@ -179,7 +179,7 @@ cyPercentage }}% / 95%</span>
           </div>
           <div class="stack-line"></div>
         </div>
-        
+
         <input
           ref="diagnosticInput"
           v-model="diagnosticAnswer"
@@ -191,16 +191,16 @@ cyPercentage }}% / 95%</span>
           :disabled="diagnosticSubmitting"
           autofocus
         />
-        
-        <button 
-="() => submitDiagnosticAnswer(false)" 
-          class="submit-btn" 
+
+        <button
+="() => submitDiagnosticAnswer(false)"
+          class="submit-btn"
           :disabled="!diagnosticAnswer || diagnosticSubmitting"
         >
           {{ diagnosticSubmitting ? '✓' : 'Submit' }}
         </button>
       </div>
-      
+
       <div v-else class="processing-transition">
         <div class="processing-spinner"></div>
 ssing...</p>
@@ -211,7 +211,7 @@ ssing...</p>
     <div v-if="practiceStarted && currentRound === 0.75" class="diagnostic-results-screen">
       <div class="results-content">
         <h2>📊 Diagnostic Complete!</h2>
-        
+
         <div class="score-circle" :class="getDiagnosticScoreClass(diagnosticScore)">
           <div class="score-number">{{ diagnosticScore }}%</div>
           <div class="score-label">{{ diagnosticCorrect }}/{{ diagnosticProblems.length }}</div>
@@ -297,7 +297,7 @@ ssing...</p>
           <p class="feedback-next">{{ round1RecallAttempt === 1 ? 'Testing again...' : 'Moving to next fact...' }}</p>
           <p class="feedback-countdown">{{ feedbackTimeRemaining }}s</p>
         </div>
-        
+
         <div v-else class="feedback-incorrect">
           <div class="feedback-icon">❌</div>
 lass="feedback-message">The answer is {{ currentRound1Problem?.correctAnswer }}</div>
@@ -332,7 +332,7 @@ CurrentIndex + 1 }}/{{ round2Problems.length }} problems</p>
           autofocus
 
         <p class="practice-timer">{{ round2TimeRemaining }}s</p>
-        
+
 submitRound2Answer" class="submit-btn" :disabled="!round2Answer">
           Submi
         </button>
@@ -385,7 +385,7 @@ ick Assessment -->
           autofocus
         />
         <p class="assessment-timer"> round3TimeRemaining }}s</p>
-        
+
         <button @click="submitRound3Aner" class="submit-btn" :disabled="!round3Answer">
           Submit
         </button>
@@ -397,7 +397,7 @@ ick Assessment -->
     <!-- Session Complete -->
     <div v-if="sessionComplete" class="complete-section">
       <h2>🎉 Great Practice Session!</h2>
-      
+
       <div class="session-summary">
         <h3>Today You:</h3>
         <div class="summary-achievements">
@@ -457,7 +457,7 @@ gress
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
-import { 
+import {
 
   getTodaysPracticeSession,
   createPracticeSession,
@@ -465,9 +465,9 @@ import {
 } from '@/services/mathFluencyServices'
 import { sampleRandom, shuffleArray } from '@/utils/mathFluencyProblemGenerator'
  '@/types/mathFluency'
-import type { 
-  MathFluencyProgress, 
-  ProblemProgress, 
+import type {
+  MathFluencyProgress,
+  ProblemProgress,
   OperationType,
   MathFluencyPracticeSession,
   LearningRoundData,
@@ -641,15 +641,15 @@ const sessionQualityDisplay = computed(() => {
 
 // Diagnostic Round Computed
 const currentDiagnosticProblem = computed(() => diagnosticProblems.value[diagnosticCurrentIndex.value])
-const diagnosticCorrect = computed(() => 
+const diagnosticCorrect = computed(() =>
   Object.values(diagnosticResults.value).filter(r => r.correct).length
 
-const diagnosticScore = computed(() => 
+const diagnosticScore = computed(() =>
   diagnosticProblems.value.length > 0
     ? Math.round((diagnosticCorrect.value / diagnosticProblems.value.length) * 100)
     : 0
 )
-const diagnosticWrongProblems = computed(() => 
+const diagnosticWrongProblems = computed(() =>
   diagnosticProblems.value.filter(p  {
     const result = diagnosticResults.value[p.problemId]
     return result && !result.correct
@@ -668,7 +668,7 @@ Percent > 60) return 'plenty-time'
 onMounted(async () => {
 ed via assignment
   assignmentId.value = (route.query.assignment as string) || null
-  
+
   await loadProgress()
 })
 
@@ -678,26 +678,26 @@ onUnmounted(() => {
 
 async function loadProgress() {
   if (!authStore.currentUser) return
-  
+
 ue
-  
+
 
     // For now, default to addition - later we'll determine current operation
     const operation: OperationType = 'addition'
 
 student's progress
     progress.value = await getFluencyProgress(authStore.currentUser.uid, operation)
-    
+
 !progress.value) {
       // Student hasn't done initial diagnostic yet
       alert('You need to complete the initial diagnostic first. Please see your teacher.')
       router.push('/dashboard')
       return
     }
-    
+
     // Check if already practiced today
     const today = await getTodaysPracticeSession(authStore.currentUser.uid, operation)
-    
+
     if (today && today.completed) {
       completedToday.value = true
       todaysSession.value = today
@@ -715,16 +715,16 @@ rror loading progress:', error)
 
 PracticeSession() {
   if (!progress.value) return
-  
+
   const banks = progress.value.problemBanks
-  
+
   // Round 1: Select 3 problems from "Does Not Know" (can expand to 5 if student doing well)
   round1Problems.value = sampleRandom(banks.doesNotKnow, 3)
-  
+
   // Round 2: Interleaved practice (80/20 split)
   // Check if student has unlocked multiple operations
   const hasPreviousOperation = false  // TODO: Check for previous operations
-  
+
   if (hasPreviouOperation) {
     // 80% current, 20% maintenance
     const currentOpProblems = [
@@ -742,9 +742,9 @@ andom(banks.approaching, 3),
       ...sampleRandom(banks.mastered, 2)
     ])
   }
-  
+
 ack.value = [...round2Problems.value]
-  
+
   // Track mix composition
   if (session.value.round2_practice) {
 e.round2_practice.mixComposition = {
@@ -753,7 +753,7 @@ e.round2_practice.mixComposition = {
       mastered: und2Problems.value.filter(p => p.proficiencyLevel === 'mastered').length
     }
   }
-  
+
   // Round 3: Quick assessment (sample from all levels)
   round3Problems.value = shuffleArray([
 pleRandom(banks.emerging, 5),
@@ -766,7 +766,7 @@ function startPractice() {
   practiceStarted.value = true
   sessionStartTime.value = Date.now()
 nd.value = 1
-  
+
   // Start Round 1
 
 }
@@ -785,12 +785,12 @@ nd2()
   currentRound.value = 1
   round1CurrentIndex.value = 0
 ase.value = 'encoding'
-  
+
 oblem as targeted
   if (session.value.round1_learning && currentRound1Problem.value) {
     session.value.round1_learning.problemsTargeted.push(currentRound1Problem.value.problemId)
   }
-  
+
   startEncodingPse()
 }
 
@@ -810,7 +810,7 @@ l.value = window.setInterval(() => {
 function startConsolidationPhase() {
   round1Phase.value = 'consolidation'
 emaining.value = 2
-  
+
   clearAllTimers()
   round1TimerInterval.value = window.setInterval(() => {
     consolidationTimeRemaining.value--
@@ -825,7 +825,7 @@ async function startRecallPhase() {
  = ''
   recallTimeRemaining.value = 15
   round1RecallAttempt.value = (round1RecallAttempt.value || 0) + 1
-  
+
   clearAllTimers()
   round1TimerInterval.value = window.setInterval(() => {
 meRemaining.value--
@@ -834,21 +834,21 @@ meRemaining.value--
       submitRound1Answer()
     }
   }, 1000)
-  
+
   await nextTick()
   round1Input.value?.focus()
 }
 
 async function submitund1Answer() {
   if (!currentRound1Problem.value) return
-  
+
   clearAllTimers()
-  
+
   const responseTime = (15 - recallTimeRemaining.value) * 1000
   const isCorrect = String(round1Answer.value || '').trim() === currentRound1Problem.value.correctAnswer
-  
+
   round1LastCorect.value = isCorrect
-  
+
   // Log attempt
   const problemId = currentRound1Problem.value.problemId
   if (!round1AttemptsLog.value[problemId]) {
@@ -860,11 +860,11 @@ mesSpent: []
   }
   round1AttemptsLog.value[problemId].recallAttempts++
   round1AttemptsLog.value[problemId].timesSpent.push(responseTime)
-  
+
   // Show feedback
   round1Phase.value = 'feedback'
   feedbackTimeRemaining.value = 10
-  
+
 TimerInterval.value = window.setInterval(() => {
     feedbackTimeRemaining.value--
     if (feedbackTimeRemaining.value <= 0) {
@@ -875,7 +875,7 @@ TimerInterval.value = window.setInterval(() => {
 
 async function handleRound1Feedback() {
   clearAllTimers()
-  
+
   if (round1LastCorrect.value) {
     if (round1RecallAttempt.value === 1) {
  First recall successful - test again after delay
@@ -887,12 +887,12 @@ llAttempt.value = 2
       const problemId = currentRound1Problem.value!.problemId
       round1LearnedToday.value.push(problemId)
       round1AttemptsLog.value[problemId].finalResult = 'learned'
-      
+
       if (session.value.round1_learning) {
         session.value.round1_learning.newlyLearned.push(problemId)
 value.round1_learning.problemsCompleted.push(problemId)
       }
-      
+
       // Update problem in progress
       await updateProblemInProgress(
         authStore.currentUser!.uid,
@@ -904,7 +904,7 @@ value.round1_learning.problemsCompleted.push(problemId)
           source: 'digital-practice'
         }
 
-      
+
       // Move to next problem
       moveToNextRound1Problem()
     }
@@ -912,7 +912,7 @@ value.round1_learning.problemsCompleted.push(problemId)
     // Incorrect - show again (encoding phase)
     round1AttemptsLog.value[currentRound1Problem.value!.problemId].encodingCycles++
     round1RecallAttempt.value = 0
-    
+
     // Maximum 3 encoding cycles, then skip
     if (round1AttemptsLog.value[currentRound1Problem.value!.problemId].encodingCycles >= 3) {
       round1AttemptsLog.value[currentRound1Problem.value!.problemId].finalResult = 'retry-later'
@@ -930,7 +930,7 @@ value.round1_learning.problemsCompleted.push(problemId)
 
 function moveToNextRound1Problem() {
   round1CurrentIndex.value++
-  
+
   if (round1CurrentIndex.value >= round1Problems.value.length) {
     // Round 1 complete
     finishRound1()
@@ -949,7 +949,7 @@ function finishRound1() {
     session.value.round1_learning.timeSpent = Math.round((Date.now() - sessionStartTime.value) / 1000)
     session.value.round1_learning.completed = true
   }
-  
+
   // Start Round 2
   startRound2()
 }
@@ -965,17 +965,17 @@ async function startRound2() {
   round2Correct.value = 0
   round2Total.value = 0
   round2Results.value = {}
-  
+
   if (session.value.round2_practice) {
     session.value.round2_practice.problemsPresented = round2Problems.value.map(p => p.problemId)
   }
-  
+
   if (round2Stack.value.length === 0) {
     // No problems to practice - skip to Round 3
     startRoun3()
     return
   }
-  
+
   showNextRound2Problem()
 }
 
@@ -985,12 +985,12 @@ async function showNextRound2Problem() {
     finishRound2()
     return
   }
-  
+
   round2Answer.value = ''
   round2ShowingFeedback.value = false
   round2StartTime.value = Date.now()
   round2TimeRemaining.value = 15
-  
+
   clearRound2Timer()
   round2TimerInterval.value = window.setInterval(() => {
     round2TimeRemaining.value--
@@ -998,27 +998,27 @@ async function showNextRound2Problem() {
       submitRound2Answer()
     }
   }, 1000)
-  
+
   await nextTick()
   round2Input.value?.focus()
 }
 
 async function submitRound2Answer() {
   if (!currentRound2Problem.value) return
-  
+
   clearRound2Timer()
-  
+
   const responseTime = Date.now() - round2StartTime.value
   const isCorrect = String(round2Answer.value || '').trim() === currentRound2Problem.value.correctAnswer
-  
+
   round2LastCorrect.value = isCorrect
   round2LastTime.value = responseTime
   round2Total.value++
-  
+
   if (isCorrect) {
     round2Correct.value++
   }
-  
+
   // Log result
   const problemId = currentRound2Problem.value.problemId
   if (!round2Results.value[problemId]) {
@@ -1032,7 +1032,7 @@ async function submitRound2Answer() {
   round2Results.value[problemId].attempts++
   round2Results.value[problemId].responseTimes.push(responseTime)
   round2Results.value[problemId].correct = isCorrect
-  
+
   // Update problem in progress
   await updateProblemInProgress(
     authStore.currentUser!.uid,
@@ -1044,19 +1044,19 @@ async function submitRound2Answer() {
       source: 'digital-practice'
     }
   )
-  
+
   // Show feedback briefly
   round2ShowingFeedback.value = true
-  
+
   // Remove from stack
   const current = round2Stack.value.shift()
-  
+
   // If incorrect, add back to end of stack
   if (!isCorrect && current) {
     round2Stack.value.push(current)
     round2Results.value[problemId].returnedToStack = true
   }
-  
+
   // Continue after brief pause
   await new Promise(resolve => setTimeout(resolve, 1500))
   showNextRound2Problem()
@@ -1067,13 +1067,13 @@ function finishRound2() {
     session.value.round2_practice.results = round2Results.value
     session.value.round2_practice.accuracy = round2Accuracy.value
     const times = Object.values(round2Results.value).flatMap(r => r.responseTimes)
-    session.value.round2_practice.averageResponseTime = times.length > 0 
+    session.value.round2_practice.averageResponseTime = times.length > 0
       ? Math.round(times.reduce((sum, t) => sum + t, 0) / times.length)
       : 0
     session.value.round2_practice.timeSpent = Math.round((Date.now() - sessionStartTime.value) / 1000) - (session.value.round1_learning?.timeSpent || 0)
     session.value.round2_practice.completed = true
   }
-  
+
   startRound3()
 }
 
@@ -1085,17 +1085,17 @@ async function startRound3() {
   currentRound.value = 3
   round3CurrentIndex.value = 0
   round3Results.value = {}
-  
+
   if (session.value.round3_assessment) {
     session.value.round3_assessment.problemsAssessed = round3Problems.value.map(p => p.problemId)
   }
-  
+
   if (round3Problems.value.length === 0) {
     // No problems to assess - finish session
     finishSession()
     return
   }
-  
+
   showNextRound3Problem()
 
 
@@ -1104,11 +1104,11 @@ async function showNextRound3Problem() {
     finishRound3()
     return
   }
-  
+
   round3Answer.value = ''
 StartTime.value = Date.now()
   round3TimeRemaining.value = 10
-  
+
   clearRound3Timer()
   round3TimerInterval.value = window.setInterval(() => {
     round3TimeRemaining.value--
@@ -1116,7 +1116,7 @@ StartTime.value = Date.now()
       submitRound3Answer()
 
   }, 1000)
-  
+
   await nextTick()
   round3Input.value?.focus()
 }
@@ -1125,20 +1125,20 @@ async function submitRound3Answer() {
   if (!currentRound3Problem.value) return
 
   clearRound3Timer()
-  
+
   const responseTime = Date.now() - round3StartTime.value
   const isCorrect = String(round3Answer.value || '').trim() === currentRound3Problem.value.correctAnswer
-  
+
   const problemId = currentRound3Problem.value.problemId
   const previousLevel = currentRound3Problem.value.proficiencyLevel
-  
+
   round3Results.value[problemId] = {
     correct: isCorrect,
     responseTime,
     previousLevel,
     maintainedLevel: true  // Will be updated after proficiency recalc
   }
-  
+
   // Update problem in progress
   await updateProblemInProgress(
     authStore.currentUser!.uid,
@@ -1150,10 +1150,10 @@ async function submitRound3Answer() {
       source: 'digital-assessment'
     }
   )
-  
+
   // Move to next
   round3CurrentIndex.value++
-  
+
   // Brief pause before next question
   await new Promise(resolve => setTimeout(resolve, 500))
 owNextRound3Problem()
@@ -1165,14 +1165,14 @@ function finishRound3() {
     const correct = Object.values(round3Results.value).filter(r => r.correct).length
     session.value.round3_assessment.accuracy = (correct / round3Problems.value.length) * 100
     const times = Object.values(round3Results.value).map(r => r.responseTime)
-session.value.round3_assessment.averageResponseTime = times.length > 0 
+session.value.round3_assessment.averageResponseTime = times.length > 0
       ? Math.round(times.reduce((sum, t) => sum + t, 0) / times.length)
       : 0
-    session.value.round3_assessment.timeSpent = Math.round((Date.now() - sessionStartTime.value) / 1000) - 
+    session.value.round3_assessment.timeSpent = Math.round((Date.now() - sessionStartTime.value) / 1000) -
       ((session.value.round1_learning?.timeSpent || 0) + (session.value.round2_practice?.timeSpent || 0))
     session.value.round3_assessment.completed = true
   }
-  
+
   finishSession()
 }
 
@@ -1182,7 +1182,7 @@ session.value.round3_assessment.averageResponseTime = times.length > 0
 
 async function finishSession() {
   clearAllTimers()
-  
+
   totalSessionTime.value = Date.now() - sessionStartTime.value
 
   // Determine session quality
@@ -1191,7 +1191,7 @@ nst completionRate = (
     (session.value.round2_practice?.completed ? 1 : 0) +
     (session.value.round3_assessment?.completed ? 1 : 0)
   ) / 3
-  
+
   let quality: 'excellent' | 'good' | 'fair' | 'incomplete' = 'good'
   if (completionRate === 1 && (session.value.round2_practice?.accuracy || 0) >= 80) {
     quality = 'excellent'
@@ -1202,17 +1202,17 @@ ity = 'fair'
   } else {
     quality = 'incomplete'
 
-  
+
   session.value.sessionQuality = quality
   session.value.engagementScore = Math.round(cpletionRate * 100)
-  
+
   // Reload progress to see updated proficiencies
   await loadProgressSilently()
-  
+
 ermine promotions
   // (This would check which problems moved up levels)
   promotionsEarned.value = []  // TODO: Calculate from before/after comparison
-  
+
   // Save session to Firestore
   try {
 createPracticeSession({
@@ -1234,9 +1234,9 @@ motionsOccurred: [],
       sessionQuality: quality,
 ore: session.value.engagementScore || 0
     } as any)
-    
+
     console.log('✅ Practice session saved')
-    
+
 ark assignment as complete if accessed via assignment
     if (assignmentId.value) {
       try {
@@ -1250,13 +1250,13 @@ ark assignment as complete if accessed via assignment
   } catch (error) {
     console.error('Error saving session:', error)
 
-  
+
   sessionComplete.value = true
 }
 
 async function loadProgressSilently() {
   if (!authStore.currentUser) return
-  
+
 
     progress.value = await getFluencyProgress(authStore.currentUser.uid, currentOperation.value)
 catch (error) {
@@ -1345,7 +1345,7 @@ d>
   max-width: 900px;
 to;
   padding: 2rem;
-min-height: 100vh;
+
 
 
 .practice-header {
