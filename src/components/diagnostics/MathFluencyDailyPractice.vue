@@ -141,6 +141,7 @@ import { useRoute } from 'vue-router'
 import { useMathFluencyPractice } from '@/composables/useMathFluencyPractice'
 import { useMathFluencyDiagnostic } from '@/composables/useMathFluencyDiagnostic'
 import { useMathFluencyRounds } from '@/composables/useMathFluencyRounds'
+import { getSessionQualityDisplay } from '@/utils/mathFluencyDisplayUtils'
 import MathFluencyStartScreen from './mathFluency/rounds/MathFluencyStartScreen.vue'
 import MathFluencyWarmupRound from './mathFluency/rounds/MathFluencyWarmupRound.vue'
 import MathFluencyDiagnosticRound from './mathFluency/rounds/MathFluencyDiagnosticRound.vue'
@@ -285,15 +286,9 @@ const {
 } = rounds
 
 // Computed for template
-const sessionQualityDisplay = computed(() => {
-  const qualities = {
-    excellent: '🏆 Excellent',
-    good: '⭐ Good',
-    fair: '👍 Fair',
-    incomplete: '⚠️ Incomplete',
-  }
-  return qualities[session.value.sessionQuality as keyof typeof qualities] || 'Good'
-})
+const sessionQualityDisplay = computed(() =>
+  getSessionQualityDisplay(session.value.sessionQuality),
+)
 
 // Event handlers
 function handleWarmupComplete() {

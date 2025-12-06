@@ -16,6 +16,7 @@ import { getSubLevelConfig, getSubLevelsForOperation } from '@/config/fluencySub
 import { filterProblemsBySubLevel, selectDailyPracticeProblems } from '@/utils/subLevelUtils'
 import { selectChallengeProblems } from '@/utils/challengeProblemSelector'
 import { generateProblemsForSubLevel, problemBelongsToSubLevel, createProblemProgress } from '@/utils/mathFluencyProblemUtils'
+import { capitalizeOperation } from '@/utils/mathFluencyDisplayUtils'
 import type {
   MathFluencyProgress,
   ProblemProgress,
@@ -390,10 +391,6 @@ export function useMathFluencyPractice() {
     router.push('/dashboard')
   }
 
-  // Helper functions
-  function capitalizeOperation(op: OperationType | string): string {
-    return op.charAt(0).toUpperCase() + op.slice(1)
-  }
 
   return {
     // State

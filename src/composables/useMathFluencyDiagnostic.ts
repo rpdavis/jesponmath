@@ -7,6 +7,7 @@ import { filterProblemsBySubLevel } from '@/utils/subLevelUtils'
 import { sampleRandomUnique } from '@/utils/mathFluencyProblemGenerator'
 import { deduplicateByProblemIdAndText } from '@/utils/mathFluencyProblemUtils'
 import { nextTick } from 'vue'
+import { getDiagnosticScoreClass } from '@/utils/mathFluencyDisplayUtils'
 
 export function useMathFluencyDiagnostic(
   progress: Ref<MathFluencyProgress | null>,
@@ -194,12 +195,6 @@ export function useMathFluencyDiagnostic(
     }
   }
 
-  function getDiagnosticScoreClass(score: number): string {
-    if (score >= 90) return 'excellent'
-    if (score >= 75) return 'good'
-    if (score >= 60) return 'fair'
-    return 'needs-work'
-  }
 
   function clearDiagnosticTimer() {
     if (diagnosticTimerInterval.value) {
