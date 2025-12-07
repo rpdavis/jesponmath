@@ -350,3 +350,83 @@ export function categorizeMathGoal(areaOfNeed: string, standard: string): MathGo
 
   return MathGoalType.WORD_PROBLEMS // Default
 }
+
+// Goal Template System
+export interface GoalTemplate {
+  id: string // Document ID in Firestore
+  name: string // Template name/description
+  subject: 'math' | 'ela' | 'other' // Subject category
+  topic?: string // Specific topic (e.g., "two-step word problem", "fraction", "reading comprehension")
+  areaOfNeed: string // Default area of need
+  goalTitleTemplate: string // Template for goal title (supports variables like {{topic}}, {{gradeLevel}})
+  goalTextTemplate: string // Template for goal text (supports variables)
+  baselineTemplate?: string // Template for baseline description
+
+  // Assessment method
+  assessmentMethod: 'app' | 'paper' | 'hybrid' // How this goal should be assessed
+  rubricId?: string // Reference to rubric for paper/hybrid assessments (optional)
+
+  // Default values
+  defaultGradeLevel?: number // Default grade level
+  defaultStandard?: string // Default academic standard
+  defaultThreshold?: string // Default threshold (e.g., "80%", "4 out of 5")
+  defaultCondition?: string // Default condition (e.g., "in 3 out of 4 trials")
+
+  // Variable placeholders that can be replaced
+  variables?: {
+    topic?: string // Specific topic name
+    operation?: string // Math operation (addition, subtraction, etc.)
+    threshold?: string // Performance threshold
+    condition?: string // Condition for meeting goal
+    gradeLevel?: number // Grade level
+    standard?: string // Academic standard
+  }
+
+  // Metadata
+  description?: string // Template description/notes
+  exampleGoal?: string // Example of a goal created from this template
+  usageCount?: number // How many times this template has been used
+  isActive: boolean // Whether template is active/available
+  createdBy: string // Admin/teacher UID who created the template
+  createdAt: any // Timestamp
+  updatedAt: any // Timestamp
+}
+
+// Rubric System for Paper-Based Assessments
+export interface Rubric {
+  id: string // Document ID in Firestore
+  name: string // Rubric name
+  description?: string // Description of what this rubric is used for
+  subject: 'math' | 'ela' | 'other' // Subject category
+  topic?: string // Specific topic this rubric applies to
+
+  // Rubric criteria (customizable)
+  criteria: RubricCriterion[]
+
+  // Scoring
+  totalPoints: number // Total possible points
+  passingScore?: number // Minimum score to pass (optional)
+
+  // Usage tracking
+  usageCount?: number // How many templates/goals use this rubric
+  isActive: boolean // Whether rubric is active/available
+  createdBy: string // Admin/teacher UID who created the rubric
+  createdAt: any // Timestamp
+  updatedAt: any // Timestamp
+}
+
+export interface RubricCriterion {
+  id: string // Unique ID for this criterion
+  name: string // Criterion name (e.g., "Ideas", "Organization", "Language/Mechanics")
+  description?: string // Description of what this criterion measures
+  maxPoints: number // Maximum points for this criterion
+  levels: RubricLevel[] // Performance levels (e.g., Proficient, Developing, etc.)
+}
+
+export interface RubricLevel {
+  id: string // Unique ID for this level
+  name: string // Level name (e.g., "Proficient", "Developing", "Emerging")
+  points: number // Points awarded for this level
+  description: string // Description of performance at this level
+  order: number // Order/rank of this level (0 = lowest, higher = better)
+}

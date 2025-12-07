@@ -97,6 +97,20 @@ service cloud.firestore {
       );
     }
     
+    // Goal Templates collection
+    match /goalTemplates/{templateId} {
+      // Teachers and admins can read/write templates
+      allow read, write: if isTeacher() || isAdmin();
+      // Students don't need access to templates (they only see goals created from them)
+    }
+    
+    // Rubrics collection
+    match /rubrics/{rubricId} {
+      // Teachers and admins can read/write rubrics
+      allow read, write: if isTeacher() || isAdmin();
+      // Students don't need access to rubrics (they only see assessments scored with them)
+    }
+    
     // Assessments collection
     match /assessments/{assessmentId} {
       // Teachers and admins can read/write assessments

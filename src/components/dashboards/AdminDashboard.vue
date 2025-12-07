@@ -43,7 +43,7 @@
     <!-- Quick Actions -->
     <div class="actions-section">
       <h2>Quick Actions</h2>
-      
+
       <!-- User Management Section -->
       <div class="action-category">
         <h3 class="category-header">
@@ -277,6 +277,20 @@
           <p>Debug and fix issues with goal questions</p>
           <div class="action-button">Debug Questions →</div>
         </div>
+
+        <div class="action-card" @click="router.push('/admin/analyze-goals')">
+          <div class="action-icon">📊</div>
+          <h3>Analyze Goals for Templates</h3>
+          <p>Analyze existing goals to identify patterns for template system</p>
+          <div class="action-button">Analyze Goals →</div>
+        </div>
+
+        <div class="action-card" @click="router.push('/admin/templates')">
+          <div class="action-icon">📋</div>
+          <h3>Goal Template Management</h3>
+          <p>Create and manage goal templates for quick IEP goal creation</p>
+          <div class="action-button">Manage Templates →</div>
+        </div>
         </div>
       </div>
 
@@ -449,7 +463,7 @@ const formatTime = (timestamp: Date) => {
   const diff = now.getTime() - timestamp.getTime();
   const hours = Math.floor(diff / (1000 * 60 * 60));
   const days = Math.floor(hours / 24);
-  
+
   if (days > 0) {
     return `${days} day${days !== 1 ? 's' : ''} ago`;
   } else if (hours > 0) {
@@ -462,19 +476,19 @@ const formatTime = (timestamp: Date) => {
 const loadSystemStats = async () => {
   try {
     console.log('Loading system stats from Firestore...');
-    
+
     const [teachers, students] = await Promise.all([
       getAllTeachers(),
       getAllStudents()
     ]);
-    
+
     systemStats.value = {
       totalUsers: teachers.length + students.length,
       teachers: teachers.length,
       students: students.length,
       assessments: 0 // TODO: Load from assessments collection
     };
-    
+
     console.log('System stats loaded:', systemStats.value);
   } catch (error) {
     console.error('Error loading system stats:', error);
@@ -484,28 +498,28 @@ const loadSystemStats = async () => {
 const cleanupDuplicates = async () => {
   try {
     console.log('🧹 Starting duplicate cleanup...');
-    
+
     // First, find duplicates to show user what will be cleaned
     const duplicates = await findDuplicateStudents();
-    
+
     if (duplicates.length === 0) {
       alert('✅ No duplicate students found!');
       return;
     }
-    
+
     const duplicateList = duplicates.map(d => `${d.email} (${d.count} records)`).join('\n');
     const confirmed = confirm(`Found ${duplicates.length} duplicate email addresses:\n\n${duplicateList}\n\nProceed with cleanup?`);
-    
+
     if (!confirmed) return;
-    
+
     // Call Cloud Function to cleanup
     const result = await cleanupDuplicateUsers() as any;
-    
+
     alert(`✅ Cleanup completed!\n\nDuplicates found: ${result.duplicatesFound}\nRecords cleaned: ${result.duplicates.length}`);
-    
+
     // Reload stats
     await loadSystemStats();
-    
+
   } catch (error: any) {
     console.error('❌ Error during cleanup:', error);
     alert(`❌ Cleanup failed: ${error.message}`);
@@ -515,20 +529,20 @@ const cleanupDuplicates = async () => {
 const restoreGoogleData = async () => {
   try {
     console.log('🔄 Starting Google metadata restore...');
-    
+
     const result = await restoreGoogleMetadata();
-    
+
     if (result.studentsRestored === 0) {
       alert('✅ No students needed Google metadata restoration!');
       return;
     }
-    
+
     const restoredList = result.restored.map((r: any) => `${r.email}: ${r.updates.courseName || 'N/A'}`).join('\n');
     alert(`✅ Google metadata restored!\n\nStudents found: ${result.studentsFound}\nStudents restored: ${result.studentsRestored}\n\nRestored:\n${restoredList}`);
-    
+
     // Reload stats
     await loadSystemStats();
-    
+
   } catch (error: any) {
     console.error('❌ Error during restore:', error);
     alert(`❌ Restore failed: ${error.message}`);
@@ -538,17 +552,17 @@ const restoreGoogleData = async () => {
 const fixCurrentStudent = async () => {
   try {
     console.log('🩹 Fixing current student with Google metadata...');
-    
+
     const confirmed = confirm('This will add Google Classroom metadata to Ryan Davis student record.\n\nProceed?');
     if (!confirmed) return;
-    
+
     await fixCurrentStudentData();
-    
+
     alert('✅ Current student completely fixed!\n\nFixed:\n- Google ID: 107555236801416916873\n- Course ID: 10019420452\n- Course Name: Mr. Davis\n- Section: Period 4\n- Set assignedTeacher field\n- Added to teacher assignedStudents array\n\nStudent should now appear in Student Management!');
-    
+
     // Reload stats
     await loadSystemStats();
-    
+
   } catch (error: any) {
     console.error('❌ Error fixing current student:', error);
     alert(`❌ Fix failed: ${error.message}`);
@@ -558,17 +572,17 @@ const fixCurrentStudent = async () => {
 const migrateAdmin = async () => {
   try {
     console.log('👑 Migrating admin to admin collection...');
-    
+
     const confirmed = confirm('This will migrate the admin record to the new admin collection.\n\nProceed?');
     if (!confirmed) return;
-    
+
     await migrateAdminToAdminCollection();
-    
+
     alert('✅ Admin migrated successfully!\n\nThe admin record is now in the admin collection with proper role-based architecture.');
-    
+
     // Reload stats
     await loadSystemStats();
-    
+
   } catch (error: any) {
     console.error('❌ Error migrating admin:', error);
     alert(`❌ Migration failed: ${error.message}`);
@@ -899,23 +913,23 @@ onMounted(() => {
   .admin-dashboard {
     padding: 15px;
   }
-  
+
   .stats-grid {
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     gap: 15px;
   }
-  
+
   .actions-grid {
     grid-template-columns: 1fr;
     gap: 20px;
   }
-  
+
   .activity-item {
     flex-direction: column;
     align-items: flex-start;
     gap: 10px;
   }
-  
+
   .activity-user {
     text-align: left;
     min-width: auto;

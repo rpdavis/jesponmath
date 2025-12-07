@@ -1,9 +1,9 @@
 /**
  * AI Question Generator Service
- * 
+ *
  * This service uses AI (OpenAI, Anthropic, or Google Gemini) to generate
  * assessment questions based on IEP goals.
- * 
+ *
  * Features:
  * - Context-aware question generation
  * - Fallback to templates if AI fails
@@ -29,6 +29,7 @@ export interface AIGeneratorConfig {
   model?: string
   temperature?: number
   maxTokens?: number
+  difficulty?: 'easy' | 'medium' | 'hard'
 }
 
 // Default configuration
@@ -36,7 +37,7 @@ const DEFAULT_CONFIG: Partial<AIGeneratorConfig> = {
   provider: 'openai',
   model: 'gpt-3.5-turbo', // Cheaper option, can upgrade to gpt-4 for better quality
   temperature: 0.7, // Balance between creativity and consistency
-  maxTokens: 500
+  maxTokens: 500,
 }
 
 // Default Gemini model (updated to current API)
@@ -53,29 +54,53 @@ export async function generateQuestionWithAI(
   subject: 'math' | 'ela' | 'other',
   questionNumber: number,
   config?: Partial<AIGeneratorConfig>,
-  templateReference?: QuestionResult
+  templateReference?: QuestionResult,
 ): Promise<QuestionResult> {
   const finalConfig = { ...DEFAULT_CONFIG, ...config } as AIGeneratorConfig
-  
+
   // Get API key from config (already set by caller) or environment
   let apiKey = finalConfig.apiKey
   if (!apiKey) {
-    apiKey = finalConfig.provider === 'google' 
-      ? import.meta.env.VITE_GEMINI_API_KEY 
-      : import.meta.env.VITE_OPENAI_API_KEY
+    apiKey =
+      finalConfig.provider === 'google'
+        ? import.meta.env.VITE_GEMINI_API_KEY
+        : import.meta.env.VITE_OPENAI_API_KEY
     if (!apiKey) {
-      throw new Error(`API key not configured for ${finalConfig.provider}. Set VITE_${finalConfig.provider === 'google' ? 'GEMINI' : 'OPENAI'}_API_KEY environment variable.`)
+      throw new Error(
+        `API key not configured for ${finalConfig.provider}. Set VITE_${finalConfig.provider === 'google' ? 'GEMINI' : 'OPENAI'}_API_KEY environment variable.`,
+      )
     }
   }
 
   try {
     switch (finalConfig.provider) {
       case 'openai':
-        return await generateWithOpenAI(goal, subject, questionNumber, apiKey, finalConfig, templateReference)
+        return await generateWithOpenAI(
+          goal,
+          subject,
+          questionNumber,
+          apiKey,
+          finalConfig,
+          templateReference,
+        )
       case 'anthropic':
-        return await generateWithAnthropic(goal, subject, questionNumber, apiKey, finalConfig, templateReference)
+        return await generateWithAnthropic(
+          goal,
+          subject,
+          questionNumber,
+          apiKey,
+          finalConfig,
+          templateReference,
+        )
       case 'google':
-        return await generateWithGoogle(goal, subject, questionNumber, apiKey, finalConfig, templateReference)
+        return await generateWithGoogle(
+          goal,
+          subject,
+          questionNumber,
+          apiKey,
+          finalConfig,
+          templateReference,
+        )
       default:
         throw new Error(`Unsupported AI provider: ${finalConfig.provider}`)
     }
@@ -94,32 +119,39 @@ async function generateWithOpenAI(
   questionNumber: number,
   apiKey: string,
   config: AIGeneratorConfig,
-  templateReference?: QuestionResult
+  templateReference?: QuestionResult,
 ): Promise<QuestionResult> {
-  const prompt = buildPrompt(goal, subject, questionNumber, templateReference)
-  
+  const prompt = buildPrompt(
+    goal,
+    subject,
+    questionNumber,
+    templateReference,
+    config.difficulty || 'medium',
+  )
+
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`
+      Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
       model: config.model || 'gpt-3.5-turbo',
       messages: [
         {
           role: 'system',
-          content: 'You are an expert educational assessment question generator. Generate questions that are appropriate for students with IEP goals. Always return valid JSON.'
+          content:
+            'You are an expert educational assessment question generator. Generate questions that are appropriate for students with IEP goals. Always return valid JSON.',
         },
         {
           role: 'user',
-          content: prompt
-        }
+          content: prompt,
+        },
       ],
       temperature: config.temperature || 0.7,
       max_tokens: config.maxTokens || 500,
-      response_format: { type: 'json_object' }
-    })
+      response_format: { type: 'json_object' },
+    }),
   })
 
   if (!response.ok) {
@@ -129,7 +161,7 @@ async function generateWithOpenAI(
 
   const data = await response.json()
   const content = data.choices[0]?.message?.content
-  
+
   if (!content) {
     throw new Error('No content returned from OpenAI')
   }
@@ -137,12 +169,14 @@ async function generateWithOpenAI(
   try {
     const parsed = JSON.parse(content)
     return {
-      question: parsed.question || 'Error generating question',
-      answer: parsed.answer || 'N/A',
+      question: cleanQuestionText(parsed.question || 'Error generating question'),
+      answer: (parsed.answer || 'N/A').trim(),
       alternativeAnswers: parsed.alternativeAnswers || parseAlternativesFromAnswer(parsed.answer),
-      explanation: parsed.explanation,
+      explanation: parsed.explanation
+        ? parsed.explanation.trim().replace(/^\n+/, '').replace(/\n+$/, '')
+        : undefined,
       requiresPhoto: parsed.requiresPhoto !== false, // Default to true for math
-      source: 'ai'
+      source: 'ai',
     }
   } catch (parseError) {
     // Fallback: try to extract question and answer from text
@@ -150,7 +184,7 @@ async function generateWithOpenAI(
     return {
       ...result,
       alternativeAnswers: parseAlternativesFromAnswer(result.answer),
-      source: 'ai'
+      source: 'ai',
     }
   }
 }
@@ -164,16 +198,22 @@ async function generateWithAnthropic(
   questionNumber: number,
   apiKey: string,
   config: AIGeneratorConfig,
-  templateReference?: QuestionResult
+  templateReference?: QuestionResult,
 ): Promise<QuestionResult> {
-  const prompt = buildPrompt(goal, subject, questionNumber, templateReference)
-  
+  const prompt = buildPrompt(
+    goal,
+    subject,
+    questionNumber,
+    templateReference,
+    config.difficulty || 'medium',
+  )
+
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01'
+      'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
       model: config.model || 'claude-3-haiku-20240307', // Fast and cheap
@@ -181,10 +221,10 @@ async function generateWithAnthropic(
       messages: [
         {
           role: 'user',
-          content: prompt
-        }
-      ]
-    })
+          content: prompt,
+        },
+      ],
+    }),
   })
 
   if (!response.ok) {
@@ -194,7 +234,7 @@ async function generateWithAnthropic(
 
   const data = await response.json()
   const content = data.content[0]?.text
-  
+
   if (!content) {
     throw new Error('No content returned from Anthropic')
   }
@@ -202,19 +242,21 @@ async function generateWithAnthropic(
   try {
     const parsed = JSON.parse(content)
     return {
-      question: parsed.question || 'Error generating question',
-      answer: parsed.answer || 'N/A',
+      question: cleanQuestionText(parsed.question || 'Error generating question'),
+      answer: (parsed.answer || 'N/A').trim(),
       alternativeAnswers: parsed.alternativeAnswers || parseAlternativesFromAnswer(parsed.answer),
-      explanation: parsed.explanation,
+      explanation: parsed.explanation
+        ? parsed.explanation.trim().replace(/^\n+/, '').replace(/\n+$/, '')
+        : undefined,
       requiresPhoto: parsed.requiresPhoto !== false,
-      source: 'ai'
+      source: 'ai',
     }
   } catch (parseError) {
     const result = parseTextResponse(content)
     return {
       ...result,
       alternativeAnswers: parseAlternativesFromAnswer(result.answer),
-      source: 'ai'
+      source: 'ai',
     }
   }
 }
@@ -228,54 +270,60 @@ async function generateWithGoogle(
   questionNumber: number,
   apiKey: string,
   config: AIGeneratorConfig,
-  templateReference?: QuestionResult
+  templateReference?: QuestionResult,
 ): Promise<QuestionResult> {
-  const prompt = buildPrompt(goal, subject, questionNumber, templateReference)
-  
+  const prompt = buildPrompt(
+    goal,
+    subject,
+    questionNumber,
+    templateReference,
+    config.difficulty || 'medium',
+  )
+
   // Try different models in order of preference
   const modelAttempts = [
-    'gemini-2.0-flash',  // Stable model that works
-    'gemini-2.5-flash',  // Latest fast model
-    config.model || DEFAULT_GEMINI_MODEL,  // User's choice or default
+    'gemini-2.0-flash', // Stable model that works
+    'gemini-2.5-flash', // Latest fast model
+    config.model || DEFAULT_GEMINI_MODEL, // User's choice or default
     'gemini-flash-latest', // Auto-updating model
   ]
-  
+
   let lastError: Error | null = null
   let content: string | null = null
-  
+
   // Use Firebase Function to avoid CORS issues
   try {
-    const { getFunctions, httpsCallable } = await import('firebase/functions');
-    const { app } = await import('@/firebase/config');
-    const functions = getFunctions(app, 'us-west1');
-    const generateWithGemini = httpsCallable(functions, 'generateWithGemini');
-    
+    const { getFunctions, httpsCallable } = await import('firebase/functions')
+    const { app } = await import('@/firebase/config')
+    const functions = getFunctions(app, 'us-west1')
+    const generateWithGemini = httpsCallable(functions, 'generateWithGemini')
+
     for (const model of modelAttempts) {
       try {
         const result = await generateWithGemini({
           model,
           prompt,
           temperature: config.temperature || 0.7,
-          maxTokens: config.maxTokens || 1000,  // Increased for JSON responses
-          apiKey
-        });
-        
-        const data = result.data as any;
+          maxTokens: config.maxTokens || 1000, // Increased for JSON responses
+          apiKey,
+        })
+
+        const data = result.data as any
         if (data.success && data.content) {
-          content = data.content;
-          break; // Success!
+          content = data.content
+          break // Success!
         } else {
-          lastError = new Error(`Model ${model} failed: ${data.error || 'No content returned'}`);
+          lastError = new Error(`Model ${model} failed: ${data.error || 'No content returned'}`)
         }
       } catch (e: any) {
-        lastError = new Error(`Model ${model} error: ${e.message || 'Unknown error'}`);
+        lastError = new Error(`Model ${model} error: ${e.message || 'Unknown error'}`)
       }
     }
   } catch (e: any) {
     // If Firebase Functions fail, throw error
-    throw new Error(`Firebase Functions error: ${e.message}`);
+    throw new Error(`Firebase Functions error: ${e.message}`)
   }
-  
+
   if (!content) {
     throw lastError || new Error('Failed to generate with Google API')
   }
@@ -283,19 +331,21 @@ async function generateWithGoogle(
   try {
     const parsed = JSON.parse(content)
     return {
-      question: parsed.question || 'Error generating question',
-      answer: parsed.answer || 'N/A',
+      question: cleanQuestionText(parsed.question || 'Error generating question'),
+      answer: (parsed.answer || 'N/A').trim(),
       alternativeAnswers: parsed.alternativeAnswers || parseAlternativesFromAnswer(parsed.answer),
-      explanation: parsed.explanation,
+      explanation: parsed.explanation
+        ? parsed.explanation.trim().replace(/^\n+/, '').replace(/\n+$/, '')
+        : undefined,
       requiresPhoto: parsed.requiresPhoto !== false,
-      source: 'ai'
+      source: 'ai',
     }
   } catch (parseError) {
     const result = parseTextResponse(content)
     return {
       ...result,
       alternativeAnswers: parseAlternativesFromAnswer(result.answer),
-      source: 'ai'
+      source: 'ai',
     }
   }
 }
@@ -305,15 +355,15 @@ async function generateWithGoogle(
  */
 function parseAlternativesFromAnswer(answer: string): string[] {
   if (!answer) return []
-  
+
   const alternatives: string[] = [answer.trim()]
-  
+
   // If answer is a number, add common variations
   const numMatch = answer.match(/(-?\d+\.?\d*)/)
   if (numMatch) {
     const num = numMatch[1]
     const numValue = parseFloat(num)
-    
+
     // Add variations
     alternatives.push(num) // "6"
     if (numValue > 0) {
@@ -325,7 +375,7 @@ function parseAlternativesFromAnswer(answer: string): string[] {
     if (!num.includes('.')) {
       alternatives.push(`${num}.00`) // "6.00"
     }
-    
+
     // If answer contains "x=" or variable, add variations
     if (answer.includes('=')) {
       const parts = answer.split('=')
@@ -337,7 +387,7 @@ function parseAlternativesFromAnswer(answer: string): string[] {
       }
     }
   }
-  
+
   // Remove duplicates and return
   return [...new Set(alternatives)]
 }
@@ -349,15 +399,18 @@ function buildPrompt(
   goal: Goal,
   subject: 'math' | 'ela' | 'other',
   questionNumber: number,
-  templateReference?: QuestionResult
+  templateReference?: QuestionResult,
+  difficulty: 'easy' | 'medium' | 'hard' = 'medium',
 ): string {
-  const templateSection = templateReference ? `
-  
+  const templateSection = templateReference
+    ? `
+
 TEMPLATE REFERENCE (use as a style guide, but generate a DIFFERENT question):
 Question: ${templateReference.question}
 Answer: ${templateReference.answer}
 ${templateReference.explanation ? `Explanation: ${templateReference.explanation}` : ''}
-Note: Generate a similar question but with different numbers/scenarios. Keep the same format and structure.` : ''
+Note: Generate a similar question but with different numbers/scenarios. Keep the same format and structure.`
+    : ''
 
   return `Generate an assessment question based on this IEP goal:
 
@@ -375,6 +428,15 @@ Requirements:
 4. Make the question clear and appropriate for the student's grade level
 5. Provide a complete answer with explanation
 
+DIFFICULTY LEVEL: ${difficulty.toUpperCase()}
+${
+  difficulty === 'easy'
+    ? '- Use simple, single-digit or small double-digit numbers (1-20)\n- Focus ONLY on testing the specific goal skill\n- Keep all other math operations as simple as possible\n- Avoid mixing multiple math concepts\n- Use whole numbers only, no fractions or decimals\n- Keep word problems short and straightforward'
+    : difficulty === 'hard'
+      ? '- Use larger numbers (50-1000) or more complex calculations\n- Can mix multiple math concepts (e.g., fractions AND decimals)\n- Include multi-step problems that combine different skills\n- Use fractions, decimals, or mixed numbers when appropriate\n- Create more complex real-world scenarios\n- Require multiple operations or problem-solving steps'
+      : '- Use moderate numbers (20-100)\n- May include simple fractions or decimals if relevant to the goal\n- Can combine 2 related math concepts if appropriate\n- Use moderately complex word problems\n- Balance between simple and complex operations'
+}
+
 IMPORTANT FOR SHORT-ANSWER MATH QUESTIONS:
 - The answer must be a simple number or simple expression (e.g., "6", "-6", "x=6", "42")
 - Include alternative acceptable answers that students might provide
@@ -390,6 +452,12 @@ Return your response as JSON with this exact format:
   "explanation": "Optional explanation of the solution",
   "requiresPhoto": true or false
 }
+
+IMPORTANT FORMATTING RULES:
+- Do NOT use markdown formatting (no *, -, #, etc.) in the question text
+- Use plain text with line breaks (\n) for multi-line questions
+- For lists, use numbered items (1), 2), 3)) or plain text, NOT markdown bullets
+- Keep the question text clean and readable without special formatting characters
 
 Example for a multi-step math goal:
 {
@@ -413,17 +481,38 @@ Now generate the question:`
 }
 
 /**
+ * Clean question text by removing leading/trailing newlines and markdown formatting
+ */
+function cleanQuestionText(text: string): string {
+  if (!text) return text
+  return text
+    .trim()
+    .replace(/^\n+/, '') // Remove leading newlines
+    .replace(/\n+$/, '') // Remove trailing newlines
+    .replace(/^\*\s+/, '') // Remove leading markdown bullet
+    .replace(/\n\*\s+/g, '\n• ') // Convert markdown bullets to bullet points
+    .replace(/\n{3,}/g, '\n\n') // Normalize multiple newlines to max 2
+    .replace(/\\n/g, '\n') // Convert escaped newlines to actual newlines
+    .replace(/\\\*/g, '*') // Convert escaped asterisks
+    .replace(/^\*\s+/, '') // Remove any remaining leading markdown bullets
+    .trim()
+}
+
+/**
  * Parse text response if JSON parsing fails
  */
 function parseTextResponse(content: string): QuestionResult {
   // Try to extract question and answer from text
   const questionMatch = content.match(/question["\s:]*["']?([^"']+)["']?/i)
   const answerMatch = content.match(/answer["\s:]*["']?([^"']+)["']?/i)
-  
+
+  const question = questionMatch?.[1] || content.split('\n')[0] || 'Error parsing question'
+  const answer = answerMatch?.[1] || 'N/A'
+
   return {
-    question: questionMatch?.[1] || content.split('\n')[0] || 'Error parsing question',
-    answer: answerMatch?.[1] || 'N/A',
-    requiresPhoto: true
+    question: cleanQuestionText(question),
+    answer: answer.trim(),
+    requiresPhoto: true,
   }
 }
 
@@ -433,7 +522,7 @@ function parseTextResponse(content: string): QuestionResult {
  */
 export function shouldUseAI(goal: Goal): boolean {
   const goalText = goal.goalText.toLowerCase()
-  
+
   // Common patterns that work well with templates
   const commonPatterns = [
     'multi-step.*real-world.*scenario',
@@ -443,15 +532,15 @@ export function shouldUseAI(goal: Goal): boolean {
     'addition',
     'subtraction',
     'fraction',
-    'equation'
+    'equation',
   ]
-  
+
   // If goal matches common pattern, use template (faster, free)
-  const matchesCommonPattern = commonPatterns.some(pattern => {
+  const matchesCommonPattern = commonPatterns.some((pattern) => {
     const regex = new RegExp(pattern)
     return regex.test(goalText)
   })
-  
+
   // Use AI for unique/complex goals
   return !matchesCommonPattern
 }
@@ -465,4 +554,3 @@ export function getCacheKey(goal: Goal, questionNumber: number): string {
   const text = `${goal.goalText}-${questionNumber}`
   return btoa(text).substring(0, 50) // Simple base64 encoding
 }
-

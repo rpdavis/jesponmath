@@ -1,0 +1,911 @@
+[
+  {
+    "id": "",
+    "name": "Two-Step Equation Solving",
+    "subject": "math",
+    "topic": "two-step equation",
+    "questionType": "short-answer",
+    "questionTemplate": "Solve for x: {{coefficient}}x + {{constant}} = {{result}}. Show all steps.",
+    "answerTemplate": "{{solution}}",
+    "explanationTemplate": "Subtract {{constant}} from both sides: {{coefficient}}x = {{intermediate}}, then divide by {{coefficient}}: x = {{solution}}",
+    "requiresPhoto": true,
+    "variableGenerators": {
+      "coefficient": {
+        "type": "random",
+        "min": 1,
+        "max": 10
+      },
+      "constant": {
+        "type": "random",
+        "min": 1,
+        "max": 15
+      },
+      "solution": {
+        "type": "random",
+        "min": 1,
+        "max": 10
+      },
+      "result": {
+        "type": "calculated",
+        "formula": "coefficient * solution + constant"
+      },
+      "intermediate": {
+        "type": "calculated",
+        "formula": "result - constant"
+      }
+    },
+    "exampleQuestion": "Solve for x: 3x + 4 = 13. Show all steps.",
+    "exampleAnswer": "3",
+    "exampleExplanation": "Subtract 4 from both sides: 3x = 9, then divide by 3: x = 3",
+    "isActive": true,
+    "createdBy": "",
+    "createdAt": null,
+    "updatedAt": null
+  },
+  {
+    "id": "",
+    "name": "One-Step Equation Solving",
+    "subject": "math",
+    "topic": "equation",
+    "questionType": "short-answer",
+    "questionTemplate": "Solve for x: x + {{constant}} = {{result}}. Show your work.",
+    "answerTemplate": "{{solution}}",
+    "explanationTemplate": "Subtract {{constant}} from both sides: x = {{solution}}",
+    "requiresPhoto": true,
+    "variableGenerators": {
+      "solution": {
+        "type": "random",
+        "min": 1,
+        "max": 20
+      },
+      "constant": {
+        "type": "random",
+        "min": 1,
+        "max": 15
+      },
+      "result": {
+        "type": "calculated",
+        "formula": "solution + constant"
+      }
+    },
+    "exampleQuestion": "Solve for x: x + 5 = 12. Show your work.",
+    "exampleAnswer": "7",
+    "exampleExplanation": "Subtract 5 from both sides: x = 7",
+    "isActive": true,
+    "createdBy": "",
+    "createdAt": null,
+    "updatedAt": null
+  },
+  {
+    "id": "",
+    "name": "Multi-Step Word Problem with Equation",
+    "subject": "math",
+    "topic": "multi-step word problem",
+    "questionType": "short-answer",
+    "questionTemplate": "{{scenario}}\n\n1) Write an equation to model this problem\n2) Solve the equation\n3) Show your work with a drawing or model",
+    "answerTemplate": "Equation: {{equation}}\nAnswer: {{answer}}",
+    "explanationTemplate": "The equation {{equation}} models this problem. Solving gives {{answer}}.",
+    "requiresPhoto": true,
+    "scenarios": [
+      {
+        "name": "shopping",
+        "template": "Maria had ${{initial}}. She bought a game for ${{spent}}. How much money does she have left?",
+        "equation": "{{initial}} - {{spent}} = x",
+        "answer": "${{remaining}}"
+      },
+      {
+        "name": "grouping",
+        "template": "There are {{total}} students going on a field trip. They need to split into {{groups}} equal groups. How many students will be in each group?",
+        "equation": "{{total}} ÷ {{groups}} = x",
+        "answer": "{{each}} students"
+      },
+      {
+        "name": "total",
+        "template": "Jamal scored {{part1}} points in the first half of the game and {{part2}} points in the second half. How many total points did he score?",
+        "equation": "{{part1}} + {{part2}} = x",
+        "answer": "{{total}} points"
+      }
+    ],
+    "variableGenerators": {
+      "initial": {
+        "type": "random",
+        "min": 20,
+        "max": 50
+      },
+      "spent": {
+        "type": "random",
+        "min": 5,
+        "max": 20
+      },
+      "remaining": {
+        "type": "calculated",
+        "formula": "initial - spent"
+      },
+      "total": {
+        "type": "random",
+        "min": 20,
+        "max": 50
+      },
+      "groups": {
+        "type": "random",
+        "min": 2,
+        "max": 6
+      },
+      "each": {
+        "type": "calculated",
+        "formula": "Math.floor(total / groups)"
+      },
+      "part1": {
+        "type": "random",
+        "min": 10,
+        "max": 30
+      },
+      "part2": {
+        "type": "random",
+        "min": 10,
+        "max": 30
+      }
+    },
+    "exampleQuestion": "Maria had $35. She bought a game for $12. How much money does she have left?\n\n1) Write an equation to model this problem\n2) Solve the equation\n3) Show your work with a drawing or model",
+    "exampleAnswer": "Equation: 35 - 12 = x\nAnswer: $23",
+    "isActive": true,
+    "createdBy": "",
+    "createdAt": null,
+    "updatedAt": null
+  },
+  {
+    "id": "",
+    "name": "Word Problem - Writing Algebraic Expression",
+    "subject": "math",
+    "topic": "word problem",
+    "questionType": "short-answer",
+    "questionTemplate": "{{scenario}} If {{person}} has x {{items}}, write an algebraic expression to represent {{target}}.",
+    "answerTemplate": "{{expression}}",
+    "explanationTemplate": "The expression {{expression}} represents {{target}}.",
+    "requiresPhoto": true,
+    "scenarios": [
+      {
+        "name": "less",
+        "template": "Amy has {{amount}} less {{items}} than Mary Ann.",
+        "target": "the number of {{items}} Amy has",
+        "expression": "x - {{amount}}"
+      },
+      {
+        "name": "more",
+        "template": "Carlos has {{amount}} more {{items}} than Sarah.",
+        "target": "the number of {{items}} Carlos has",
+        "expression": "x + {{amount}}"
+      },
+      {
+        "name": "times",
+        "template": "Emma has {{amount}} times as many {{items}} as Jake.",
+        "target": "the number of {{items}} Emma has",
+        "expression": "{{amount}}x"
+      }
+    ],
+    "variableGenerators": {
+      "amount": {
+        "type": "random",
+        "min": 2,
+        "max": 10
+      },
+      "items": {
+        "type": "random",
+        "options": ["pencils", "books", "stickers", "apples", "cookies"]
+      },
+      "person": {
+        "type": "random",
+        "options": ["Mary Ann", "Sarah", "Jake"]
+      }
+    },
+    "exampleQuestion": "Amy has 5 less pencils than Mary Ann. If Mary Ann has x pencils, write an algebraic expression to represent the number of pencils Amy has.",
+    "exampleAnswer": "x - 5",
+    "isActive": true,
+    "createdBy": "",
+    "createdAt": null,
+    "updatedAt": null
+  },
+  {
+    "id": "",
+    "name": "Fraction Addition/Subtraction",
+    "subject": "math",
+    "topic": "fraction",
+    "questionType": "fraction",
+    "questionTemplate": "Solve: {{fraction1}} {{operation}} {{fraction2}}. Show your work.",
+    "answerTemplate": "{{answer}}",
+    "explanationTemplate": "Find a common denominator, then {{operation}} the numerators.",
+    "requiresPhoto": true,
+    "variableGenerators": {
+      "operation": {
+        "type": "random",
+        "options": ["+", "-"]
+      },
+      "fraction1": {
+        "type": "randomFraction",
+        "minNumerator": 1,
+        "maxNumerator": 9,
+        "minDenominator": 2,
+        "maxDenominator": 10
+      },
+      "fraction2": {
+        "type": "randomFraction",
+        "minNumerator": 1,
+        "maxNumerator": 9,
+        "minDenominator": 2,
+        "maxDenominator": 10
+      },
+      "answer": {
+        "type": "calculated",
+        "formula": "calculateFractionOperation(fraction1, operation, fraction2)"
+      }
+    },
+    "exampleQuestion": "Solve: 1/2 + 3/4. Show your work.",
+    "exampleAnswer": "5/4 or 1 1/4",
+    "isActive": true,
+    "createdBy": "",
+    "createdAt": null,
+    "updatedAt": null
+  },
+  {
+    "id": "",
+    "name": "Decimal Operations",
+    "subject": "math",
+    "topic": "decimal",
+    "questionType": "short-answer",
+    "questionTemplate": "Calculate: {{decimal1}} {{operation}} {{decimal2}}. Show your work.",
+    "answerTemplate": "{{answer}}",
+    "explanationTemplate": "{{operation}} the decimals using the standard algorithm.",
+    "requiresPhoto": true,
+    "variableGenerators": {
+      "operation": {
+        "type": "random",
+        "options": ["+", "-", "×", "÷"]
+      },
+      "decimal1": {
+        "type": "randomDecimal",
+        "min": 0.1,
+        "max": 99.99,
+        "decimalPlaces": 2
+      },
+      "decimal2": {
+        "type": "randomDecimal",
+        "min": 0.1,
+        "max": 99.99,
+        "decimalPlaces": 2
+      },
+      "answer": {
+        "type": "calculated",
+        "formula": "calculateDecimalOperation(decimal1, operation, decimal2)"
+      }
+    },
+    "exampleQuestion": "Calculate: 12.34 + 5.67. Show your work.",
+    "exampleAnswer": "18.01",
+    "isActive": true,
+    "createdBy": "",
+    "createdAt": null,
+    "updatedAt": null
+  },
+  {
+    "id": "",
+    "name": "Reading Comprehension - Main Idea",
+    "subject": "ela",
+    "topic": "reading comprehension",
+    "questionType": "multiple-choice",
+    "questionTemplate": "Read the following passage:\n\n{{passage}}\n\nWhat is the main idea of this passage?",
+    "answerTemplate": "{{correctAnswer}}",
+    "optionsTemplate": [
+      "{{correctAnswer}}",
+      "{{distractor1}}",
+      "{{distractor2}}",
+      "{{distractor3}}"
+    ],
+    "explanationTemplate": "The main idea is {{correctAnswer}} because {{reasoning}}.",
+    "requiresPhoto": false,
+    "variableGenerators": {
+      "passage": {
+        "type": "ai-generated",
+        "prompt": "Generate a short informational passage appropriate for grade {{gradeLevel}} about {{topic}}."
+      },
+      "correctAnswer": {
+        "type": "ai-generated",
+        "prompt": "Based on the passage, what is the main idea?"
+      },
+      "distractor1": {
+        "type": "ai-generated",
+        "prompt": "Generate a plausible but incorrect main idea option."
+      },
+      "distractor2": {
+        "type": "ai-generated",
+        "prompt": "Generate a plausible but incorrect main idea option."
+      },
+      "distractor3": {
+        "type": "ai-generated",
+        "prompt": "Generate a plausible but incorrect main idea option."
+      }
+    },
+    "exampleQuestion": "Read the following passage:\n\n[Passage about ocean animals]\n\nWhat is the main idea of this passage?",
+    "exampleAnswer": "Ocean animals have different ways of surviving.",
+    "isActive": true,
+    "createdBy": "",
+    "createdAt": null,
+    "updatedAt": null
+  },
+  {
+    "id": "",
+    "name": "Reading Comprehension - Making Inferences",
+    "subject": "ela",
+    "topic": "reading comprehension",
+    "questionType": "multiple-choice",
+    "questionTemplate": "Read the following passage:\n\n{{passage}}\n\nBased on the passage, what can you infer about {{inferenceTopic}}?",
+    "answerTemplate": "{{correctAnswer}}",
+    "optionsTemplate": [
+      "{{correctAnswer}}",
+      "{{distractor1}}",
+      "{{distractor2}}",
+      "{{distractor3}}"
+    ],
+    "explanationTemplate": "You can infer {{correctAnswer}} because {{evidence}}.",
+    "requiresPhoto": false,
+    "variableGenerators": {
+      "passage": {
+        "type": "ai-generated",
+        "prompt": "Generate a short passage appropriate for grade {{gradeLevel}} that allows for inference about {{inferenceTopic}}."
+      },
+      "inferenceTopic": {
+        "type": "random",
+        "options": ["the character's feelings", "what will happen next", "the character's motivation", "the setting"]
+      },
+      "correctAnswer": {
+        "type": "ai-generated",
+        "prompt": "Based on the passage, what can be inferred about {{inferenceTopic}}?"
+      },
+      "distractor1": {
+        "type": "ai-generated",
+        "prompt": "Generate a plausible but incorrect inference option."
+      },
+      "distractor2": {
+        "type": "ai-generated",
+        "prompt": "Generate a plausible but incorrect inference option."
+      },
+      "distractor3": {
+        "type": "ai-generated",
+        "prompt": "Generate a plausible but incorrect inference option."
+      }
+    },
+    "exampleQuestion": "Read the following passage:\n\n[Passage]\n\nBased on the passage, what can you infer about the character's feelings?",
+    "exampleAnswer": "The character is nervous about the test.",
+    "isActive": true,
+    "createdBy": "",
+    "createdAt": null,
+    "updatedAt": null
+  },
+  {
+    "id": "",
+    "name": "Vocabulary - Context Clues",
+    "subject": "ela",
+    "topic": "vocabulary",
+    "questionType": "multiple-choice",
+    "questionTemplate": "Read the sentence: \"{{sentence}}\"\n\nWhat does the word \"{{targetWord}}\" mean in this sentence?",
+    "answerTemplate": "{{correctMeaning}}",
+    "optionsTemplate": [
+      "{{correctMeaning}}",
+      "{{distractor1}}",
+      "{{distractor2}}",
+      "{{distractor3}}"
+    ],
+    "explanationTemplate": "The word \"{{targetWord}}\" means {{correctMeaning}} because {{contextClue}}.",
+    "requiresPhoto": false,
+    "variableGenerators": {
+      "targetWord": {
+        "type": "random",
+        "options": ["enormous", "ancient", "brilliant", "mysterious", "courageous"]
+      },
+      "sentence": {
+        "type": "ai-generated",
+        "prompt": "Generate a sentence using the word '{{targetWord}}' with clear context clues for grade {{gradeLevel}}."
+      },
+      "correctMeaning": {
+        "type": "ai-generated",
+        "prompt": "What is the meaning of '{{targetWord}}' based on the context?"
+      },
+      "distractor1": {
+        "type": "ai-generated",
+        "prompt": "Generate a plausible but incorrect meaning for '{{targetWord}}'."
+      },
+      "distractor2": {
+        "type": "ai-generated",
+        "prompt": "Generate a plausible but incorrect meaning for '{{targetWord}}'."
+      },
+      "distractor3": {
+        "type": "ai-generated",
+        "prompt": "Generate a plausible but incorrect meaning for '{{targetWord}}'."
+      }
+    },
+    "exampleQuestion": "Read the sentence: \"The enormous elephant stood taller than the trees.\"\n\nWhat does the word \"enormous\" mean in this sentence?",
+    "exampleAnswer": "very large",
+    "isActive": true,
+    "createdBy": "",
+    "createdAt": null,
+    "updatedAt": null
+  },
+  {
+    "id": "",
+    "name": "Writing - Informational Paragraph",
+    "subject": "ela",
+    "topic": "writing",
+    "questionType": "essay",
+    "questionTemplate": "Write an informational paragraph about {{topic}}. Your paragraph should include:\n- An introductory sentence\n- {{detailCount}} sentences with facts or details about the topic\n- A concluding sentence",
+    "answerTemplate": "Teacher will grade based on rubric",
+    "explanationTemplate": "This is a constructed response question that requires teacher evaluation using a writing rubric.",
+    "requiresPhoto": false,
+    "rubricId": null,
+    "variableGenerators": {
+      "topic": {
+        "type": "random",
+        "options": ["ocean animals", "the solar system", "ancient civilizations", "weather patterns", "plant life cycles"]
+      },
+      "detailCount": {
+        "type": "random",
+        "min": 3,
+        "max": 5
+      }
+    },
+    "exampleQuestion": "Write an informational paragraph about ocean animals. Your paragraph should include:\n- An introductory sentence\n- 4 sentences with facts or details about the topic\n- A concluding sentence",
+    "exampleAnswer": "Teacher will grade based on rubric",
+    "isActive": true,
+    "createdBy": "",
+    "createdAt": null,
+    "updatedAt": null
+  },
+  {
+    "id": "",
+    "name": "Citing Textual Evidence",
+    "subject": "ela",
+    "topic": "reading comprehension",
+    "questionType": "short-answer",
+    "questionTemplate": "Read the following passage:\n\n{{passage}}\n\nThe author claims: \"{{claim}}\"\n\nList 2 pieces of evidence from the passage that support this claim and write 1-2 sentences explaining how each piece of evidence supports the claim.",
+    "answerTemplate": "Teacher will grade based on rubric",
+    "explanationTemplate": "This is a constructed response question that requires teacher evaluation using a rubric.",
+    "requiresPhoto": false,
+    "rubricId": null,
+    "variableGenerators": {
+      "passage": {
+        "type": "ai-generated",
+        "prompt": "Generate a short informational passage appropriate for grade {{gradeLevel}} with clear claims and supporting evidence."
+      },
+      "claim": {
+        "type": "ai-generated",
+        "prompt": "Extract a clear claim from the passage that has supporting evidence."
+      }
+    },
+    "exampleQuestion": "Read the following passage:\n\n[Passage]\n\nThe author claims: \"Recycling helps protect the environment.\"\n\nList 2 pieces of evidence from the passage that support this claim and write 1-2 sentences explaining how each piece of evidence supports the claim.",
+    "exampleAnswer": "Teacher will grade based on rubric",
+    "isActive": true,
+    "createdBy": "",
+    "createdAt": null,
+    "updatedAt": null
+  },
+  {
+    "id": "",
+    "name": "Multi-Digit Operations",
+    "subject": "math",
+    "topic": "multi-digit operations",
+    "questionType": "short-answer",
+    "questionTemplate": "Calculate: {{a}} {{operation}} {{b}}. Show your work.",
+    "answerTemplate": "{{answer}}",
+    "explanationTemplate": "Use the standard algorithm for {{operationWord}}.",
+    "requiresPhoto": true,
+    "variableGenerators": {
+      "operation": {
+        "type": "random",
+        "options": ["+", "-", "×", "÷"]
+      },
+      "operationWord": {
+        "type": "derived",
+        "map": { "+": "addition", "-": "subtraction", "×": "multiplication", "÷": "division" },
+        "from": "operation"
+      },
+      "a": {
+        "type": "random",
+        "min": 10,
+        "max": 999
+      },
+      "b": {
+        "type": "random",
+        "min": 2,
+        "max": 99
+      },
+      "answer": {
+        "type": "calculated",
+        "formula": "calculateOperation(a, operation, b)"
+      }
+    },
+    "exampleQuestion": "Calculate: 456 ÷ 12. Show your work.",
+    "exampleAnswer": "38",
+    "isActive": true,
+    "createdBy": "",
+    "createdAt": null,
+    "updatedAt": null
+  },
+  {
+    "id": "",
+    "name": "Percentage Word Problem",
+    "subject": "math",
+    "topic": "percentage word problem",
+    "questionType": "short-answer",
+    "questionTemplate": "{{scenario}}\n\nShow your work and give the final answer.",
+    "answerTemplate": "{{answer}}",
+    "explanationTemplate": "Set up the percent equation and solve.",
+    "requiresPhoto": true,
+    "variableGenerators": {
+      "price": {
+        "type": "randomDecimal",
+        "min": 10,
+        "max": 100,
+        "decimalPlaces": 2
+      },
+      "discount": {
+        "type": "random",
+        "min": 5,
+        "max": 40
+      },
+      "scenario": {
+        "type": "template",
+        "template": "A store offers a {{discount}}% discount on an item that costs ${{price}}. What is the sale price?"
+      },
+      "answer": {
+        "type": "calculated",
+        "formula": "roundToCents(price * (1 - discount/100))"
+      }
+    },
+    "exampleQuestion": "A store offers a 20% discount on an item that costs $45.00. What is the sale price?\n\nShow your work and give the final answer.",
+    "exampleAnswer": "$36.00",
+    "isActive": true,
+    "createdBy": "",
+    "createdAt": null,
+    "updatedAt": null
+  },
+  {
+    "id": "",
+    "name": "Elapsed Time Word Problem",
+    "subject": "math",
+    "topic": "elapsed time",
+    "questionType": "short-answer",
+    "questionTemplate": "{{scenario}}\n\nShow your work.",
+    "answerTemplate": "{{answer}}",
+    "explanationTemplate": "Convert to hours/minutes and add/subtract appropriately.",
+    "requiresPhoto": true,
+    "variableGenerators": {
+      "startHour": { "type": "random", "min": 7, "max": 11 },
+      "durationMinutes": { "type": "random", "min": 20, "max": 95 },
+      "scenario": {
+        "type": "template",
+        "template": "The movie starts at {{startHour}}:00 AM and lasts {{durationMinutes}} minutes. What time does it end?"
+      },
+      "answer": {
+        "type": "calculated",
+        "formula": "timeAddMinutes(startHour, 0, durationMinutes)"
+      }
+    },
+    "exampleQuestion": "The movie starts at 9:00 AM and lasts 75 minutes. What time does it end?\n\nShow your work.",
+    "exampleAnswer": "10:15 AM",
+    "isActive": true,
+    "createdBy": "",
+    "createdAt": null,
+    "updatedAt": null
+  },
+  {
+    "id": "",
+    "name": "Money Word Problem",
+    "subject": "math",
+    "topic": "money word problem",
+    "questionType": "short-answer",
+    "questionTemplate": "{{scenario}}\n\nShow your work.",
+    "answerTemplate": "{{answer}}",
+    "explanationTemplate": "Add/subtract costs and make change.",
+    "requiresPhoto": true,
+    "variableGenerators": {
+      "item1": { "type": "randomDecimal", "min": 1, "max": 15, "decimalPlaces": 2 },
+      "item2": { "type": "randomDecimal", "min": 1, "max": 15, "decimalPlaces": 2 },
+      "cash": { "type": "random", "min": 10, "max": 40 },
+      "scenario": {
+        "type": "template",
+        "template": "You buy two items costing ${{item1}} and ${{item2}}. You pay with ${{cash}}. How much change do you get back?"
+      },
+      "answer": {
+        "type": "calculated",
+        "formula": "roundToCents(cash - (item1 + item2))"
+      }
+    },
+    "exampleQuestion": "You buy two items costing $3.50 and $6.25. You pay with $20. How much change do you get back?\n\nShow your work.",
+    "exampleAnswer": "$10.25",
+    "isActive": true,
+    "createdBy": "",
+    "createdAt": null,
+    "updatedAt": null
+  },
+  {
+    "id": "",
+    "name": "Rational Number Ordering",
+    "subject": "math",
+    "topic": "rational number",
+    "questionType": "short-answer",
+    "questionTemplate": "Order the following numbers from least to greatest: {{numbers}}",
+    "answerTemplate": "{{sortedNumbers}}",
+    "explanationTemplate": "Convert to common form and order.",
+    "requiresPhoto": false,
+    "variableGenerators": {
+      "numbers": {
+        "type": "randomList",
+        "length": 4,
+        "generator": "randomRational"
+      },
+      "sortedNumbers": {
+        "type": "calculated",
+        "formula": "sortRationals(numbers)"
+      }
+    },
+    "exampleQuestion": "Order the following numbers from least to greatest: 1/2, -0.75, 0.3, -1.2",
+    "exampleAnswer": "-1.2, -0.75, 0.3, 1/2",
+    "isActive": true,
+    "createdBy": "",
+    "createdAt": null,
+    "updatedAt": null
+  },
+  {
+    "id": "",
+    "name": "Geometry - Composite Area",
+    "subject": "math",
+    "topic": "geometry",
+    "questionType": "short-answer",
+    "questionTemplate": "{{scenario}}\n\nShow your work (label sub-shapes).",
+    "answerTemplate": "{{answer}} square units",
+    "explanationTemplate": "Decompose into basic shapes, find areas, then add/subtract.",
+    "requiresPhoto": true,
+    "variableGenerators": {
+      "length": { "type": "random", "min": 5, "max": 15 },
+      "width": { "type": "random", "min": 3, "max": 10 },
+      "extra": { "type": "random", "min": 2, "max": 8 },
+      "scenario": {
+        "type": "template",
+        "template": "A composite shape is made of a rectangle {{length}} by {{width}} and a smaller rectangle attached on one side with area {{extra}} square units. What is the total area?"
+      },
+      "answer": {
+        "type": "calculated",
+        "formula": "length*width + extra"
+      }
+    },
+    "exampleQuestion": "A composite shape is made of a rectangle 10 by 6 and a smaller rectangle attached on one side with area 8 square units. What is the total area?\n\nShow your work (label sub-shapes).",
+    "exampleAnswer": "68 square units",
+    "isActive": true,
+    "createdBy": "",
+    "createdAt": null,
+    "updatedAt": null
+  },
+  {
+    "id": "",
+    "name": "Graph Interpretation",
+    "subject": "math",
+    "topic": "graph interpretation",
+    "questionType": "multiple-choice",
+    "questionTemplate": "Use the given graph to answer: {{question}}",
+    "answerTemplate": "{{correctAnswer}}",
+    "optionsTemplate": ["{{correctAnswer}}", "{{distractor1}}", "{{distractor2}}", "{{distractor3}}"],
+    "explanationTemplate": "Read values from the graph and compare.",
+    "requiresPhoto": false,
+    "variableGenerators": {
+      "question": {
+        "type": "ai-generated",
+        "prompt": "Generate a simple bar-graph interpretation question (e.g., which category is largest, difference between two bars)."
+      },
+      "correctAnswer": { "type": "ai-generated", "prompt": "Provide the correct answer to the graph question." },
+      "distractor1": { "type": "ai-generated", "prompt": "Provide a plausible but incorrect answer to the graph question." },
+      "distractor2": { "type": "ai-generated", "prompt": "Provide a plausible but incorrect answer to the graph question." },
+      "distractor3": { "type": "ai-generated", "prompt": "Provide a plausible but incorrect answer to the graph question." }
+    },
+    "exampleQuestion": "Use the given graph to answer: Which category has the highest value?",
+    "exampleAnswer": "Category B",
+    "isActive": true,
+    "createdBy": "",
+    "createdAt": null,
+    "updatedAt": null
+  },
+  {
+    "id": "",
+    "name": "Math Fluency - Timed",
+    "subject": "math",
+    "topic": "math fluency",
+    "questionType": "short-answer",
+    "questionTemplate": "Solve as many {{operation}} facts as you can in {{timeLimit}} seconds.",
+    "answerTemplate": "Teacher records number correct",
+    "explanationTemplate": "Timed fluency check; teacher or system records score.",
+    "requiresPhoto": false,
+    "variableGenerators": {
+      "operation": { "type": "random", "options": ["addition", "subtraction", "multiplication", "division"] },
+      "timeLimit": { "type": "random", "min": 30, "max": 90 }
+    },
+    "exampleQuestion": "Solve as many multiplication facts as you can in 60 seconds.",
+    "exampleAnswer": "Teacher records number correct",
+    "isActive": true,
+    "createdBy": "",
+    "createdAt": null,
+    "updatedAt": null
+  },
+  {
+    "id": "",
+    "name": "Reading Fluency - WPM",
+    "subject": "ela",
+    "topic": "reading fluency",
+    "questionType": "short-answer",
+    "questionTemplate": "Read the passage aloud. Teacher records words per minute (WPM) and accuracy.",
+    "answerTemplate": "Teacher records WPM and accuracy",
+    "explanationTemplate": "Running record style; teacher measures rate and accuracy.",
+    "requiresPhoto": false,
+    "variableGenerators": {
+      "passage": {
+        "type": "ai-generated",
+        "prompt": "Generate a short grade-appropriate passage (~100 words) for oral reading."
+      }
+    },
+    "exampleQuestion": "Read the passage aloud. Teacher records words per minute (WPM) and accuracy.",
+    "exampleAnswer": "Teacher records WPM and accuracy",
+    "isActive": true,
+    "createdBy": "",
+    "createdAt": null,
+    "updatedAt": null
+  },
+  {
+    "id": "",
+    "name": "Phonics/Decoding - Oral",
+    "subject": "ela",
+    "topic": "phonics",
+    "questionType": "short-answer",
+    "questionTemplate": "Read the following word list aloud: {{wordList}}",
+    "answerTemplate": "Teacher records accuracy/decoding",
+    "explanationTemplate": "Teacher observes decoding and accuracy; running record style.",
+    "requiresPhoto": false,
+    "variableGenerators": {
+      "wordList": {
+        "type": "ai-generated",
+        "prompt": "Generate a list of 10 multisyllabic decodable words appropriate for middle school intervention."
+      }
+    },
+    "exampleQuestion": "Read the following word list aloud: (10 multisyllabic decodable words)",
+    "exampleAnswer": "Teacher records accuracy/decoding",
+    "isActive": true,
+    "createdBy": "",
+    "createdAt": null,
+    "updatedAt": null
+  },
+  {
+    "id": "",
+    "name": "Summarizing/Retell",
+    "subject": "ela",
+    "topic": "reading comprehension",
+    "questionType": "short-answer",
+    "questionTemplate": "Read the passage:\n\n{{passage}}\n\nWrite a summary that includes the central idea and {{detailCount}} key details.",
+    "answerTemplate": "Teacher will grade based on rubric",
+    "explanationTemplate": "Constructed response; teacher evaluates summary quality.",
+    "requiresPhoto": false,
+    "rubricId": null,
+    "variableGenerators": {
+      "passage": { "type": "ai-generated", "prompt": "Generate a short informational passage with a clear central idea and 3-4 key details." },
+      "detailCount": { "type": "random", "min": 2, "max": 4 }
+    },
+    "exampleQuestion": "Read the passage and write a summary that includes the central idea and 3 key details.",
+    "exampleAnswer": "Teacher will grade based on rubric",
+    "isActive": true,
+    "createdBy": "",
+    "createdAt": null,
+    "updatedAt": null
+  },
+  {
+    "id": "",
+    "name": "Grammar/Syntax - Sentence Completion",
+    "subject": "ela",
+    "topic": "grammar",
+    "questionType": "multiple-choice",
+    "questionTemplate": "Choose the sentence that is grammatically correct:\n\nA) {{optionA}}\nB) {{optionB}}\nC) {{optionC}}\nD) {{optionD}}",
+    "answerTemplate": "{{correctOption}}",
+    "optionsTemplate": ["{{optionA}}", "{{optionB}}", "{{optionC}}", "{{optionD}}"],
+    "explanationTemplate": "{{grammarRule}}",
+    "requiresPhoto": false,
+    "variableGenerators": {
+      "optionA": { "type": "ai-generated", "prompt": "Generate one correct sentence using grade-appropriate grammar." },
+      "optionB": { "type": "ai-generated", "prompt": "Generate a sentence with a common verb tense error." },
+      "optionC": { "type": "ai-generated", "prompt": "Generate a sentence with a subject-verb agreement error." },
+      "optionD": { "type": "ai-generated", "prompt": "Generate a sentence with a preposition or conjunction error." },
+      "correctOption": { "type": "template", "template": "A" },
+      "grammarRule": { "type": "ai-generated", "prompt": "Explain briefly why option A is correct compared to the others." }
+    },
+    "exampleQuestion": "Choose the sentence that is grammatically correct:\n\nA) She runs quickly to catch the bus.\nB) She run quickly to catch the bus.\nC) She runs quick to catch the bus.\nD) She running quickly to catch the bus.",
+    "exampleAnswer": "A",
+    "isActive": true,
+    "createdBy": "",
+    "createdAt": null,
+    "updatedAt": null
+  },
+  {
+    "id": "",
+    "name": "Vocabulary - Semantic Features",
+    "subject": "ela",
+    "topic": "vocabulary",
+    "questionType": "short-answer",
+    "questionTemplate": "Given the word \"{{targetWord}}\", list two synonyms and one antonym. Provide a brief definition.",
+    "answerTemplate": "Teacher will grade based on rubric",
+    "explanationTemplate": "Checks depth of word knowledge (synonyms/antonym/definition).",
+    "requiresPhoto": false,
+    "variableGenerators": {
+      "targetWord": {
+        "type": "random",
+        "options": ["analyze", "contrast", "infer", "evaluate", "justify"]
+      }
+    },
+    "exampleQuestion": "Given the word \"infer\", list two synonyms and one antonym. Provide a brief definition.",
+    "exampleAnswer": "Teacher will grade based on rubric",
+    "isActive": true,
+    "createdBy": "",
+    "createdAt": null,
+    "updatedAt": null
+  },
+  {
+    "id": "",
+    "name": "Writing - Essay with Rubric",
+    "subject": "ela",
+    "topic": "writing",
+    "questionType": "essay",
+    "questionTemplate": "Write a multi-paragraph essay about {{topic}} including an introduction, {{bodyCount}} body paragraphs with supporting evidence, and a conclusion.",
+    "answerTemplate": "Teacher will grade based on rubric",
+    "explanationTemplate": "Constructed response; rubric-scored.",
+    "requiresPhoto": false,
+    "rubricId": null,
+    "variableGenerators": {
+      "topic": { "type": "random", "options": ["the importance of teamwork", "a historical event", "a personal challenge and how you overcame it"] },
+      "bodyCount": { "type": "random", "min": 2, "max": 3 }
+    },
+    "exampleQuestion": "Write a multi-paragraph essay about the importance of teamwork including an introduction, 2 body paragraphs with supporting evidence, and a conclusion.",
+    "exampleAnswer": "Teacher will grade based on rubric",
+    "isActive": true,
+    "createdBy": "",
+    "createdAt": null,
+    "updatedAt": null
+  },
+  {
+    "id": "",
+    "name": "On-Task Behavior Checklist",
+    "subject": "other",
+    "topic": "behavior",
+    "questionType": "short-answer",
+    "questionTemplate": "During a {{duration}} minute work period, rate on-task behavior for each interval using a checklist (start within 1 minute, stays on task, minimal redirection).",
+    "answerTemplate": "Teacher records checklist scores",
+    "explanationTemplate": "Observation-based; teacher marks yes/no each interval.",
+    "requiresPhoto": false,
+    "variableGenerators": {
+      "duration": { "type": "random", "min": 10, "max": 20 }
+    },
+    "exampleQuestion": "During a 15 minute work period, rate on-task behavior for each interval using a checklist (start within 1 minute, stays on task, minimal redirection).",
+    "exampleAnswer": "Teacher records checklist scores",
+    "isActive": true,
+    "createdBy": "",
+    "createdAt": null,
+    "updatedAt": null
+  },
+  {
+    "id": "",
+    "name": "Work Completion Checklist",
+    "subject": "other",
+    "topic": "work completion",
+    "questionType": "short-answer",
+    "questionTemplate": "For the given assignment, record whether the student: (1) started within 1 minute, (2) completed all parts, (3) turned in on time.",
+    "answerTemplate": "Teacher records checklist (yes/no) for each item",
+    "explanationTemplate": "Observation/data-tracking for work completion goals.",
+    "requiresPhoto": false,
+    "variableGenerators": {},
+    "exampleQuestion": "For the given assignment, record whether the student: (1) started within 1 minute, (2) completed all parts, (3) turned in on time.",
+    "exampleAnswer": "Teacher records checklist (yes/no) for each item",
+    "isActive": true,
+    "createdBy": "",
+    "createdAt": null,
+    "updatedAt": null
+  }
+]

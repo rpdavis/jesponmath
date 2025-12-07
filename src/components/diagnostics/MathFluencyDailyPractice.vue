@@ -317,4 +317,13 @@ onUnmounted(() => {
   clearDiagnosticTimer()
 })
 </script>
-<style scoped src="./mathFluency/styles/dailyPracticeStyles.css"></style>
+<!-- Temporarily commented out due to CSS syntax errors - needs fixing -->
+<!-- <style scoped src="./mathFluency/styles/dailyPracticeStyles.css"></style> -->
+<style scoped>
+/* Basic styles - full stylesheet needs CSS syntax fixes */
+.daily-practice-container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+</style>

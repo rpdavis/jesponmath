@@ -27,6 +27,9 @@ import GoalImporter from '@/components/admin/GoalImporter.vue'
 import GoalFixer from '@/components/admin/GoalFixer.vue'
 import StudentTeacherFixer from '@/components/admin/StudentTeacherFixer.vue'
 import GoalQuestionDebugger from '@/components/admin/GoalQuestionDebugger.vue'
+import GoalTemplateAnalyzer from '@/components/admin/GoalTemplateAnalyzer.vue'
+import GoalTemplateManagement from '@/components/admin/GoalTemplateManagement.vue'
+import RubricManagement from '@/components/admin/RubricManagement.vue'
 import FluencyDuplicateFixer from '@/components/admin/FluencyDuplicateFixer.vue'
 import SystemSettings from '@/components/admin/SystemSettings.vue'
 import BackupExport from '@/components/admin/BackupExport.vue'
@@ -330,6 +333,24 @@ const router = createRouter({
       path: '/admin/debug-goal-questions',
       name: 'goal-question-debugger',
       component: GoalQuestionDebugger,
+      beforeEnter: [authGuard, adminGuard],
+    },
+    {
+      path: '/admin/analyze-goals',
+      name: 'goal-template-analyzer',
+      component: GoalTemplateAnalyzer,
+      beforeEnter: [authGuard, adminGuard],
+    },
+    {
+      path: '/admin/templates',
+      name: 'goal-template-management',
+      component: GoalTemplateManagement,
+      beforeEnter: [authGuard, adminGuard],
+    },
+    {
+      path: '/admin/rubrics',
+      name: 'rubric-management',
+      component: RubricManagement,
       beforeEnter: [authGuard, adminGuard],
     },
     {
