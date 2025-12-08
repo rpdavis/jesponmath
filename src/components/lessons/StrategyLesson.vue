@@ -2,13 +2,13 @@
   <div class="strategy-lesson">
     <!-- Progress Indicator -->
     <div class="lesson-progress-bar">
-      <div 
-        v-for="step in 4" 
-        :key="step" 
+      <div
+        v-for="step in 4"
+        :key="step"
         class="progress-step"
-        :class="{ 
-          active: currentStep === step, 
-          complete: currentStep > step 
+        :class="{
+          active: currentStep === step,
+          complete: currentStep > step
         }"
       >
         <div class="step-number">{{ step }}</div>
@@ -19,7 +19,7 @@
     <!-- Step 1: Overview -->
     <div v-if="currentStep === 1 && lesson" class="lesson-step overview-step">
       <h1>{{ lesson.title }}</h1>
-      
+
       <div class="overview-content">
         <div class="overview-section">
           <h3>🎯 What is it?</h3>
@@ -115,7 +115,7 @@
       <div class="practice-progress-info">
         <span>Problem {{ currentProblemIndex + 1 }} of {{ lesson.practice.problems.length }}</span>
         <span class="score-display">
-          Score: {{ practiceCorrect }} / {{ practiceAttempted }} 
+          Score: {{ practiceCorrect }} / {{ practiceAttempted }}
           <span v-if="practiceAttempted > 0">({{ Math.round((practiceCorrect / practiceAttempted) * 100) }}%)</span>
         </span>
       </div>
@@ -126,11 +126,12 @@
           <div class="problem-display">
             <h3>{{ currentPracticeProblem.problemText }}</h3>
           </div>
-          
+
           <div class="answer-input-group">
             <input
               ref="practiceInput"
-              v-model="practiceAnswer"
+              :value="practiceAnswer"
+              @input="(e) => practiceAnswer = (e.target as HTMLInputElement).value"
               type="number"
               min="0"
               class="practice-input"
@@ -138,7 +139,7 @@
               :disabled="showingFeedback"
               placeholder="?"
             >
-            <button @click="submitPracticeAnswer" class="submit-btn" :disabled="showingFeedback">
+            <button @click="submitPracticeAnswer" class="submit-btn" :disabled="showingFeedback || !practiceAnswer">
               Check
             </button>
           </div>
@@ -151,7 +152,7 @@
           </div>
 
           <div v-if="currentPracticeProblem.scaffolding" class="scaffolding-steps">
-            <div 
+            <div
               v-for="(step, index) in currentPracticeProblem.scaffolding.steps"
               :key="step.stepNumber"
               class="scaffold-step"
@@ -161,14 +162,15 @@
                 <span class="step-num">Step {{ step.stepNumber }}</span>
                 <span v-if="currentScaffoldStep > index" class="step-check">✅</span>
               </div>
-              
+
               <div v-if="currentScaffoldStep >= index" class="step-content">
                 <p class="step-question">{{ step.question }}</p>
-                
+
                 <div v-if="currentScaffoldStep === index" class="step-input">
                   <input
                     ref="scaffoldInput"
-                    v-model="scaffoldAnswer"
+                    :value="scaffoldAnswer"
+                    @input="(e) => scaffoldAnswer = (e.target as HTMLInputElement).value"
                     type="number"
                     class="practice-input"
                     @keyup.enter="submitScaffoldStep"
@@ -177,7 +179,7 @@
                     Check
                   </button>
                 </div>
-                
+
                 <div v-if="currentScaffoldStep > index && step.explanation" class="step-explanation">
                   {{ step.explanation }}
                 </div>
@@ -191,20 +193,21 @@
           <div class="problem-display">
             <h3>{{ currentPracticeProblem.problemText }}</h3>
           </div>
-          
+
           <div class="ten-frame-placeholder">
             <p>🎨 Interactive ten frame activity coming soon!</p>
             <p>For now, solve using the Making 10 strategy:</p>
-            
+
             <div class="answer-input-group">
               <input
                 ref="practiceInput"
-                v-model="practiceAnswer"
+                :value="practiceAnswer"
+                @input="(e) => practiceAnswer = (e.target as HTMLInputElement).value"
                 type="number"
                 class="practice-input"
                 @keyup.enter="submitPracticeAnswer"
               >
-              <button @click="submitPracticeAnswer" class="submit-btn">
+              <button @click="submitPracticeAnswer" class="submit-btn" :disabled="!practiceAnswer">
                 Check
               </button>
             </div>
@@ -229,19 +232,19 @@
       <!-- Practice complete -->
       <div v-else class="practice-complete">
         <h3>Practice Complete!</h3>
-        <p>You got {{ practiceCorrect }} out of {{ lesson.practice.problems.length }} correct 
+        <p>You got {{ practiceCorrect }} out of {{ lesson.practice.problems.length }} correct
           ({{ Math.round((practiceCorrect / lesson.practice.problems.length) * 100) }}%)</p>
-        
+
         <div v-if="passedPractice" class="passed-message">
           <p class="success">✅ Great job! You're ready to use this strategy!</p>
           <button @click="completeLesson" class="complete-btn">
             Finish Lesson →
           </button>
         </div>
-        
+
         <div v-else class="retry-message">
           <p class="needs-work">
-            You need {{ lesson.practice.successCriteria.minPercentage }}% to pass. 
+            You need {{ lesson.practice.successCriteria.minPercentage }}% to pass.
             Let's review the strategy and try again!
           </p>
           <button @click="retryPractice" class="retry-btn">
@@ -257,7 +260,7 @@
     <!-- Step 4: Complete -->
     <div v-if="currentStep === 4 && lesson" class="lesson-step complete-step">
       <h1>🎉 Lesson Complete!</h1>
-      
+
       <div class="completion-message">
         <p>{{ lesson.completionMessage }}</p>
       </div>
@@ -307,8 +310,8 @@ const lesson = ref<StrategyLesson | null>(null);
 const currentStep = ref(1);  // 1=Overview, 2=Video, 3=Practice, 4=Complete
 const currentProblemIndex = ref(0);
 const currentScaffoldStep = ref(0);
-const practiceAnswer = ref('');
-const scaffoldAnswer = ref('');
+const practiceAnswer = ref<string>('');
+const scaffoldAnswer = ref<string>('');
 const showingFeedback = ref(false);
 const lastAnswerCorrect = ref(false);
 const practiceAttempted = ref(0);
@@ -328,7 +331,7 @@ const currentPracticeProblem = computed(() => {
 
 const passedPractice = computed(() => {
   if (!lesson.value || lesson.value.practice.problems.length === 0) return false;
-  
+
   const accuracy = (practiceCorrect.value / lesson.value.practice.problems.length) * 100;
   return (
     practiceCorrect.value >= lesson.value.practice.successCriteria.minCorrect &&
@@ -349,31 +352,31 @@ function getStepLabel(step: number): string {
 
 function getYouTubeEmbedUrl(): string {
   if (!lesson.value) return '';
-  
+
   const url = lesson.value.video.url;
   let videoId = '';
-  
+
   // Extract video ID from various YouTube URL formats
   if (url.includes('youtube.com/watch?v=')) {
     videoId = url.split('watch?v=')[1].split('&')[0];
   } else if (url.includes('youtu.be/')) {
     videoId = url.split('youtu.be/')[1].split('?')[0];
   }
-  
+
   let embedUrl = `https://www.youtube.com/embed/${videoId}`;
-  
+
   // Add start time if specified
   if (lesson.value.video.startTime) {
     embedUrl += `?start=${lesson.value.video.startTime}`;
   }
-  
+
   return embedUrl;
 }
 
 function nextStep() {
   if (currentStep.value < 4) {
     currentStep.value++;
-    
+
     // Focus input when entering practice
     if (currentStep.value === 3) {
       nextTick(() => {
@@ -391,21 +394,21 @@ function prevStep() {
 
 function submitPracticeAnswer() {
   if (!currentPracticeProblem.value) return;
-  
-  // Handle zero as valid answer (for 5 + 0 = 5 type problems)
-  const studentAnswerStr = String(practiceAnswer.value === '' ? '' : practiceAnswer.value).trim();
-  
+
+  // Handle empty string or zero as valid answer (for 5 + 0 = 5 type problems)
+  const studentAnswerStr = practiceAnswer.value.trim();
+
   // Allow submission even if answer is empty/zero
   if (studentAnswerStr === '' && currentPracticeProblem.value.correctAnswer !== '0') {
     return; // Don't submit if no answer (unless answer is 0)
   }
-  
+
   const isCorrect = studentAnswerStr === currentPracticeProblem.value.correctAnswer;
-  
+
   lastAnswerCorrect.value = isCorrect;
   showingFeedback.value = true;
   practiceAttempted.value++;
-  
+
   if (isCorrect) {
     practiceCorrect.value++;
   }
@@ -413,17 +416,17 @@ function submitPracticeAnswer() {
 
 function submitScaffoldStep() {
   if (!currentPracticeProblem.value?.scaffolding || !scaffoldAnswer.value) return;
-  
+
   const currentStepData = currentPracticeProblem.value.scaffolding.steps[currentScaffoldStep.value];
-  const studentAnswerStr = String(scaffoldAnswer.value).trim();
+  const studentAnswerStr = scaffoldAnswer.value.trim();
   const isCorrect = studentAnswerStr === currentStepData.correctAnswer;
-  
+
   if (isCorrect) {
     // Store answer and move to next step
     scaffoldAnswers.value.push(scaffoldAnswer.value);
     scaffoldAnswer.value = '';
     currentScaffoldStep.value++;
-    
+
     // If all steps complete, mark problem as correct
     if (currentScaffoldStep.value >= currentPracticeProblem.value.scaffolding.steps.length) {
       lastAnswerCorrect.value = true;
@@ -449,7 +452,7 @@ function nextPracticeProblem() {
   currentScaffoldStep.value = 0;
   scaffoldAnswers.value = [];
   currentProblemIndex.value++;
-  
+
   nextTick(() => {
     if (lesson.value?.practice.type === 'scaffolded') {
       scaffoldInput.value?.focus();
@@ -465,15 +468,18 @@ function retryPractice() {
   practiceAttempted.value = 0;
   practiceCorrect.value = 0;
   practiceAnswer.value = '';
+  scaffoldAnswer.value = '';
+  currentScaffoldStep.value = 0;
+  scaffoldAnswers.value = [];
   showingFeedback.value = false;
-  
+
   // Go back to overview
   currentStep.value = 1;
 }
 
 async function completeLesson() {
   if (!lesson.value || !authStore.currentUser) return;
-  
+
   try {
     // Save lesson completion to Firestore
     await saveLessonCompletion(
@@ -485,9 +491,9 @@ async function completeLesson() {
         passed: passedPractice.value
       }
     );
-    
+
     console.log('✅ Lesson completed and saved:', lesson.value.id);
-    
+
     // Mark as complete
     currentStep.value = 4;
   } catch (error) {
@@ -502,18 +508,18 @@ async function exitLesson() {
   console.log('  lesson:', lesson.value?.id);
   console.log('  user:', authStore.currentUser?.uid);
   console.log('  currentStep:', currentStep.value);
-  
+
   if (!lesson.value || !authStore.currentUser) {
     console.log('❌ Missing lesson or user, navigating anyway');
     router.push('/fluency/daily-practice');
     return;
   }
-  
+
   try {
     saving.value = true;
-    
+
     console.log('💾 Attempting to save lesson completion...');
-    
+
     // Ensure lesson completion is saved before exiting
     if (currentStep.value === 4) {
       const saveData = {
@@ -521,26 +527,32 @@ async function exitLesson() {
         correct: practiceCorrect.value,
         passed: passedPractice.value
       };
-      
+
       console.log('💾 Save data:', saveData);
-      
+
       await saveLessonCompletion(
         authStore.currentUser.uid,
         lesson.value.id,
         saveData
       );
-      
+
       console.log('✅ Lesson saved to Firestore successfully!');
       console.log('✅ Navigating to practice...');
     }
-    
-    // Return to practice
-    router.push('/fluency/daily-practice');
+
+    // Return to practice (with flag to prevent redirect loop)
+    router.push({
+      path: '/fluency/daily-practice',
+      query: { fromLesson: 'true' }
+    });
   } catch (error) {
     console.error('❌ ERROR saving lesson on exit:', error);
     console.error('Full error:', JSON.stringify(error, null, 2));
     // Still navigate even if save fails
-    router.push('/fluency/daily-practice');
+    router.push({
+      path: '/fluency/daily-practice',
+      query: { fromLesson: 'true' }
+    });
   } finally {
     saving.value = false;
   }
@@ -549,13 +561,13 @@ async function exitLesson() {
 // Initialize
 onMounted(() => {
   const loadedLesson = getLessonById(lessonId.value);
-  
+
   if (!loadedLesson) {
     console.error('Lesson not found:', lessonId.value);
     router.push('/');
     return;
   }
-  
+
   lesson.value = loadedLesson;
   console.log('📚 Loaded lesson:', lesson.value.title);
 });

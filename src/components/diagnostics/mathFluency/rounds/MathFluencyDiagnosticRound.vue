@@ -78,12 +78,24 @@ watch(
 )
 
 watch(currentIndex, async () => {
+  console.log(`🔍 [DIAGNOSTIC ROUND] currentIndex changed:`, {
+    currentIndex: currentIndex.value,
+    totalProblems: props.problems.length,
+    isComplete: isComplete.value,
+  })
+
   if (!isComplete.value) {
     // Show processing transition
     showingQuestion.value = false
     await new Promise((resolve) => setTimeout(resolve, 300))
     startProblem()
   } else {
+    console.log(`🔍 [DIAGNOSTIC ROUND] All problems completed, emitting complete event`)
+    console.log(`📊 [DIAGNOSTIC ROUND] Final state:`, {
+      totalProblems: props.problems.length,
+      currentIndex: currentIndex.value,
+      problemsAnswered: currentIndex.value,
+    })
     emit('complete')
   }
 })
@@ -127,7 +139,19 @@ async function handleSubmit(timeout: boolean = false) {
   const responseTime = timeout
     ? (props.timePerProblem || 10) * 1000
     : Date.now() - startTime.value
-  const isCorrect = String(answer.value || '').trim() === currentProblem.value.correctAnswer
+  const userAnswer = String(answer.value || '').trim()
+  const isCorrect = userAnswer === currentProblem.value.correctAnswer
+
+  console.log(`🔍 [DIAGNOSTIC ROUND] Submitting answer:`, {
+    problemIndex: currentIndex.value,
+    problemId: currentProblem.value.problemId,
+    displayText: currentProblem.value.displayText,
+    userAnswer,
+    correctAnswer: currentProblem.value.correctAnswer,
+    isCorrect,
+    timeout,
+    responseTime: `${(responseTime / 1000).toFixed(1)}s`,
+  })
 
   emit('answer', currentProblem.value.problemId, answer.value || '', responseTime, isCorrect)
 
@@ -135,7 +159,15 @@ async function handleSubmit(timeout: boolean = false) {
   await new Promise((resolve) => setTimeout(resolve, 600))
 
   // Move to next problem
-  currentIndex.value++
+  const nextIndex = currentIndex.value + 1
+  console.log(`🔍 [DIAGNOSTIC ROUND] Moving to next problem:`, {
+    currentIndex: currentIndex.value,
+    nextIndex,
+    totalProblems: props.problems.length,
+    willComplete: nextIndex >= props.problems.length,
+  })
+
+  currentIndex.value = nextIndex
 }
 
 onUnmounted(() => {

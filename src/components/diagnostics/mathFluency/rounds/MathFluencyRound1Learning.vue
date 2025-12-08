@@ -87,7 +87,8 @@
       </div>
       <input
         ref="inputRef"
-        v-model="answer"
+        :value="answer"
+        @input="(e) => answer = (e.target as HTMLInputElement).value"
         type="number"
         class="answer-input-large"
         placeholder="?"
@@ -124,7 +125,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onUnmounted } from 'vue'
+import { ref, computed, watch } from 'vue'
 import type { ProblemProgress } from '@/types/mathFluency'
 import MathFluencyTimerBar from '../visuals/MathFluencyTimerBar.vue'
 import MathFluencyTenFrame from '../visuals/MathFluencyTenFrame.vue'
@@ -140,23 +141,32 @@ const props = defineProps<{
   consolidationTimeRemaining: number
   recallTimeRemaining: number
   feedbackTimeRemaining: number
-  answer: string
   lastCorrect: boolean
 }>()
 
 const emit = defineEmits<{
   'proceed-to-recall': []
-  'submit-answer': []
+  'submit-answer': [answer: string]
   'timeout': []
+  'update:answer': [answer: string]
 }>()
 
 const inputRef = ref<HTMLInputElement | null>(null)
+const answer = ref<string>('')
 
 const currentProblem = computed(() => props.problems[props.currentIndex] || null)
 
+// Watch for phase changes to reset answer
+watch(() => props.phase, (newPhase) => {
+  if (newPhase === 'recall') {
+    answer.value = ''
+  }
+})
+
 function handleSubmit() {
-  if (!props.answer) return
-  emit('submit-answer')
+  if (!answer.value) return
+  emit('submit-answer', answer.value)
+  emit('update:answer', answer.value)
 }
 </script>
 

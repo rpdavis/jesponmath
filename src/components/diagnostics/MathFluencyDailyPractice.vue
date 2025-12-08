@@ -97,10 +97,10 @@
       :consolidation-time-remaining="consolidationTimeRemaining"
       :recall-time-remaining="recallTimeRemaining"
       :feedback-time-remaining="feedbackTimeRemaining"
-      :answer="round1Answer"
       :last-correct="round1LastCorrect"
       @proceed-to-recall="proceedToRecall"
-      @submit-answer="submitRound1Answer"
+      @submit-answer="(answer) => { round1Answer = answer; submitRound1Answer() }"
+      @update:answer="(answer) => round1Answer = answer"
     />
 
     <!-- ROUND 2: Practice -->
@@ -136,12 +136,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useMathFluencyPractice } from '@/composables/useMathFluencyPractice'
 import { useMathFluencyDiagnostic } from '@/composables/useMathFluencyDiagnostic'
 import { useMathFluencyRounds } from '@/composables/useMathFluencyRounds'
 import { getSessionQualityDisplay } from '@/utils/mathFluencyDisplayUtils'
+import { checkForRequiredLesson } from '@/services/strategyLessonService'
+import { useAuthStore } from '@/stores/authStore'
 import MathFluencyStartScreen from './mathFluency/rounds/MathFluencyStartScreen.vue'
 import MathFluencyWarmupRound from './mathFluency/rounds/MathFluencyWarmupRound.vue'
 import MathFluencyDiagnosticRound from './mathFluency/rounds/MathFluencyDiagnosticRound.vue'
@@ -152,6 +154,11 @@ import MathFluencyRound3Assessment from './mathFluency/rounds/MathFluencyRound3A
 import MathFluencySessionComplete from './mathFluency/rounds/MathFluencySessionComplete.vue'
 
 const route = useRoute()
+const router = useRouter()
+const authStore = useAuthStore()
+
+// Track if we've checked for lessons to prevent redirect loops
+const lessonCheckCompleted = ref(false)
 
 // Use composables
 const practice = useMathFluencyPractice()
@@ -300,10 +307,30 @@ function handleWarmupComplete() {
 
 // Store diagnostic results in session when diagnostic completes
 function handleDiagnosticCompleteWithStorage() {
+  console.log(`🔍 [DIAGNOSTIC STORAGE] Complete handler called`)
+  console.log(`📊 [DIAGNOSTIC STORAGE] Current state:`, {
+    diagnosticProblemsCount: diagnosticProblems.value.length,
+    diagnosticResultsCount: Object.keys(diagnosticResults.value).length,
+    diagnosticCorrect: diagnosticCorrect.value,
+    diagnosticScore: diagnosticScore.value,
+  })
+
   handleDiagnosticComplete()
+
+  console.log(`📊 [DIAGNOSTIC STORAGE] After handleDiagnosticComplete:`, {
+    diagnosticProblemsCount: diagnosticProblems.value.length,
+    diagnosticResultsCount: Object.keys(diagnosticResults.value).length,
+    diagnosticCorrect: diagnosticCorrect.value,
+    diagnosticScore: diagnosticScore.value,
+  })
+
   // Store diagnostic results in session for progress update
   if (session.value && diagnosticResults.value) {
     session.value.diagnosticResults = diagnosticResults.value
+    console.log(`💾 [DIAGNOSTIC STORAGE] Stored results in session:`, {
+      sessionId: session.value.id,
+      resultsCount: Object.keys(diagnosticResults.value).length,
+    })
   }
 }
 
@@ -315,10 +342,73 @@ function handleContinueCurrentLevel() {
   )
 }
 
+// Check for required lesson before practice starts
+async function checkForRequiredLessonBeforePractice() {
+  // Prevent multiple checks and redirect loops
+  if (lessonCheckCompleted.value) return
+  if (!authStore.currentUser || !practice.progress.value) return
+
+  // Don't check if already on a lesson page
+  if (route.path.includes('/lesson/')) {
+    lessonCheckCompleted.value = true
+    return
+  }
+
+  // Don't check if already completed today or practice has started
+  if (practice.completedToday.value || practice.practiceStarted.value) {
+    lessonCheckCompleted.value = true
+    return
+  }
+
+  // If returning from a lesson (check query param), skip check to allow practice
+  if (route.query.fromLesson === 'true') {
+    console.log('✅ Returning from lesson - skipping lesson check')
+    lessonCheckCompleted.value = true
+    return
+  }
+
+  try {
+    // Calculate session number (total practice days + 1 for this upcoming session)
+    const sessionNumber = (practice.progress.value.totalPracticeDays || 0) + 1
+
+    console.log(`📚 Checking for required lesson before session ${sessionNumber}...`)
+
+    const requiredLessonId = await checkForRequiredLesson(
+      authStore.currentUser.uid,
+      sessionNumber
+    )
+
+    if (requiredLessonId) {
+      console.log(`📚 Redirecting to required lesson: ${requiredLessonId}`)
+      lessonCheckCompleted.value = true
+
+      // Redirect to lesson page with return path
+      router.push({
+        path: `/fluency/lesson/${requiredLessonId}`,
+        query: { returnTo: '/fluency/daily-practice' }
+      })
+      return
+    }
+
+    console.log('✅ No lesson required - proceeding to practice')
+    lessonCheckCompleted.value = true
+  } catch (error) {
+    console.error('Error checking for required lesson:', error)
+    // Don't block practice if lesson check fails
+    lessonCheckCompleted.value = true
+  }
+}
+
 // Initialize
 onMounted(async () => {
   assignmentId.value = (route.query.assignment as string) || null
   await loadProgress()
+
+  // Check for required lesson after progress loads
+  // Only check once, and only if not already on lesson page
+  if (!route.path.includes('/lesson/')) {
+    await checkForRequiredLessonBeforePractice()
+  }
 })
 
 onUnmounted(() => {

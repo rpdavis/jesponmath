@@ -162,9 +162,20 @@ async function handleSubmit(timeout: boolean = false) {
   // Wait for feedback display, then continue
   await new Promise((resolve) => setTimeout(resolve, 1500))
 
-  // Reset for next problem (parent will handle stack management)
+  // Reset for next problem
   showingFeedback.value = false
   submitting.value = false
+
+  // Advance to next problem
+  currentIndex.value++
+
+  // Check if we've completed all problems
+  if (currentIndex.value >= props.problems.length) {
+    emit('complete')
+  } else {
+    // Start next problem
+    startProblem()
+  }
 }
 
 onUnmounted(() => {

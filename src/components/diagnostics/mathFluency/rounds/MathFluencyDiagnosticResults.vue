@@ -24,7 +24,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, watch } from 'vue'
 import type { ProblemProgress } from '@/types/mathFluency'
 
 const props = defineProps<{
@@ -37,6 +37,29 @@ const props = defineProps<{
 defineEmits<{
   continue: []
 }>()
+
+onMounted(() => {
+  console.log(`🔍 [DIAGNOSTIC RESULTS] Component mounted with props:`, {
+    score: props.score,
+    correct: props.correct,
+    total: props.total,
+    wrongProblemsCount: props.wrongProblems.length,
+    expectedCorrect: props.total - props.wrongProblems.length,
+  })
+})
+
+watch(
+  () => [props.score, props.correct, props.total],
+  ([newScore, newCorrect, newTotal]) => {
+    console.log(`🔍 [DIAGNOSTIC RESULTS] Props changed:`, {
+      score: newScore,
+      correct: newCorrect,
+      total: newTotal,
+      wrongProblemsCount: props.wrongProblems.length,
+      expectedCorrect: newTotal - props.wrongProblems.length,
+    })
+  },
+)
 
 const scoreClass = computed(() => {
   if (props.score >= 90) return 'excellent'

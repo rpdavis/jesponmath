@@ -39,6 +39,7 @@ export function useMathFluencyRounds(
   const recallTimeRemaining = ref(15)
   const feedbackTimeRemaining = ref(10)
   const round1TimerInterval = ref<number | null>(null)
+  const startRound2Callback = ref<(() => void) | null>(null)
 
   // Round 2: Practice State
   const round2CurrentIndex = ref(0)
@@ -53,6 +54,7 @@ export function useMathFluencyRounds(
   const round2TimeRemaining = ref(15)
   const round2TimerInterval = ref<number | null>(null)
   const round2StartTime = ref(0)
+  const finishRound2Callback = ref<(() => void) | null>(null)
 
   // Round 3: Assessment State
   const round3CurrentIndex = ref(0)
@@ -64,14 +66,18 @@ export function useMathFluencyRounds(
   const round3StartTime = ref(0)
 
   // Computed
-  const currentRound1Problem = computed(() => round1Problems.value[round1CurrentIndex.value] || null)
+  const currentRound1Problem = computed(
+    () => round1Problems.value[round1CurrentIndex.value] || null,
+  )
 
   const currentRound2Problem = computed(() => {
     if (round2Stack.value.length === 0) return null
     return round2Stack.value[0]
   })
 
-  const currentRound3Problem = computed(() => round3Problems.value[round3CurrentIndex.value] || null)
+  const currentRound3Problem = computed(
+    () => round3Problems.value[round3CurrentIndex.value] || null,
+  )
 
   const round2Accuracy = computed(() => {
     if (round2Total.value === 0) return 0
@@ -92,6 +98,7 @@ export function useMathFluencyRounds(
       return
     }
 
+    startRound2Callback.value = startRound2
     currentRound.value = 1
     round1Phase.value = 'encoding'
     round1CurrentIndex.value = 0
@@ -175,7 +182,30 @@ export function useMathFluencyRounds(
       }
     }
 
+    // Start feedback phase with timer
     round1Phase.value = 'feedback'
+    feedbackTimeRemaining.value = 3 // 3 seconds for feedback
+
+    // Capture isCorrect for use in timer callback
+    const wasCorrect = isCorrect
+
+    clearAllTimers()
+    round1TimerInterval.value = window.setInterval(() => {
+      feedbackTimeRemaining.value--
+      if (feedbackTimeRemaining.value <= 0) {
+        clearAllTimers()
+        if (wasCorrect) {
+          // Correct answer - move to next problem
+          if (startRound2Callback.value) {
+            moveToNextRound1Problem(startRound2Callback.value)
+          }
+        } else {
+          // Incorrect answer - show the problem again (go back to encoding phase)
+          round1RecallAttempt.value = 0
+          startEncodingPhase()
+        }
+      }
+    }, 1000) as unknown as number
   }
 
   function moveToNextRound1Problem(startRound2: () => void) {
@@ -212,6 +242,7 @@ export function useMathFluencyRounds(
     round2Correct.value = 0
     round2Total.value = 0
     round2Results.value = {}
+    finishRound2Callback.value = () => finishRound2(startRound3)
 
     if (session.value.round2_practice) {
       session.value.round2_practice.problemsPresented = round2Problems.value.map((p) => p.problemId)
@@ -222,7 +253,7 @@ export function useMathFluencyRounds(
       return
     }
 
-    showNextRound2Problem(() => finishRound2(startRound3))
+    showNextRound2Problem(finishRound2Callback.value)
   }
 
   async function showNextRound2Problem(finishRound2: () => void) {
@@ -297,7 +328,12 @@ export function useMathFluencyRounds(
     showNextRound2Problem(finishRound2)
   }
 
-  async function handleRound2Answer(problemId: string, answer: string, responseTime: number, isCorrect: boolean) {
+  async function handleRound2Answer(
+    problemId: string,
+    answer: string,
+    responseTime: number,
+    isCorrect: boolean,
+  ) {
     await updateProblemInProgress(authStore.currentUser!.uid, currentOperation.value, problemId, {
       correct: isCorrect,
       responseTime,
@@ -320,6 +356,9 @@ export function useMathFluencyRounds(
     if (isCorrect) {
       round2Correct.value++
     }
+
+    // Note: Component manages its own progression through problems array
+    // Stack management is handled separately for internal tracking
   }
 
   function finishRound2(startRound3: () => void) {
@@ -345,7 +384,9 @@ export function useMathFluencyRounds(
     round3Results.value = {}
 
     if (session.value.round3_assessment) {
-      session.value.round3_assessment.problemsAssessed = round3Problems.value.map((p) => p.problemId)
+      session.value.round3_assessment.problemsAssessed = round3Problems.value.map(
+        (p) => p.problemId,
+      )
     }
 
     if (round3Problems.value.length === 0) {
@@ -400,20 +441,48 @@ export function useMathFluencyRounds(
   }
 
   function submitRound3Answer() {
+    // Get current problem before incrementing
+    const currentProblem = round3Problems.value[round3CurrentIndex.value]
+
+    // If there's a current problem but no result yet, record it as incorrect (timeout)
+    if (currentProblem && !round3Results.value[currentProblem.problemId]) {
+      const responseTime = 10 * 1000 // Default 10 seconds timeout
+      round3Results.value[currentProblem.problemId] = {
+        correct: false,
+        responseTime,
+        previousLevel: currentProblem.proficiencyLevel,
+        maintainedLevel: false,
+      }
+    }
+
+    round3CurrentIndex.value++
+
     if (round3CurrentIndex.value >= round3Problems.value.length) {
       finishRound3()
       return
     }
 
-    round3CurrentIndex.value++
     showNextRound3Problem()
   }
 
   function finishRound3() {
     if (session.value.round3_assessment) {
+      // Ensure all problems have results (fill in any missing with incorrect/timeout)
+      round3Problems.value.forEach((problem) => {
+        if (!round3Results.value[problem.problemId]) {
+          round3Results.value[problem.problemId] = {
+            correct: false,
+            responseTime: 10 * 1000, // Default 10 seconds timeout
+            previousLevel: problem.proficiencyLevel,
+            maintainedLevel: false,
+          }
+        }
+      })
+
       session.value.round3_assessment.results = round3Results.value
       const correct = Object.values(round3Results.value).filter((r) => r.correct).length
-      session.value.round3_assessment.accuracy = (correct / round3Problems.value.length) * 100
+      const total = round3Problems.value.length
+      session.value.round3_assessment.accuracy = total > 0 ? Math.round((correct / total) * 100) : 0
       const times = Object.values(round3Results.value).map((r) => r.responseTime)
       session.value.round3_assessment.averageResponseTime =
         times.length > 0 ? Math.round(times.reduce((sum, t) => sum + t, 0) / times.length) : 0
@@ -526,4 +595,3 @@ export function useMathFluencyRounds(
     clearRound3Timer,
   }
 }
-

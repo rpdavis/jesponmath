@@ -378,7 +378,7 @@ export function useMathFluencyPractice() {
 
         // Extract results from session
         // Diagnostic results should be stored in session when diagnostic completes
-        const diagnosticResults = (session.value as any).diagnosticResults || {}
+        const diagnosticResults = session.value.diagnosticResults || {}
         const round2Results = session.value.round2_practice?.results || {}
         const round3Results = session.value.round3_assessment?.results || {}
 
