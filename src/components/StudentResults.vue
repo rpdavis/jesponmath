@@ -1,11 +1,21 @@
 <template>
   <div class="student-results">
     <div class="results-header">
-      <h1>📊 My Results</h1>
-      <p>View your assessment results and progress</p>
-      <p class="info-note">💡 Note: Progress Assessments (PA) are managed separately and not shown here.</p>
-      <div v-if="currentPeriodInfo" class="period-indicator">
-        📅 Showing {{ currentPeriodInfo.name }} ({{ currentPeriodInfo.dateRange }})
+      <div class="header-top">
+        <div class="header-content">
+          <h1>📊 My Results</h1>
+          <p>View your assessment results and progress</p>
+          <p class="info-note">💡 Note: Progress Assessments (PA) are managed separately and not shown here.</p>
+          <div v-if="currentPeriodInfo" class="period-indicator">
+            📅 Showing {{ currentPeriodInfo.name }} ({{ currentPeriodInfo.dateRange }})
+          </div>
+        </div>
+        <div class="header-actions">
+          <router-link to="/student-summary" class="summary-link">
+            <span class="link-icon">📋</span>
+            <span class="link-text">View Complete Summary</span>
+          </router-link>
+        </div>
       </div>
     </div>
 
@@ -42,50 +52,50 @@
             <span class="radio-label">📊 Show by Standards</span>
           </label>
         </div>
-        
+
         <!-- Assessment Category Filter Buttons (only show in standards view) -->
         <div v-if="viewMode === 'standards'" class="assessment-category-filters">
           <label class="filter-label">Assessment Type:</label>
           <div class="category-buttons">
-            <button 
+            <button
               @click="selectedAssessmentCategory = ''"
               class="category-filter-btn assessment-cat-btn"
               :class="{ active: selectedAssessmentCategory === '' }"
             >
               All Types
             </button>
-            <button 
-              v-for="category in uniqueAssessmentCategories" 
+            <button
+              v-for="category in uniqueAssessmentCategories"
               :key="category"
               @click="selectedAssessmentCategory = category"
               class="category-filter-btn assessment-cat-btn"
-              :class="{ 
+              :class="{
                 active: selectedAssessmentCategory === category,
                 [`cat-${category.toLowerCase()}`]: true
               }"
             >
-              {{ category === 'ESA' ? 'Essential Standards (ESA)' : 
-                 category === 'SA' ? 'Standard Assessments (SA)' : 
-                 category === 'HW' ? 'Homework (HW)' : 
-                 category === 'Assign' ? 'Assignments' : 
+              {{ category === 'ESA' ? 'Essential Standards (ESA)' :
+                 category === 'SA' ? 'Standard Assessments (SA)' :
+                 category === 'HW' ? 'Homework (HW)' :
+                 category === 'Assign' ? 'Assignments' :
                  category }}
             </button>
           </div>
         </div>
-        
+
         <!-- App Category Filter Buttons (only show in standards view) -->
         <div v-if="viewMode === 'standards' && uniqueAppCategories.length > 0" class="app-category-filters">
           <label class="filter-label">App Categories:</label>
           <div class="category-buttons">
-            <button 
+            <button
               @click="selectedAppCategory = ''"
               class="category-filter-btn"
               :class="{ active: selectedAppCategory === '' }"
             >
               All
             </button>
-            <button 
-              v-for="category in uniqueAppCategories" 
+            <button
+              v-for="category in uniqueAppCategories"
               :key="category"
               @click="selectedAppCategory = category"
               class="category-filter-btn"
@@ -109,7 +119,7 @@
             <p>Completed</p>
           </div>
         </div>
-        
+
         <div class="summary-card">
           <div class="summary-icon">⭐</div>
           <div class="summary-content">
@@ -121,8 +131,8 @@
 
       <!-- Assessment View -->
       <div v-if="viewMode === 'assessments'" class="results-list">
-        <div 
-          v-for="result in filteredAssessmentResults" 
+        <div
+          v-for="result in filteredAssessmentResults"
           :key="result.id"
           class="result-card"
           :class="getScoreClass(result.percentage)"
@@ -153,7 +163,7 @@
                 <span class="stat-text">{{ result.timeSpent }} min</span>
               </div>
             </div>
-            
+
             <div class="result-date">
               <span class="date-icon">📅</span>
               <span class="date-text">{{ formatDate(result.completedAt) }}</span>
@@ -162,7 +172,7 @@
 
           <!-- Question Breakdown Toggle -->
           <div class="question-breakdown-toggle">
-            <button 
+            <button
               @click="toggleQuestionBreakdown(result.id)"
               class="breakdown-toggle-btn"
               :class="{ 'expanded': expandedResults[result.id] }"
@@ -180,10 +190,10 @@
               <h4>📝 Question-by-Question Results</h4>
               <p class="questions-subtitle">See what you got right and wrong, plus the correct answers</p>
             </div>
-            
+
             <div class="questions-list">
-              <div 
-                v-for="(response, index) in result.responses" 
+              <div
+                v-for="(response, index) in result.responses"
                 :key="response.questionId"
                 class="question-detail-item"
                 :class="{ 'correct': response.isCorrect, 'incorrect': !response.isCorrect }"
@@ -197,34 +207,34 @@
                     {{ response.pointsEarned || 0 }}/{{ getQuestionPoints(result.assessmentId, response.questionId) }} pts
                   </span>
                 </div>
-                
+
                 <div class="question-detail-content">
                   <div class="question-text-display">
-                    <strong>Question:</strong> 
+                    <strong>Question:</strong>
                     <span v-html="renderLatexInText(getQuestionText(result.assessmentId, response.questionId))"></span>
                   </div>
-                  
+
                   <div class="answer-comparison">
                     <div class="student-answer-display">
-                      <strong>Your Answer:</strong> 
+                      <strong>Your Answer:</strong>
                       <span class="answer-text" :class="{ 'incorrect-answer': !response.isCorrect }">
                         {{ getDisplayAnswer(result.assessmentId, response.questionId, response.studentAnswer) }}
                       </span>
                     </div>
-                    
+
                     <div class="correct-answer-display">
-                      <strong>Correct Answer:</strong> 
+                      <strong>Correct Answer:</strong>
                       <span class="answer-text correct-answer">
                         {{ getDisplayCorrectAnswer(result.assessmentId, response.questionId) }}
                       </span>
                     </div>
-                    
+
                     <!-- Show alternative answers if they exist -->
                     <div v-if="getAlternativeAnswers(result.assessmentId, response.questionId).length > 0" class="alternative-answers-display">
                       <strong>Also Acceptable:</strong>
                       <div class="alternatives-list">
-                        <span 
-                          v-for="alt in getAlternativeAnswers(result.assessmentId, response.questionId)" 
+                        <span
+                          v-for="alt in getAlternativeAnswers(result.assessmentId, response.questionId)"
                           :key="alt"
                           class="alternative-answer-tag"
                         >
@@ -232,13 +242,13 @@
                         </span>
                       </div>
                     </div>
-                    
+
                     <!-- Show equivalent fractions if applicable -->
                     <div v-if="isEquivalentFractionsEnabled(result.assessmentId, response.questionId) && isFractionAnswer(result.assessmentId, response.questionId)" class="equivalent-fractions-display">
                       <strong>Equivalent Fractions:</strong>
                       <div class="equivalents-list">
-                        <span 
-                          v-for="equiv in getEquivalentFractions(result.assessmentId, response.questionId)" 
+                        <span
+                          v-for="equiv in getEquivalentFractions(result.assessmentId, response.questionId)"
                           :key="equiv"
                           class="equivalent-fraction-tag"
                         >
@@ -284,8 +294,8 @@
                   </span>
                 </td>
                 <td class="standard-mastery-cell">
-                  <span 
-                    class="mastery-badge" 
+                  <span
+                    class="mastery-badge"
                     :class="getStandardMasteryClass(getStudentStandardScore(standard))"
                   >
                     {{ getStudentStandardMastery(standard) }}%
@@ -342,10 +352,10 @@ const { filterAssessments, filterResults, selectedPeriod } = useGlobalAcademicPe
 // Current period display info
 const currentPeriodInfo = computed(() => {
   if (!selectedPeriod.value) return null;
-  
+
   const start = selectedPeriod.value.startDate.toLocaleDateString();
   const end = selectedPeriod.value.endDate.toLocaleDateString();
-  
+
   return {
     name: selectedPeriod.value.name,
     dateRange: `${start} - ${end}`
@@ -372,21 +382,21 @@ const averageScore = computed(() => {
 // PERFORMANCE: Memoized to avoid recalculating on every render
 const uniqueStandards = computed(() => {
   const startTime = performance.now();
-  
+
   const allQuestions = filteredAssessments.value.flatMap(assessment => [
     // Include assessment-level standard as a pseudo-question
     ...(assessment.standard ? [{ standard: assessment.standard }] : []),
     // Include all questions
     ...(assessment.questions || [])
   ]);
-  
+
   const standards = getAllStandardsFromQuestions(allQuestions);
-  
+
   const calcTime = Math.round(performance.now() - startTime);
   if (calcTime > 10) {
     console.log(`📊 Calculated ${standards.length} unique standards in ${calcTime}ms`);
   }
-  
+
   return standards;
 });
 
@@ -396,20 +406,20 @@ const uniqueAppCategories = computed(() => {
     .map(std => std.appCategory)
     .filter((category): category is string => Boolean(category))
     .filter((category, index, arr) => arr.indexOf(category) === index);
-  
+
   return categories.sort();
 });
 
 // Get unique assessment categories from student's assessments
 const uniqueAssessmentCategories = computed(() => {
   const categories = new Set<string>();
-  
+
   filteredAssessments.value.forEach(assessment => {
     if (assessment.category) {
       categories.add(assessment.category);
     }
   });
-  
+
   return Array.from(categories).sort();
 });
 
@@ -418,7 +428,7 @@ const uniqueAssessmentCategories = computed(() => {
 const filteredStandards = computed(() => {
   const startTime = performance.now();
   let standards = uniqueStandards.value;
-  
+
   // Apply app category filter if selected (for custom standards)
   if (selectedAppCategory.value) {
     standards = standards.filter(standardCode => {
@@ -426,12 +436,12 @@ const filteredStandards = computed(() => {
       return customStd?.appCategory === selectedAppCategory.value;
     });
   }
-  
+
   // Apply assessment category filter if selected (ESA, SA, HW, etc.)
   if (selectedAssessmentCategory.value) {
     // Get all standards from assessments of this category
     const categoryStandards = new Set<string>();
-    
+
     filteredAssessments.value
       .filter(assessment => assessment.category === selectedAssessmentCategory.value)
       .forEach(assessment => {
@@ -448,16 +458,16 @@ const filteredStandards = computed(() => {
           }
         });
       });
-    
+
     // Filter to only standards from this assessment category
     standards = standards.filter(std => categoryStandards.has(std));
   }
-  
+
   const filterTime = Math.round(performance.now() - startTime);
   if (filterTime > 10) {
     console.log(`🔍 Filtered to ${standards.length} standards in ${filterTime}ms`);
   }
-  
+
   return standards;
 });
 
@@ -466,34 +476,34 @@ const loadResults = async () => {
   try {
     loading.value = true;
     error.value = '';
-    
+
     const studentId = authStore.currentUser?.uid || authStore.currentUser?.googleId || authStore.currentUser?.seisId;
-    
+
     if (!studentId) {
       error.value = 'Student ID not found. Please contact your teacher.';
       return;
     }
-    
+
     // Load results, assessments, and custom standards (including PA assessments)
     const [results, assessmentsList, allCustomStandards] = await Promise.all([
       getAssessmentResultsByStudent(studentId),
       getAssessmentsByStudent(studentId),
       getAllCustomStandards()
     ]);
-    
+
     assessments.value = assessmentsList;
-    
+
     // Filter results to only include results for assigned assessments (including PA)
     const validResults = results.filter(result => {
       const assessment = assessmentsList.find(a => a.id === result.assessmentId);
       return assessment !== undefined; // Include if assessment exists (could be PA or regular)
     });
     assessmentResults.value = validResults;
-    
+
     console.log(`📊 Loaded ${results.length} results, ${validResults.length} valid (including PA)`);
-    
+
     customStandards.value = allCustomStandards;
-    
+
     // Clear cache when new data is loaded
     clearStandardScoreCache();
     console.log('🔄 Standard score cache cleared for fresh calculations');
@@ -534,7 +544,7 @@ const getIncorrectAnswers = (result: AssessmentResult) => {
 
 const formatDate = (timestamp: any) => {
   if (!timestamp) return 'Unknown';
-  
+
   const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
   return date.toLocaleDateString('en-US', {
     year: 'numeric',
@@ -548,17 +558,17 @@ const formatDate = (timestamp: any) => {
 // Standards-based methods (adapted from gradebook)
 const getCustomStandardByCode = (standardCode: string): CustomStandard | null => {
   if (!standardCode) return null;
-  
+
   // Remove CUSTOM: prefix if present
-  const cleanCode = standardCode.startsWith('CUSTOM:') ? 
+  const cleanCode = standardCode.startsWith('CUSTOM:') ?
     standardCode.replace('CUSTOM:', '') : standardCode;
-  
+
   return customStandards.value.find(std => std.code === cleanCode) || null;
 };
 
 const getStandardDisplayInfo = (standardCode: string) => {
   const customStd = getCustomStandardByCode(standardCode);
-  
+
   if (customStd) {
     return {
       name: customStd.name,
@@ -568,7 +578,7 @@ const getStandardDisplayInfo = (standardCode: string) => {
       isCustom: true
     };
   }
-  
+
   return {
     name: getCleanStandardName(standardCode),
     code: standardCode,
@@ -580,7 +590,7 @@ const getStandardDisplayInfo = (standardCode: string) => {
 
 const getCleanStandardName = (standardCode: string): string => {
   if (!standardCode) return 'No standard';
-  
+
   if (standardCode.startsWith('CUSTOM:')) {
     return standardCode.replace('CUSTOM:', ''); // Remove CUSTOM: prefix
   } else {
@@ -592,33 +602,33 @@ const getCleanStandardName = (standardCode: string): string => {
 const getStudentStandardScore = (standard: string) => {
   const studentUid = authStore.currentUser?.uid;
   if (!studentUid) return { correct: 0, total: 0, percentage: 0 };
-  
+
   // Check cache first - HUGE performance boost!
   const cacheKey = `${studentUid}-${standard}`;
   if (standardScoreCache.value.has(cacheKey)) {
     return standardScoreCache.value.get(cacheKey)!;
   }
-  
+
   const customStd = getCustomStandardByCode(standard);
   const maxScore = customStd?.maxScore;
-  
+
   // Collect all question attempts for this standard
   const questionAttempts: { isCorrect: boolean; score: number }[] = [];
-  
+
   filteredAssessments.value.forEach(assessment => {
     // Check if student has results for this assessment
     const result = filteredAssessmentResults.value.find(r => r.assessmentId === assessment.id);
     if (!result) return;
-    
+
     // Check if assessment-level standard matches
     const assessmentStandards = parseStandards(assessment.standard);
     const assessmentCoversStandard = assessmentStandards.includes(standard);
-    
+
     assessment.questions?.forEach((question: any) => {
       // Check if question covers this standard
       const questionStandards = parseStandards(question.standard);
       const questionCoversStandard = questionStandards.includes(standard) || assessmentCoversStandard;
-      
+
       if (questionCoversStandard) {
         // Find the response for this specific question
         const response = result.responses?.find((r: any) => r.questionId === question.id);
@@ -631,24 +641,24 @@ const getStudentStandardScore = (standard: string) => {
       }
     });
   });
-  
+
   // If no attempts, return 0/0
   if (questionAttempts.length === 0) {
     const result = { correct: 0, total: 0, percentage: 0 };
     standardScoreCache.value.set(cacheKey, result);
     return result;
   }
-  
+
   // Apply scoring method logic
   const scoringMethod = customStd?.scoringMethod || 'additive';
   let correct = 0;
   let total = 0;
   let percentage = 0;
-  
+
   if (scoringMethod === 'keepTop') {
     // Keep Top Score: Show the BEST performance out of maxScore possible
     questionAttempts.sort((a, b) => b.score - a.score);
-    
+
     if (maxScore && maxScore > 0) {
       // Take top maxScore questions (best performance)
       const topAttempts = questionAttempts.slice(0, maxScore);
@@ -661,35 +671,35 @@ const getStudentStandardScore = (standard: string) => {
       total = questionAttempts.length;
       percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
     }
-    
+
   } else if (scoringMethod === 'average') {
     // Average Scores: Calculate average percentage across all attempts
     if (questionAttempts.length > 0) {
-      const attemptPercentages = questionAttempts.map(attempt => 
+      const attemptPercentages = questionAttempts.map(attempt =>
         attempt.isCorrect ? 100 : 0
       );
       percentage = Math.round(attemptPercentages.reduce((sum: number, pct: number) => sum + pct, 0) / attemptPercentages.length);
       correct = Math.round((percentage / 100) * questionAttempts.length);
       total = questionAttempts.length;
     }
-    
+
   } else {
     // Additive (current behavior): All attempts count, maxScore caps denominator
     questionAttempts.sort((a, b) => b.score - a.score);
-    const limitedAttempts = maxScore && maxScore > 0 ? 
-      questionAttempts.slice(0, maxScore) : 
+    const limitedAttempts = maxScore && maxScore > 0 ?
+      questionAttempts.slice(0, maxScore) :
       questionAttempts;
-    
+
     correct = limitedAttempts.filter(attempt => attempt.isCorrect).length;
     total = limitedAttempts.length;
     percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
   }
-  
+
   const result = { correct, total, percentage };
-  
+
   // Cache the result for performance (avoids recalculating 30,000+ times)
   standardScoreCache.value.set(cacheKey, result);
-  
+
   return result;
 };
 
@@ -697,9 +707,9 @@ const getStudentStandardScore = (standard: string) => {
 const getStudentStandardMastery = (standard: string): number => {
   const customStd = getCustomStandardByCode(standard);
   const scoreData = getStudentStandardScore(standard);
-  
+
   if (scoreData.total === 0) return 0;
-  
+
   if (customStd?.maxScore && customStd.maxScore > 0) {
     // If maxScore is set, calculate mastery as (correct / maxScore) * 100
     // Cap at 100% if they exceed maxScore
@@ -736,9 +746,9 @@ const getQuestionPoints = (assessmentId: string, questionId: string): number => 
 const getDisplayAnswer = (assessmentId: string, questionId: string, studentAnswer: any): string => {
   const assessment = assessments.value.find(a => a.id === assessmentId);
   const question = assessment?.questions?.find(q => q.id === questionId);
-  
+
   if (!question) return 'N/A';
-  
+
   // Handle different question types for display
   if (question.questionType === 'multiple-choice') {
     const answerIndex = parseInt(studentAnswer as string);
@@ -774,7 +784,7 @@ const getDisplayAnswer = (assessmentId: string, questionId: string, studentAnswe
       return (studentAnswer as string[]).join(', ');
     }
   }
-  
+
   // For other question types, return as-is
   return studentAnswer?.toString() || 'No answer';
 };
@@ -782,9 +792,9 @@ const getDisplayAnswer = (assessmentId: string, questionId: string, studentAnswe
 const getDisplayCorrectAnswer = (assessmentId: string, questionId: string): string => {
   const assessment = assessments.value.find(a => a.id === assessmentId);
   const question = assessment?.questions?.find(q => q.id === questionId);
-  
+
   if (!question) return 'N/A';
-  
+
   // Handle different question types for display
   if (question.questionType === 'multiple-choice') {
     const answerIndex = parseInt(question.correctAnswer as string);
@@ -820,7 +830,7 @@ const getDisplayCorrectAnswer = (assessmentId: string, questionId: string): stri
       return question.correctOrder.join(', ');
     }
   }
-  
+
   // For other question types, return the correct answer as-is
   return question.correctAnswer as string || 'N/A';
 };
@@ -852,36 +862,36 @@ const getEquivalentFractions = (assessmentId: string, questionId: string): strin
   const assessment = assessments.value.find(a => a.id === assessmentId);
   const question = assessment?.questions?.find(q => q.id === questionId);
   const correctAnswer = question?.correctAnswer as string;
-  
+
   if (!correctAnswer || !correctAnswer.includes('/')) return [];
-  
+
   try {
     // Parse the fraction
     const [numStr, denStr] = correctAnswer.split('/');
     const num = parseInt(numStr.trim());
     const den = parseInt(denStr.trim());
-    
+
     if (isNaN(num) || isNaN(den) || den === 0) return [];
-    
+
     // Generate equivalent fractions
     const equivalents: string[] = [];
-    
+
     // Generate 4 equivalent fractions
     for (let i = 2; i <= 5; i++) {
       equivalents.push(`${num * i}/${den * i}`);
     }
-    
+
     // Also add simplified version if current isn't simplified
     const gcd = (a: number, b: number): number => b === 0 ? a : gcd(b, a % b);
     const commonDivisor = gcd(Math.abs(num), Math.abs(den));
-    
+
     if (commonDivisor > 1) {
       const simplified = `${num / commonDivisor}/${den / commonDivisor}`;
       if (simplified !== correctAnswer) {
         equivalents.unshift(simplified); // Add simplified version first
       }
     }
-    
+
     return equivalents;
   } catch (error) {
     console.error('Error generating equivalent fractions:', error);
@@ -892,7 +902,7 @@ const getEquivalentFractions = (assessmentId: string, questionId: string): strin
 // Convert LaTeX markup to plain text for display
 const convertLatexToPlainText = (text: string): string => {
   if (!text) return '';
-  
+
   // Convert common LaTeX fractions to plain text
   let plainText = text
     .replace(/\$\\frac\{([^}]+)\}\{([^}]+)\}\$/g, '$1/$2') // \frac{a}{b} -> a/b
@@ -910,7 +920,7 @@ const convertLatexToPlainText = (text: string): string => {
     .replace(/\\\\/g, '') // Remove line breaks
     .replace(/[{}]/g, '') // Remove remaining braces
     .trim();
-  
+
   return plainText;
 };
 
@@ -936,8 +946,58 @@ onMounted(() => {
 }
 
 .results-header {
-  text-align: center;
   margin-bottom: 30px;
+}
+
+.header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
+.header-content {
+  flex: 1;
+  text-align: center;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+}
+
+.summary-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: #3b82f6;
+  color: white;
+  text-decoration: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+}
+
+.summary-link:hover {
+  background: #2563eb;
+  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.4);
+  transform: translateY(-1px);
+}
+
+.summary-link:active {
+  transform: translateY(0);
+}
+
+.link-icon {
+  font-size: 1.1rem;
+}
+
+.link-text {
+  white-space: nowrap;
 }
 
 .results-header h1 {
@@ -1152,13 +1212,13 @@ onMounted(() => {
     align-items: flex-start;
     gap: 12px;
   }
-  
+
   .result-details {
     flex-direction: column;
     align-items: flex-start;
     gap: 12px;
   }
-  
+
   .result-stats {
     flex-wrap: wrap;
   }
@@ -1693,23 +1753,23 @@ onMounted(() => {
     align-items: flex-start;
     gap: 0.5rem;
   }
-  
+
   .question-status {
     text-align: left;
   }
-  
+
   .question-detail-content {
     padding: 1rem;
   }
-  
+
   .answer-comparison {
     gap: 0.75rem;
   }
-  
+
   .alternatives-list, .equivalents-list {
     gap: 0.375rem;
   }
-  
+
   .alternative-answer-tag, .equivalent-fraction-tag {
     font-size: 0.8rem;
     padding: 0.25rem 0.5rem;

@@ -7,12 +7,12 @@
     </div>
 
     <!-- Academic Period Selector -->
-    <AcademicPeriodSelector 
+    <AcademicPeriodSelector
       :allowFuturePeriods="true"
       @periodChanged="onPeriodChanged"
       @periodTypeChanged="onPeriodTypeChanged"
     />
-    
+
     <!-- View Mode and Filters -->
     <div class="filters-section">
       <!-- View Mode Radio Buttons -->
@@ -28,50 +28,50 @@
             <span class="radio-label">📊 Show by Standards</span>
           </label>
         </div>
-        
+
         <!-- Assessment Category Filter (only show in standards view) -->
         <div v-if="viewMode === 'standards'" class="assessment-category-filters">
           <label class="filter-label">Assessment Type:</label>
           <div class="category-buttons">
-            <button 
+            <button
               @click="selectedAssessmentCategory = ''"
               class="category-filter-btn assessment-cat-btn"
               :class="{ active: selectedAssessmentCategory === '' }"
             >
               All Types
             </button>
-            <button 
-              v-for="category in uniqueAssessmentCategories" 
+            <button
+              v-for="category in uniqueAssessmentCategories"
               :key="category"
               @click="selectedAssessmentCategory = category"
               class="category-filter-btn assessment-cat-btn"
-              :class="{ 
+              :class="{
                 active: selectedAssessmentCategory === category,
                 [`cat-${category.toLowerCase()}`]: true
               }"
             >
-              {{ category === 'ESA' ? 'Essential Standards (ESA)' : 
-                 category === 'SA' ? 'Standard Assessments (SA)' : 
-                 category === 'HW' ? 'Homework (HW)' : 
-                 category === 'Assign' ? 'Assignments' : 
+              {{ category === 'ESA' ? 'Essential Standards (ESA)' :
+                 category === 'SA' ? 'Standard Assessments (SA)' :
+                 category === 'HW' ? 'Homework (HW)' :
+                 category === 'Assign' ? 'Assignments' :
                  category }}
             </button>
           </div>
         </div>
-        
+
         <!-- App Category Filter Buttons (only show in standards view) -->
         <div v-if="viewMode === 'standards' && uniqueAppCategories.length > 0" class="app-category-filters">
           <label class="filter-label">App Categories:</label>
           <div class="category-buttons">
-            <button 
+            <button
               @click="selectedAppCategory = ''"
               class="category-filter-btn"
               :class="{ active: selectedAppCategory === '' }"
             >
               All
             </button>
-            <button 
-              v-for="category in uniqueAppCategories" 
+            <button
+              v-for="category in uniqueAppCategories"
               :key="category"
               @click="selectedAppCategory = category"
               class="category-filter-btn"
@@ -82,7 +82,7 @@
           </div>
         </div>
       </div>
-      
+
       <div class="filter-group">
         <label for="classFilter">Class:</label>
         <select id="classFilter" v-model="selectedClass" class="filter-select">
@@ -92,7 +92,7 @@
           </option>
         </select>
       </div>
-      
+
       <div class="filter-group">
         <label for="periodFilter">Period:</label>
         <select id="periodFilter" v-model="selectedPeriod" class="filter-select">
@@ -102,7 +102,7 @@
           </option>
         </select>
       </div>
-      
+
       <div v-if="viewMode === 'assignments'" class="filter-group">
         <label for="categoryFilter">Category:</label>
         <select id="categoryFilter" v-model="selectedCategory" class="filter-select">
@@ -114,7 +114,7 @@
           <option value="Other">Other</option>
         </select>
       </div>
-      
+
       <div v-if="viewMode === 'assignments'" class="filter-group">
         <label for="sortFilter">Sort By:</label>
         <select id="sortFilter" v-model="selectedSort" class="filter-select">
@@ -128,7 +128,7 @@
           <option value="title-desc">Title (Z-A)</option>
         </select>
       </div>
-      
+
       <div class="export-buttons">
         <button @click="exportGradebook" class="export-btn">
           📤 Export CSV
@@ -162,7 +162,7 @@
           <h2>{{ group.className }} - Period {{ group.period }}</h2>
           <span class="student-count">{{ group.students.length }} students</span>
         </div>
-        
+
         <div class="gradebook-table-wrapper">
           <table class="gradebook-table">
             <thead class="sticky-header">
@@ -184,17 +184,22 @@
               <tr v-for="student in group.students" :key="student.uid" class="student-row">
                 <td class="student-name-cell">
                   <div class="student-info">
-                    <strong>{{ student.lastName }}, {{ student.firstName }}</strong>
+                    <router-link
+                      :to="`/student-summary/${student.uid}`"
+                      class="student-name-link"
+                    >
+                      <strong>{{ student.lastName }}, {{ student.firstName }}</strong>
+                    </router-link>
                     <small>{{ student.email }}</small>
                   </div>
                 </td>
-                
+
                 <!-- Assessment scores -->
                 <td v-for="assessment in group.assessments" :key="assessment.id" class="score-cell">
                   <div class="score-container">
-                    <span 
-                      v-if="getStudentScore(student.uid, assessment.id)" 
-                      class="score" 
+                    <span
+                      v-if="getStudentScore(student.uid, assessment.id)"
+                      class="score"
                       :class="getScoreClass(getStudentScore(student.uid, assessment.id)?.percentage || 0)"
                       @click="viewAssessmentResult(student.uid, assessment.id)"
                     >
@@ -208,7 +213,7 @@
                     <span v-else class="no-score clickable" @click="openManualScoreDialog(student.uid, assessment.id, assessment)">-</span>
                   </div>
                 </td>
-                
+
                 <!-- Student average -->
                 <td class="average-cell">
                   <span class="average-score" :class="getScoreClass(getStudentAverage(student.uid))">
@@ -219,7 +224,7 @@
             </tbody>
           </table>
         </div>
-        
+
         <!-- Class Statistics -->
         <div class="class-stats">
           <div class="stat-item">
@@ -239,7 +244,7 @@
         </div>
         </div>
       </div>
-      
+
       <!-- Standards View -->
       <div v-else-if="viewMode === 'standards'">
         <!-- Standards-based Groups -->
@@ -248,7 +253,7 @@
             <h2>{{ group.className }} - Period {{ group.period }}</h2>
             <span class="student-count">{{ group.students.length }} students</span>
           </div>
-          
+
           <div class="gradebook-table-wrapper">
             <table class="gradebook-table standards-table">
               <thead class="sticky-header">
@@ -256,9 +261,9 @@
                   <th class="student-name-col">Student</th>
                   <th v-for="standard in group.standards" :key="standard" class="standard-col" :title="standard">
                     <div class="standard-header">
-                      <span 
+                      <span
                         class="standard-title"
-                        :class="{ 
+                        :class="{
                           'custom-standard': getStandardDisplayInfo(standard).isCustom,
                           'ccss-standard': !getStandardDisplayInfo(standard).isCustom
                         }"
@@ -275,16 +280,21 @@
                 <tr v-for="student in group.students" :key="student.uid" class="student-row">
                   <td class="student-name-cell">
                     <div class="student-info">
-                      <strong>{{ student.lastName }}, {{ student.firstName }}</strong>
+                      <router-link
+                        :to="`/student-summary/${student.uid}`"
+                        class="student-name-link"
+                      >
+                        <strong>{{ student.lastName }}, {{ student.firstName }}</strong>
+                      </router-link>
                       <small>{{ student.email }}</small>
                     </div>
                   </td>
-                  
+
                   <!-- Standard mastery scores -->
                   <td v-for="standard in group.standards" :key="standard" class="standard-cell">
                     <div class="standard-score">
-                      <span 
-                        class="mastery-score" 
+                      <span
+                        class="mastery-score"
                         :class="getStandardMasteryClass(getStandardScore(student.uid, standard))"
                       >
                         {{ getStandardScore(student.uid, standard).correct }}/{{ getStandardScore(student.uid, standard).total }}
@@ -294,7 +304,7 @@
                       </div>
                     </div>
                   </td>
-                  
+
                   <!-- Overall mastery -->
                   <td class="mastery-cell">
                     <span class="overall-mastery" :class="getScoreClass(getStudentStandardsAverage(student.uid))">
@@ -305,7 +315,7 @@
               </tbody>
             </table>
           </div>
-          
+
           <!-- Standards Statistics -->
           <div class="class-stats">
             <div class="stat-item">
@@ -325,7 +335,7 @@
           </div>
         </div>
       </div>
-      
+
       <!-- No Data State -->
       <div v-if="filteredGroups.length === 0" class="no-data">
         <div class="no-data-icon">📚</div>
@@ -334,7 +344,7 @@
         <button @click="clearFilters" class="clear-filters-btn">Clear Filters</button>
       </div>
     </div>
-    
+
     <!-- Manual Score Input Dialog -->
     <div v-if="showScoreDialog" class="score-dialog-overlay" @click="cancelScoreDialog">
       <div class="score-dialog" @click.stop>
@@ -348,11 +358,11 @@
               <span class="percentage">({{ maxPossibleScore > 0 ? Math.round((totalManualScore / maxPossibleScore) * 100) : 0 }}%)</span>
             </div>
           </div>
-          
+
           <div class="questions-container">
-            <div 
-              v-for="(question, index) in selectedAssessment?.questions" 
-              :key="question.id" 
+            <div
+              v-for="(question, index) in selectedAssessment?.questions"
+              :key="question.id"
               class="question-item"
             >
               <div class="question-header">
@@ -360,18 +370,18 @@
                 <span class="question-points">{{ question.points }} pts</span>
                 <span v-if="question.standard" class="question-standard">{{ question.standard }}</span>
               </div>
-              
+
               <div class="question-text">
                 {{ question.questionText }}
               </div>
-              
+
               <div class="score-input">
                 <label :for="`score-${question.id}`">Score:</label>
-                <input 
+                <input
                   :id="`score-${question.id}`"
-                  v-model="questionScores[question.id]" 
-                  type="number" 
-                  :max="question.points" 
+                  v-model="questionScores[question.id]"
+                  type="number"
+                  :max="question.points"
                   min="0"
                   step="0.5"
                   class="question-score-input"
@@ -381,7 +391,7 @@
               </div>
             </div>
           </div>
-          
+
           <div class="dialog-buttons">
             <button @click="cancelScoreDialog" class="cancel-btn">Cancel</button>
             <button @click="saveManualScore" class="save-btn" :disabled="!isValidScore">
@@ -391,7 +401,7 @@
         </div>
       </div>
     </div>
-    
+
     <!-- Aeries Export Modal -->
     <div v-if="showAeriesExport" class="modal-overlay" @click="showAeriesExport = false">
       <div class="modal-content" @click.stop>
@@ -499,7 +509,7 @@ const filteredStudents = computed(() => {
   return students.value.filter(student => {
     const studentClass = student.courseName || student.className;
     const studentPeriod = student.section || student.period;
-    
+
     if (selectedClass.value && studentClass !== selectedClass.value) return false;
     if (selectedPeriod.value && studentPeriod !== selectedPeriod.value) return false;
     return true;
@@ -509,18 +519,18 @@ const filteredStudents = computed(() => {
 const filteredAssessments = computed(() => {
   // First apply academic period filtering
   let filtered = filterAssessments(assessments.value);
-  
+
   // Then apply category filtering
   filtered = filtered.filter(assessment => {
     if (selectedCategory.value && assessment.category !== selectedCategory.value) return false;
     return true;
   });
-  
+
   // Apply sorting
   filtered.sort((a, b) => {
     const [sortField, sortDirection] = selectedSort.value.split('-');
     let comparison = 0;
-    
+
     switch (sortField) {
       case 'created':
         const aCreated = a.createdAt?.seconds || a.createdAt || 0;
@@ -541,35 +551,35 @@ const filteredAssessments = computed(() => {
         comparison = a.title.localeCompare(b.title);
         break;
     }
-    
+
     return sortDirection === 'desc' ? comparison : -comparison;
   });
-  
+
   return filtered;
 });
 
 // Get unique standards from all assessments with filtering
 const uniqueStandards = computed(() => {
   const startTime = performance.now();
-  
+
   // Filter assessments by category first if selected
   let assessmentsToInclude = filteredAssessments.value;
-  
+
   if (selectedAssessmentCategory.value) {
     assessmentsToInclude = assessmentsToInclude.filter(
       assessment => assessment.category === selectedAssessmentCategory.value
     );
   }
-  
+
   const allQuestions = assessmentsToInclude.flatMap(assessment => [
     // Include assessment-level standard as a pseudo-question
     ...(assessment.standard ? [{ standard: assessment.standard }] : []),
     // Include all questions
     ...(assessment.questions || [])
   ]);
-  
+
   let standards = getAllStandardsFromQuestions(allQuestions);
-  
+
   // Apply app category filter if selected (for custom standards)
   if (selectedAppCategory.value) {
     const beforeFilter = standards.length;
@@ -577,15 +587,15 @@ const uniqueStandards = computed(() => {
       const customStd = getCustomStandardByCode(standardCode);
       return customStd?.appCategory === selectedAppCategory.value;
     });
-    
+
     console.log(`🔍 App category filter: ${beforeFilter} standards → ${standards.length} standards`);
   }
-  
+
   const calcTime = Math.round(performance.now() - startTime);
   if (calcTime > 10) {
     console.log(`📊 Calculated ${standards.length} unique standards in ${calcTime}ms`);
   }
-  
+
   return standards;
 });
 
@@ -595,20 +605,20 @@ const uniqueAppCategories = computed(() => {
     .map(std => std.appCategory)
     .filter((category): category is string => Boolean(category))
     .filter((category, index, arr) => arr.indexOf(category) === index);
-  
+
   return categories.sort();
 });
 
 // Get unique assessment categories (ESA, SA, HW, etc.)
 const uniqueAssessmentCategories = computed(() => {
   const categories = new Set<string>();
-  
+
   filteredAssessments.value.forEach(assessment => {
     if (assessment.category) {
       categories.add(assessment.category);
     }
   });
-  
+
   return Array.from(categories).sort();
 });
 
@@ -617,11 +627,11 @@ const periodFilteredResults = computed(() => {
   const startTime = performance.now();
   const filtered = filterResults(assessmentResults.value);
   const time = Math.round(performance.now() - startTime);
-  
+
   if (time > 10) {
     console.log(`📅 Pre-filtered ${filtered.length}/${assessmentResults.value.length} results in ${time}ms`);
   }
-  
+
   return filtered;
 });
 
@@ -629,15 +639,15 @@ const periodFilteredResults = computed(() => {
 const resultsIndex = computed(() => {
   const startTime = performance.now();
   const index = new Map<string, any>();
-  
+
   periodFilteredResults.value.forEach(result => {
     const key = `${result.studentUid}-${result.assessmentId}`;
     index.set(key, result);
   });
-  
+
   const time = Math.round(performance.now() - startTime);
   console.log(`🗂️ Indexed ${index.size} results for O(1) lookup in ${time}ms`);
-  
+
   return index;
 });
 
@@ -645,7 +655,7 @@ const resultsIndex = computed(() => {
 const filteredGroups = computed(() => {
   // Use the utility function to group students
   const baseGroups = groupStudentsByClassAndPeriod(filteredStudents.value);
-  
+
   // Add gradebook-specific data (assessments and standards) to each group
   return baseGroups.map(group => ({
     ...group,
@@ -657,26 +667,26 @@ const filteredGroups = computed(() => {
 // Methods
 const loadGradebookData = async () => {
   const overallStartTime = performance.now();
-  
+
   try {
     loading.value = true;
     error.value = '';
-    
+
     if (!authStore.currentUser?.uid) {
       throw new Error('User not authenticated');
     }
-    
+
     console.log('📊 Loading gradebook data...');
-    
+
     // Load teacher's students, assessments, and custom standards
     const [teacherStudents, teacherAssessments, allCustomStandards] = await Promise.all([
       getStudentsByTeacher(authStore.currentUser.uid),
       getAssessmentsByTeacher(authStore.currentUser.uid),
       getAllCustomStandards()
     ]);
-    
+
     students.value = teacherStudents;
-    
+
     // Filter out Progress Assessments (PA) and Diagnostic assessments
     // PA assessments are managed separately in Progress Assessment Management
     // Diagnostic assessments are managed separately in Diagnostic views
@@ -686,22 +696,22 @@ const loadGradebookData = async () => {
       const title = assessment.title?.toUpperCase() || '';
       const isPA = category === 'PA';
       const isDiagnostic = title.includes('DIAGNOSTIC') || (assessment as any).diagnosticType !== undefined;
-      
+
       return !isPA && !isDiagnostic;
     });
-    
+
     assessments.value = filteredAssessments;
     customStandards.value = allCustomStandards;
-    
+
     const excludedPACount = teacherAssessments.filter(a => (a.category?.toUpperCase() || '') === 'PA').length;
     const excludedDiagnosticCount = teacherAssessments.filter(a => {
       const title = a.title?.toUpperCase() || '';
       return title.includes('DIAGNOSTIC') || (a as any).diagnosticType !== undefined;
     }).length;
     const totalExcluded = teacherAssessments.length - filteredAssessments.length;
-    
+
     console.log(`👥 Loaded ${students.value.length} students, ${filteredAssessments.length} assessments (${totalExcluded} excluded: ${excludedPACount} PA + ${excludedDiagnosticCount} Diagnostic)`);
-    
+
     // PERFORMANCE OPTIMIZED: Load all assessment results using bulk query
     // This reduces N+1 queries (e.g., 50 assessments = 50 queries) to batched queries (50 assessments = 5 queries)
     const assessmentIds = filteredAssessments.map(a => a.id);
@@ -709,7 +719,7 @@ const loadGradebookData = async () => {
     const allResults = await getAssessmentResultsBulk(assessmentIds);
     const queryTime = Math.round(performance.now() - startTime);
     console.log(`⚡ Bulk query completed in ${queryTime}ms for ${assessmentIds.length} assessments`);
-    
+
     // Filter results to only include results for filtered assessments (safety check)
     const filteredResults = allResults.filter(result => {
       const assessment = filteredAssessments.find(a => a.id === result.assessmentId);
@@ -724,17 +734,17 @@ const loadGradebookData = async () => {
       const isDiagnostic = title.includes('DIAGNOSTIC') || (assessment as any).diagnosticType !== undefined;
       return !isPA && !isDiagnostic;
     });
-    
+
     assessmentResults.value = filteredResults;
-    
+
     console.log(`📊 Loaded assessment results: ${filteredResults.length} (filtered to non-PA, non-Diagnostic only)`);
-    
+
     // Clear standard score cache when new data is loaded
     clearStandardScoreCache();
-    
+
     const totalTime = Math.round(performance.now() - overallStartTime);
     console.log(`✅ Gradebook data loaded in ${totalTime}ms (${students.value.length} students, ${filteredAssessments.length} assessments, ${filteredResults.length} results)`);
-    
+
   } catch (err: any) {
     console.error('❌ Error loading gradebook:', err);
     error.value = err.message || 'Failed to load gradebook data';
@@ -753,18 +763,18 @@ const getStudentScore = (studentUid: string, assessmentId: string) => {
 
 const getStudentAverage = (studentUid: string): number => {
   // PERFORMANCE OPTIMIZED: Use pre-filtered results instead of filtering again
-  const studentResults = periodFilteredResults.value.filter(result => 
+  const studentResults = periodFilteredResults.value.filter(result =>
     result.studentUid === studentUid
   );
   if (studentResults.length === 0) return 0;
-  
+
   const total = studentResults.reduce((sum, result) => sum + result.percentage, 0);
   return Math.round(total / studentResults.length);
 };
 
 const getClassAverage = (group: any): number => {
   const allScores: number[] = [];
-  
+
   group.students.forEach((student: Student) => {
     group.assessments.forEach((assessment: Assessment) => {
       const score = getStudentScore(student.uid, assessment.id);
@@ -773,9 +783,9 @@ const getClassAverage = (group: any): number => {
       }
     });
   });
-  
+
   if (allScores.length === 0) return 0;
-  
+
   const total = allScores.reduce((sum, score) => sum + score, 0);
   return Math.round(total / allScores.length);
 };
@@ -828,7 +838,7 @@ const standardScoreCache = ref<Map<string, { correct: number; total: number; per
 const clearStandardScoreCache = () => {
   const previousSize = standardScoreCache.value.size;
   standardScoreCache.value.clear();
-  
+
   if (previousSize > 0) {
     console.log(`🔄 Cleared ${previousSize} cached standard scores (will recalculate on next render)`);
   }
@@ -837,22 +847,22 @@ const clearStandardScoreCache = () => {
 // Standards-based methods with caching
 const getStandardScore = (studentUid: string, standard: string) => {
   const cacheKey = `${studentUid}-${standard}`;
-  
+
   // Check cache first - this prevents 99% of expensive recalculations!
   if (standardScoreCache.value.has(cacheKey)) {
     return standardScoreCache.value.get(cacheKey)!;
   }
-  
+
   // Cache miss - need to calculate (this is the expensive part)
   const calcStartTime = performance.now();
-  
+
   // Get custom standard metadata for maxScore limit
   const customStd = getCustomStandardByCode(standard);
   const maxScore = customStd?.maxScore;
-  
+
   // Collect all question attempts for this standard
   const questionAttempts: { isCorrect: boolean; score: number }[] = [];
-  
+
   // Only count questions from assessments the student actually took
   assessments.value.forEach(assessment => {
     // First check if student took this assessment
@@ -861,23 +871,23 @@ const getStandardScore = (studentUid: string, standard: string) => {
       // Skip this assessment if student didn't take it
       return;
     }
-    
+
     // Check if assessment-level standard matches
     const assessmentStandards = parseStandards(assessment.standard);
     const assessmentCoversStandard = assessmentStandards.includes(standard);
-    
+
     assessment.questions?.forEach(question => {
       // Check if question covers this standard (either through question-level or assessment-level standard)
       const questionStandards = parseStandards(question.standard);
       const questionCoversStandard = questionStandards.includes(standard) || assessmentCoversStandard;
-      
+
       if (questionCoversStandard) {
         // Find the response for this specific question
         const response = result.responses?.find((r: any) => r.questionId === question.id);
         if (response) {
           const isCorrect = response.isCorrect
           const score = response.score || (response.isCorrect ? question.points : 0)
-          
+
           questionAttempts.push({
             isCorrect,
             score
@@ -886,25 +896,25 @@ const getStandardScore = (studentUid: string, standard: string) => {
       }
     });
   });
-  
+
   // If no attempts, return 0/0
   if (questionAttempts.length === 0) {
     const result = { correct: 0, total: 0, percentage: 0 };
     standardScoreCache.value.set(cacheKey, result);
     return result;
   }
-  
+
   // Apply scoring method logic
   const scoringMethod = customStd?.scoringMethod || 'additive';
   let correct = 0;
   let total = 0;
   let percentage = 0;
-  
+
   if (scoringMethod === 'keepTop') {
     // Keep Top Score: Takes highest scoring attempts up to maxScore limit
     // Sort all question attempts by score (best first)
     questionAttempts.sort((a, b) => b.score - a.score);
-    
+
     if (maxScore && maxScore > 0) {
       // Take top maxScore questions (best performance)
       const topAttempts = questionAttempts.slice(0, maxScore);
@@ -917,41 +927,41 @@ const getStandardScore = (studentUid: string, standard: string) => {
       total = questionAttempts.length;
       percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
     }
-    
+
   } else if (scoringMethod === 'average') {
     // Average Scores: Calculate average percentage across all attempts
     if (questionAttempts.length > 0) {
-      const attemptPercentages = questionAttempts.map(attempt => 
+      const attemptPercentages = questionAttempts.map(attempt =>
         attempt.isCorrect ? 100 : 0
       );
       percentage = Math.round(attemptPercentages.reduce((sum: number, pct: number) => sum + pct, 0) / attemptPercentages.length);
       correct = Math.round((percentage / 100) * questionAttempts.length);
       total = questionAttempts.length;
     }
-    
+
   } else {
     // Additive (current behavior): All attempts count, maxScore caps denominator
     questionAttempts.sort((a, b) => b.score - a.score);
-    const limitedAttempts = maxScore && maxScore > 0 ? 
-      questionAttempts.slice(0, maxScore) : 
+    const limitedAttempts = maxScore && maxScore > 0 ?
+      questionAttempts.slice(0, maxScore) :
       questionAttempts;
-    
+
     correct = limitedAttempts.filter(attempt => attempt.isCorrect).length;
     total = limitedAttempts.length;
     percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
   }
-  
+
   const result = { correct, total, percentage };
-  
+
   // Cache the result for future lookups
   standardScoreCache.value.set(cacheKey, result);
-  
+
   // Log slow calculations (>10ms) to identify bottlenecks
   const calcTime = Math.round(performance.now() - calcStartTime);
   if (calcTime > 10) {
     console.log(`⏱️ Calculated ${standard} for student in ${calcTime}ms (now cached)`);
   }
-  
+
   return result;
 };
 
@@ -965,14 +975,14 @@ const getStandardMasteryClass = (scoreData: { correct: number; total: number; pe
 // Calculate student's overall standards mastery using maxScore-based calculation
 const getStudentStandardsAverage = (studentUid: string): number => {
   const standardMasteries: number[] = [];
-  
+
   uniqueStandards.value.forEach(standard => {
     const customStd = getCustomStandardByCode(standard);
     const scoreData = getStandardScore(studentUid, standard);
-    
+
     if (scoreData.total > 0) {
       let mastery: number;
-      
+
       if (customStd?.maxScore && customStd.maxScore > 0) {
         // If maxScore is set, calculate mastery as (correct / maxScore) * 100
         // Cap at 100% if they exceed maxScore
@@ -981,13 +991,13 @@ const getStudentStandardsAverage = (studentUid: string): number => {
         // If no maxScore set, use regular percentage
         mastery = scoreData.percentage;
       }
-      
+
       standardMasteries.push(mastery);
     }
   });
-  
+
   if (standardMasteries.length === 0) return 0;
-  
+
   const total = standardMasteries.reduce((sum, mastery) => sum + mastery, 0);
   return Math.round(total / standardMasteries.length);
 };
@@ -996,29 +1006,29 @@ const getStudentStandardsAverage = (studentUid: string): number => {
 
 const getClassStandardsAverage = (group: any): number => {
   const allScores: number[] = [];
-  
+
   group.students.forEach((student: Student) => {
     const studentAvg = getStudentStandardsAverage(student.uid);
     if (studentAvg > 0) {
       allScores.push(studentAvg);
     }
   });
-  
+
   if (allScores.length === 0) return 0;
-  
+
   const total = allScores.reduce((sum, score) => sum + score, 0);
   return Math.round(total / allScores.length);
 };
 
 const getStudentsAboveThreshold = (group: any, threshold: number): number => {
-  return group.students.filter((student: Student) => 
+  return group.students.filter((student: Student) =>
     getStudentStandardsAverage(student.uid) >= threshold
   ).length;
 };
 
 const getCleanStandardName = (standardCode: string): string => {
   if (!standardCode) return 'No standard';
-  
+
   if (standardCode.startsWith('CUSTOM:')) {
     return standardCode.replace('CUSTOM:', ''); // Remove CUSTOM: prefix
   } else {
@@ -1029,18 +1039,18 @@ const getCleanStandardName = (standardCode: string): string => {
 // Get custom standard metadata by code
 const getCustomStandardByCode = (standardCode: string): CustomStandard | null => {
   if (!standardCode) return null;
-  
+
   // Remove CUSTOM: prefix if present
-  const cleanCode = standardCode.startsWith('CUSTOM:') ? 
+  const cleanCode = standardCode.startsWith('CUSTOM:') ?
     standardCode.replace('CUSTOM:', '') : standardCode;
-  
+
   return customStandards.value.find(std => std.code === cleanCode) || null;
 };
 
 // Get enhanced standard display info
 const getStandardDisplayInfo = (standardCode: string) => {
   const customStd = getCustomStandardByCode(standardCode);
-  
+
   if (customStd) {
     return {
       name: customStd.name,
@@ -1050,7 +1060,7 @@ const getStandardDisplayInfo = (standardCode: string) => {
       isCustom: true
     };
   }
-  
+
   return {
     name: getCleanStandardName(standardCode),
     code: standardCode,
@@ -1063,7 +1073,7 @@ const getStandardDisplayInfo = (standardCode: string) => {
 const exportGradebook = () => {
   try {
     const csvData: string[] = [];
-    
+
     // CSV Header
     const headers = ['Class', 'Period', 'Student Name', 'Email'];
     filteredAssessments.value.forEach(assessment => {
@@ -1071,7 +1081,7 @@ const exportGradebook = () => {
     });
     headers.push('Average');
     csvData.push(headers.join(','));
-    
+
     // CSV Data
     filteredGroups.value.forEach(group => {
       group.students.forEach(student => {
@@ -1081,20 +1091,20 @@ const exportGradebook = () => {
           `"${student.lastName}, ${student.firstName}"`,
           student.email
         ];
-        
+
         // Add scores for each assessment
         group.assessments.forEach(assessment => {
           const score = getStudentScore(student.uid, assessment.id);
           row.push(score ? score.percentage.toString() : '');
         });
-        
+
         // Add average
         row.push(getStudentAverage(student.uid).toString());
-        
+
         csvData.push(row.join(','));
       });
     });
-    
+
     // Download CSV
     const csvContent = csvData.join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv' });
@@ -1106,7 +1116,7 @@ const exportGradebook = () => {
     link.click();
     document.body.removeChild(link);
     window.URL.revokeObjectURL(url);
-    
+
     console.log('📤 Gradebook exported to CSV');
   } catch (err) {
     console.error('❌ Error exporting gradebook:', err);
@@ -1121,16 +1131,16 @@ const openManualScoreDialog = (studentUid: string, assessmentId: string, assessm
     console.error('Student not found:', studentUid);
     return;
   }
-  
+
   selectedStudent.value = student;
   selectedAssessment.value = assessment;
-  
+
   // Initialize question scores
   questionScores.value = {};
   assessment.questions?.forEach(question => {
     questionScores.value[question.id] = '0';
   });
-  
+
   showScoreDialog.value = true;
 };
 
@@ -1148,7 +1158,7 @@ const saveManualScore = async () => {
     const totalScore = totalManualScore.value;
     const totalPoints = maxPossibleScore.value;
     const percentage = totalPoints > 0 ? Math.round((totalScore / totalPoints) * 100) : 0;
-    
+
     // Create individual responses for each question
     const responses = selectedAssessment.value.questions?.map(question => ({
       questionId: question.id,
@@ -1161,7 +1171,7 @@ const saveManualScore = async () => {
       adjustedAt: new Date(),
       adjustmentReason: 'Manual score entry'
     })) || [];
-    
+
     // Create assessment result with individual question responses
     await createManualAssessmentResult({
       assessmentId: selectedAssessment.value.id,
@@ -1176,10 +1186,10 @@ const saveManualScore = async () => {
       timeSpent: 0,
       accommodationsUsed: []
     });
-    
+
     console.log('✅ Manual scores saved successfully');
     showScoreDialog.value = false;
-    
+
     // Refresh the gradebook data
     await loadGradebookData();
   } catch (error: any) {
@@ -1580,6 +1590,22 @@ onMounted(() => {
   gap: 2px;
 }
 
+.student-name-link {
+  text-decoration: none;
+  color: #1f2937;
+  transition: color 0.2s ease;
+}
+
+.student-name-link:hover {
+  color: #3b82f6;
+  text-decoration: underline;
+}
+
+.student-name-link strong {
+  color: inherit;
+  font-size: 0.9rem;
+}
+
 .student-info strong {
   color: #1f2937;
   font-size: 0.9rem;
@@ -1815,28 +1841,28 @@ onMounted(() => {
     flex-direction: column;
     align-items: stretch;
   }
-  
+
   .filter-group {
     min-width: auto;
   }
-  
+
   .gradebook-table {
     font-size: 0.8rem;
   }
-  
+
   .gradebook-table th,
   .gradebook-table td {
     padding: 8px 4px;
   }
-  
+
   .student-name-col {
     min-width: 150px;
   }
-  
+
   .assessment-col {
     min-width: 80px;
   }
-  
+
   .class-stats {
     flex-direction: column;
     gap: 15px;
@@ -1847,19 +1873,19 @@ onMounted(() => {
   .gradebook {
     padding: 15px;
   }
-  
+
   .gradebook-table {
     font-size: 0.75rem;
   }
-  
+
   .assessment-title {
     font-size: 0.7rem;
   }
-  
+
   .student-info strong {
     font-size: 0.8rem;
   }
-  
+
   .student-info small {
     font-size: 0.7rem;
   }

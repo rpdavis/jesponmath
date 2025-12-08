@@ -5,6 +5,7 @@ import AssessmentEditor from '@/components/assessments/AssessmentEditor.vue'
 import AssessmentGenerator from '@/components/assessments/AssessmentGenerator.vue'
 import StudentAssessments from '@/components/assessments/StudentAssessments.vue'
 import StudentResults from '@/components/StudentResults.vue'
+import StudentSummary from '@/components/StudentSummary.vue'
 import AssessmentTaking from '@/components/assessments/AssessmentTaking.vue'
 import ProgressTracking from '@/components/ProgressTracking.vue'
 import StudentManagement from '@/components/StudentManagement.vue'
@@ -272,6 +273,18 @@ const router = createRouter({
       name: 'student-results',
       component: StudentResults,
       beforeEnter: authGuard,
+    },
+    {
+      path: '/student-summary',
+      name: 'student-summary',
+      component: StudentSummary,
+      beforeEnter: authGuard,
+    },
+    {
+      path: '/student-summary/:studentUid',
+      name: 'student-summary-view',
+      component: StudentSummary,
+      beforeEnter: [authGuard, teacherGuard], // Teachers can view any student's summary
     },
 
     // Admin-only routes
