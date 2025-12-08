@@ -75,7 +75,7 @@
       :problems="diagnosticProblems"
       :time-per-problem="10"
       @answer="handleDiagnosticAnswer"
-      @complete="handleDiagnosticComplete"
+      @complete="handleDiagnosticCompleteWithStorage"
     />
 
     <!-- DIAGNOSTIC RESULTS -->
@@ -296,6 +296,15 @@ function handleWarmupComplete() {
   startDiagnosticRound(
     () => startRound1(() => startRound2(() => startRound3())),
   )
+}
+
+// Store diagnostic results in session when diagnostic completes
+function handleDiagnosticCompleteWithStorage() {
+  handleDiagnosticComplete()
+  // Store diagnostic results in session for progress update
+  if (session.value && diagnosticResults.value) {
+    session.value.diagnosticResults = diagnosticResults.value
+  }
 }
 
 function handleContinueCurrentLevel() {

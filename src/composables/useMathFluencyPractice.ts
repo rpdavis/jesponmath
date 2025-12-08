@@ -9,13 +9,18 @@ import {
   getAllFluencyProgress,
   getTodaysPracticeSession,
   createPracticeSession,
+  updateProgressAfterSession,
 } from '@/services/mathFluencyServices'
 import { sampleRandom, shuffleArray } from '@/utils/mathFluencyProblemGenerator'
 import { getNextOperation } from '@/types/mathFluency'
 import { getSubLevelConfig, getSubLevelsForOperation } from '@/config/fluencySubLevels'
 import { filterProblemsBySubLevel, selectDailyPracticeProblems } from '@/utils/subLevelUtils'
 import { selectChallengeProblems } from '@/utils/challengeProblemSelector'
-import { generateProblemsForSubLevel, problemBelongsToSubLevel, createProblemProgress } from '@/utils/mathFluencyProblemUtils'
+import {
+  generateProblemsForSubLevel,
+  problemBelongsToSubLevel,
+  createProblemProgress,
+} from '@/utils/mathFluencyProblemUtils'
 import { capitalizeOperation } from '@/utils/mathFluencyDisplayUtils'
 import type {
   MathFluencyProgress,
@@ -217,7 +222,10 @@ export function useMathFluencyPractice() {
       const doesNotKnowInLevel = currentSubLevelProblems.filter(
         (p) => p.proficiencyLevel === 'doesNotKnow',
       )
-      round1Problems.value = sampleRandom(doesNotKnowInLevel, Math.min(3, doesNotKnowInLevel.length))
+      round1Problems.value = sampleRandom(
+        doesNotKnowInLevel,
+        Math.min(3, doesNotKnowInLevel.length),
+      )
 
       const round2Pool = [...selection.currentLevelProblems, ...selection.maintenanceProblems]
 
@@ -252,7 +260,9 @@ export function useMathFluencyPractice() {
       const proficientInLevel = currentSubLevelProblems.filter(
         (p) => p.proficiencyLevel === 'proficient',
       )
-      const masteredInLevel = currentSubLevelProblems.filter((p) => p.proficiencyLevel === 'mastered')
+      const masteredInLevel = currentSubLevelProblems.filter(
+        (p) => p.proficiencyLevel === 'mastered',
+      )
 
       round3Problems.value = shuffleArray([
         ...sampleRandom(emergingInLevel, Math.min(5, emergingInLevel.length)),
@@ -357,6 +367,63 @@ export function useMathFluencyPractice() {
 
       console.log('✅ Practice session saved')
 
+      // ⭐ CRITICAL: Update progress document after session
+      try {
+        // Collect all problems from all rounds
+        const allProblems: ProblemProgress[] = [
+          ...round1Problems.value,
+          ...round2Problems.value,
+          ...round3Problems.value,
+        ]
+
+        // Extract results from session
+        // Diagnostic results should be stored in session when diagnostic completes
+        const diagnosticResults = (session.value as any).diagnosticResults || {}
+        const round2Results = session.value.round2_practice?.results || {}
+        const round3Results = session.value.round3_assessment?.results || {}
+
+        // Convert round2/round3 results to the format expected by updateProgressAfterSession
+        const formattedRound2Results: {
+          [problemId: string]: { correct: boolean; responseTime: number }
+        } = {}
+        const formattedRound3Results: {
+          [problemId: string]: { correct: boolean; responseTime: number }
+        } = {}
+
+        // Format round 2 results (use last response time)
+        Object.entries(round2Results).forEach(([problemId, result]: [string, any]) => {
+          const lastTime =
+            result.responseTimes && result.responseTimes.length > 0
+              ? result.responseTimes[result.responseTimes.length - 1]
+              : 0
+          formattedRound2Results[problemId] = {
+            correct: result.correct || false,
+            responseTime: lastTime,
+          }
+        })
+
+        // Format round 3 results
+        Object.entries(round3Results).forEach(([problemId, result]: [string, any]) => {
+          formattedRound3Results[problemId] = {
+            correct: result.correct || false,
+            responseTime: result.responseTime || 0,
+          }
+        })
+
+        // Update progress
+        await updateProgressAfterSession(authStore.currentUser!.uid, currentOperation.value, {
+          diagnosticResults,
+          round2Results: formattedRound2Results,
+          round3Results: formattedRound3Results,
+          allProblems,
+        })
+
+        console.log('✅ Progress document updated')
+      } catch (error) {
+        console.error('Error updating progress:', error)
+        // Don't fail the session save if progress update fails
+      }
+
       if (assignmentId.value) {
         try {
           const accuracy = session.value.round2_practice?.accuracy || 0
@@ -390,7 +457,6 @@ export function useMathFluencyPractice() {
   function finishSessionAction() {
     router.push('/dashboard')
   }
-
 
   return {
     // State
@@ -432,4 +498,3 @@ export function useMathFluencyPractice() {
     finishSessionAction,
   }
 }
-

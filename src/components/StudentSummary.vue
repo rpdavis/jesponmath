@@ -46,6 +46,106 @@
 
     <!-- Content -->
     <div v-if="!loading && !error" class="summary-content">
+      <!-- Summary Section -->
+      <section class="summary-section summary-overview" id="summary-section">
+        <div class="summary-header-row">
+          <h2>📊 Summary of Scores</h2>
+          <button @click="printSummary" class="print-button" title="Print Summary">
+            🖨️ Print Summary
+          </button>
+        </div>
+
+        <div class="summary-grid">
+          <!-- ESA Standards Summary -->
+          <div class="summary-group">
+            <h3 class="summary-group-title">📝 ESA Standards</h3>
+            <div v-if="esaStandardsData.length === 0 && esaMissingAssessments.length === 0" class="empty-state-small">
+              <p>No ESA data</p>
+            </div>
+            <div v-else>
+              <div v-if="esaMissingAssessments.length > 0" class="missing-assessments">
+                <strong>Missing:</strong> {{ esaMissingAssessments.join(', ') }}
+              </div>
+              <div v-if="esaStandardsData.length > 0" class="compact-list">
+                <div
+                  v-for="item in esaStandardsData"
+                  :key="item.standard"
+                  class="compact-item summary-item"
+                  :class="getScoreClass(item.percentage)"
+                >
+                  <div class="standard-info">
+                    <span class="standard-name">{{ getStandardDisplayInfo(item.standard).name }}</span>
+                    <span class="standard-code-small">
+                      {{ getStandardDisplayInfo(item.standard).code }}{{ getStandardDisplayInfo(item.standard).description ? ' - ' + getStandardDisplayInfo(item.standard).description : '' }}
+                    </span>
+                  </div>
+                  <span class="score-info">
+                    {{ item.correct }}/{{ item.total }} <strong>{{ item.percentage }}%</strong>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Standard Assessment Standards Summary -->
+          <div class="summary-group">
+            <h3 class="summary-group-title">📋 Standard Assessment Standards</h3>
+            <div v-if="saStandardsData.length === 0 && saMissingAssessments.length === 0" class="empty-state-small">
+              <p>No Standard Assessment data</p>
+            </div>
+            <div v-else>
+              <div v-if="saMissingAssessments.length > 0" class="missing-assessments">
+                <strong>Missing:</strong> {{ saMissingAssessments.join(', ') }}
+              </div>
+              <div v-if="saStandardsData.length > 0" class="compact-list">
+                <div
+                  v-for="item in saStandardsData"
+                  :key="item.standard"
+                  class="compact-item summary-item"
+                  :class="getScoreClass(item.percentage)"
+                >
+                  <div class="standard-info">
+                    <span class="standard-name">{{ getStandardDisplayInfo(item.standard).name }}</span>
+                    <span class="standard-code-small">
+                      {{ getStandardDisplayInfo(item.standard).code }}{{ getStandardDisplayInfo(item.standard).description ? ' - ' + getStandardDisplayInfo(item.standard).description : '' }}
+                    </span>
+                  </div>
+                  <span class="score-info">
+                    {{ item.correct }}/{{ item.total }} <strong>{{ item.percentage }}%</strong>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Progress Assessment Summary -->
+          <div class="summary-group">
+            <h3 class="summary-group-title">🎯 Progress Assessment</h3>
+            <div v-if="paCompactData.length === 0 && paMissingAssessments.length === 0" class="empty-state-small">
+              <p>No Progress Assessment data</p>
+            </div>
+            <div v-else>
+              <div v-if="paMissingAssessments.length > 0" class="missing-assessments">
+                <strong>Missing:</strong> {{ paMissingAssessments.join(', ') }}
+              </div>
+              <div v-if="paCompactData.length > 0" class="compact-list">
+                <div
+                  v-for="item in paCompactData"
+                  :key="item.id"
+                  class="compact-item summary-item"
+                  :class="getScoreClass(item.percentage)"
+                >
+                  <span class="standard-code">{{ item.title }}</span>
+                  <span class="score-info">
+                    {{ item.correct }}/{{ item.total }} <strong>{{ item.percentage }}%</strong>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- ESA Section -->
       <section class="summary-section">
         <h2>📝 Essential Standards Assessment (ESA)</h2>
@@ -158,227 +258,47 @@
         </div>
       </section>
 
-      <!-- PA (Practice Assessment) by Goal -->
-      <section class="summary-section">
-        <h2>🎯 Practice Assessment (PA) by Goal</h2>
-        <div v-if="paByGoal.length === 0" class="empty-state">
-          <p>No Practice Assessments assigned yet.</p>
+      <!-- Progress Assessment (PA) Section -->
+      <section class="summary-section compact-section">
+        <h2>PROGRESS ASSESSMENT</h2>
+        <div v-if="paCompactData.length === 0 && paMissingAssessments.length === 0" class="empty-state">
+          <p>No Progress Assessments assigned yet.</p>
         </div>
-        <div v-else class="goals-grid">
-          <div
-            v-for="goalItem in paByGoal"
-            :key="goalItem.goalId"
-            class="goal-card"
-          >
-            <div class="goal-header">
-              <h3 class="goal-title">{{ goalItem.goalTitle }}</h3>
-              <span class="goal-area">{{ goalItem.areaOfNeed }}</span>
-            </div>
-
-            <div class="pa-summary">
-              <div class="summary-stat">
-                <span class="stat-label">Total PA Assigned:</span>
-                <span class="stat-value">{{ goalItem.totalAssigned }}</span>
-              </div>
-              <div class="summary-stat">
-                <span class="stat-label">Total PA Completed:</span>
-                <span class="stat-value">{{ goalItem.totalCompleted }}</span>
-              </div>
-              <div class="summary-stat">
-                <span class="stat-label">Average Score:</span>
-                <span
-                  class="stat-value"
-                  :class="goalItem.averageScore !== null ? getScoreClass(goalItem.averageScore) : ''"
-                >
-                  {{ goalItem.averageScore !== null ? `${goalItem.averageScore}%` : 'N/A' }}
-                </span>
-              </div>
-            </div>
-
-            <div class="pa-assessments-list">
-              <h4>Practice Assessments:</h4>
-              <div
-                v-for="pa in goalItem.assessments"
-                :key="pa.id"
-                class="pa-assessment-item"
-              >
-                <div class="pa-header">
-                  <span class="pa-name">{{ pa.title }}</span>
-                  <span
-                    v-if="pa.bestScore !== null"
-                    class="score-badge"
-                    :class="getScoreClass(pa.bestScore)"
-                  >
-                    {{ pa.bestScore }}%
-                  </span>
-                  <span v-else class="score-badge incomplete">Not Completed</span>
-                </div>
-
-                <div v-if="pa.results.length > 0" class="pa-details">
-                  <div class="detail-row">
-                    <div class="detail-item">
-                      <span>Best Score:</span>
-                      <strong>{{ pa.bestScore }}%</strong>
-                    </div>
-                    <div class="detail-item">
-                      <span>Attempts:</span>
-                      <strong>{{ pa.results.length }}</strong>
-                    </div>
-                  </div>
-                  <div class="detail-row">
-                    <div class="detail-item">
-                      <span>Last Completed:</span>
-                      <strong>{{ formatDate(pa.lastCompleted) }}</strong>
-                    </div>
-                    <div class="detail-item">
-                      <span>Total Score:</span>
-                      <strong>{{ pa.totalScore }}/{{ pa.totalPoints }}</strong>
-                    </div>
-                  </div>
-                  <div class="all-scores" v-if="pa.results.length > 1">
-                    <span class="scores-label">All Scores:</span>
-                    <div class="scores-list">
-                      <span
-                        v-for="(result, idx) in pa.results"
-                        :key="idx"
-                        class="score-chip"
-                        :class="getScoreClass(result.percentage)"
-                      >
-                        {{ result.percentage }}%
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div v-else class="pa-status">
-                  <span class="status-text">Assigned but not yet completed</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- PA Practice Section (Placeholder for future) -->
-            <div class="pa-practice-section">
-              <h4>PA Practice</h4>
-              <p class="placeholder-text">PA practice tracking will be set up later.</p>
+        <div v-else>
+          <div v-if="paMissingAssessments.length > 0" class="missing-assessments">
+            <strong>Missing PA:</strong> {{ paMissingAssessments.join(', ') }}
+          </div>
+          <div v-if="paCompactData.length > 0" class="compact-list">
+            <div
+              v-for="item in paCompactData"
+              :key="item.id"
+              class="compact-item"
+            >
+              <span class="standard-code">{{ item.title }}</span>
+              <span class="score-info">
+                {{ item.correct }}/{{ item.total }} {{ item.percentage }}% ({{ item.attempts }} {{ item.attempts === 1 ? 'attempt' : 'attempts' }})
+              </span>
             </div>
           </div>
         </div>
       </section>
 
       <!-- Fluency Data -->
-      <section class="summary-section">
-        <h2>🔢 Math Fluency Data</h2>
-        <div v-if="fluencyData.length === 0" class="empty-state">
+      <section class="summary-section compact-section">
+        <h2>FLUENCY</h2>
+        <div v-if="fluencyCompactData.length === 0" class="empty-state">
           <p>No fluency data available yet.</p>
         </div>
-        <div v-else class="fluency-grid">
+        <div v-else class="compact-list">
           <div
-            v-for="operation in fluencyData"
-            :key="operation.operation"
-            class="fluency-card"
+            v-for="item in fluencyCompactData"
+            :key="item.operation"
+            class="compact-item"
           >
-            <div class="fluency-header">
-              <h3 class="operation-title">{{ capitalizeOperation(operation.operation) }}</h3>
-              <span
-                class="status-badge"
-                :class="{
-                  'unlocked': operation.unlocked,
-                  'completed': operation.completedOperation
-                }"
-              >
-                {{ operation.completedOperation ? 'Completed' : operation.unlocked ? 'Unlocked' : 'Locked' }}
-              </span>
-            </div>
-
-            <div class="fluency-stats">
-              <div class="stat-row">
-                <div class="stat-item">
-                  <span class="stat-label">Proficiency:</span>
-                  <span class="stat-value">{{ operation.proficiencyPercentage }}%</span>
-                </div>
-                <div class="stat-item">
-                  <span class="stat-label">Mastery:</span>
-                  <span class="stat-value">{{ operation.masteryPercentage }}%</span>
-                </div>
-              </div>
-
-              <div class="stat-row">
-                <div class="stat-item">
-                  <span class="stat-label">Total Practice Days:</span>
-                  <span class="stat-value">{{ operation.totalPracticeDays }}</span>
-                </div>
-                <div class="stat-item">
-                  <span class="stat-label">Consecutive Days:</span>
-                  <span class="stat-value">{{ operation.consecutivePracticeDays }}</span>
-                </div>
-              </div>
-
-              <div class="proficiency-distribution">
-                <h4>Proficiency Distribution</h4>
-                <div class="distribution-bars">
-                  <div class="dist-item">
-                    <span class="dist-label">Mastered:</span>
-                    <div class="dist-bar">
-                      <div
-                        class="dist-fill mastered"
-                        :style="{ width: `${(operation.proficiencyDistribution.mastered / operation.proficiencyDistribution.total) * 100}%` }"
-                      ></div>
-                      <span class="dist-count">{{ operation.proficiencyDistribution.mastered }}</span>
-                    </div>
-                  </div>
-                  <div class="dist-item">
-                    <span class="dist-label">Proficient:</span>
-                    <div class="dist-bar">
-                      <div
-                        class="dist-fill proficient"
-                        :style="{ width: `${(operation.proficiencyDistribution.proficient / operation.proficiencyDistribution.total) * 100}%` }"
-                      ></div>
-                      <span class="dist-count">{{ operation.proficiencyDistribution.proficient }}</span>
-                    </div>
-                  </div>
-                  <div class="dist-item">
-                    <span class="dist-label">Approaching:</span>
-                    <div class="dist-bar">
-                      <div
-                        class="dist-fill approaching"
-                        :style="{ width: `${(operation.proficiencyDistribution.approaching / operation.proficiencyDistribution.total) * 100}%` }"
-                      ></div>
-                      <span class="dist-count">{{ operation.proficiencyDistribution.approaching }}</span>
-                    </div>
-                  </div>
-                  <div class="dist-item">
-                    <span class="dist-label">Emerging:</span>
-                    <div class="dist-bar">
-                      <div
-                        class="dist-fill emerging"
-                        :style="{ width: `${(operation.proficiencyDistribution.emerging / operation.proficiencyDistribution.total) * 100}%` }"
-                      ></div>
-                      <span class="dist-count">{{ operation.proficiencyDistribution.emerging }}</span>
-                    </div>
-                  </div>
-                  <div class="dist-item">
-                    <span class="dist-label">Does Not Know:</span>
-                    <div class="dist-bar">
-                      <div
-                        class="dist-fill does-not-know"
-                        :style="{ width: `${(operation.proficiencyDistribution.doesNotKnow / operation.proficiencyDistribution.total) * 100}%` }"
-                      ></div>
-                      <span class="dist-count">{{ operation.proficiencyDistribution.doesNotKnow }}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div v-if="operation.lastAssessmentScore !== null" class="assessment-info">
-                <div class="assessment-stat">
-                  <span class="stat-label">Last Assessment Score:</span>
-                  <span class="stat-value">{{ operation.lastAssessmentScore }} CPM</span>
-                </div>
-                <div class="assessment-stat" v-if="operation.lastAssessmentDate">
-                  <span class="stat-label">Last Assessment Date:</span>
-                  <span class="stat-value">{{ formatDate(operation.lastAssessmentDate) }}</span>
-                </div>
-              </div>
-            </div>
+            <span class="standard-code">{{ capitalizeOperation(item.operation) }}</span>
+            <span class="score-info">
+              {{ item.proficiency }}% proficiency, {{ item.mastery }}% mastery ({{ item.practiceDays }} {{ item.practiceDays === 1 ? 'day' : 'days' }})
+            </span>
           </div>
         </div>
       </section>
@@ -396,11 +316,13 @@ import { getAssessmentResultsByStudent, getAssessmentsByStudent } from '@/fireba
 import { getGoalsByStudent } from '@/firebase/goalServices';
 import { getAllFluencyProgress } from '@/services/mathFluencyServices';
 import { getStudent } from '@/firebase/userServices';
+import { getAllCustomStandards } from '@/firebase/standardsServices';
 import { parseStandards, getAllStandardsFromQuestions } from '@/utils/standardsUtils';
 import type { Assessment, AssessmentResult } from '@/types/iep';
 import type { Goal } from '@/types/iep';
 import type { MathFluencyProgress } from '@/types/mathFluency';
 import type { Student } from '@/types/users';
+import type { CustomStandard } from '@/types/standards';
 
 const route = useRoute();
 const authStore = useAuthStore();
@@ -461,6 +383,7 @@ const assessmentResults = ref<AssessmentResult[]>([]);
 const goals = ref<Goal[]>([]);
 const fluencyData = ref<MathFluencyProgress[]>([]);
 const studentInfo = ref<Student | null>(null);
+const customStandards = ref<CustomStandard[]>([]);
 
 // Computed: Check if viewing another student's summary
 const isViewingOtherStudent = computed(() => {
@@ -629,7 +552,58 @@ const esaMissingAssessments = computed(() => {
   return missing.sort();
 });
 
-// Computed: ESA Standards Data (using same logic as StudentResults.vue)
+// Helper: Get custom standard by code (same as gradebook)
+const getCustomStandardByCode = (standardCode: string): CustomStandard | null => {
+  if (!standardCode) return null;
+
+  // Remove CUSTOM: prefix if present
+  const cleanCode = standardCode.startsWith('CUSTOM:') ?
+    standardCode.replace('CUSTOM:', '') : standardCode;
+
+  return customStandards.value.find(std => std.code === cleanCode) || null;
+};
+
+// Helper: Get clean standard name (for non-custom standards)
+const getCleanStandardName = (standardCode: string): string => {
+  if (!standardCode) return 'No standard';
+
+  if (standardCode.startsWith('CUSTOM:')) {
+    return standardCode.replace('CUSTOM:', ''); // Remove CUSTOM: prefix
+  } else {
+    return standardCode; // Return CCSS code as-is
+  }
+};
+
+// Helper: Truncate text to max length with ellipsis
+const truncateText = (text: string, maxLength: number): string => {
+  if (!text) return '';
+  if (text.length <= maxLength) return text;
+  return text.substring(0, maxLength) + '...';
+};
+
+// Helper: Get standard display info (name, code, and description)
+const getStandardDisplayInfo = (standardCode: string) => {
+  const customStd = getCustomStandardByCode(standardCode);
+
+  if (customStd) {
+    const description = customStd.description ? truncateText(customStd.description, 40) : '';
+    return {
+      name: customStd.name,
+      code: customStd.code,
+      description: description,
+      isCustom: true
+    };
+  }
+
+  return {
+    name: getCleanStandardName(standardCode),
+    code: standardCode,
+    description: '',
+    isCustom: false
+  };
+};
+
+// Computed: ESA Standards Data (using same logic as gradebook with maxScore capping)
 const esaStandardsData = computed(() => {
   const esaAssessments = filteredAssessments.value.filter(a => a.category === 'ESA');
   const esaResults = filteredAssessmentResults.value.filter(r => {
@@ -657,6 +631,11 @@ const esaStandardsData = computed(() => {
   }>();
 
   uniqueStandards.forEach(standard => {
+    // Get custom standard metadata for maxScore limit (same as gradebook)
+    const customStd = getCustomStandardByCode(standard);
+    const maxScore = customStd?.maxScore;
+    const scoringMethod = customStd?.scoringMethod || 'additive';
+
     // Collect all question attempts for this standard
     const questionAttempts: { isCorrect: boolean; score: number }[] = [];
 
@@ -678,9 +657,11 @@ const esaStandardsData = computed(() => {
           // Find the response for this specific question
           const response = result.responses?.find((r: any) => r.questionId === question.id);
           if (response) {
+            const isCorrect = response.isCorrect;
+            const score = response.pointsEarned || (response.isCorrect ? (question.points || 1) : 0);
             questionAttempts.push({
-              isCorrect: response.isCorrect,
-              score: response.pointsEarned || (response.isCorrect ? (question.points || 1) : 0)
+              isCorrect,
+              score
             });
           }
         }
@@ -688,9 +669,48 @@ const esaStandardsData = computed(() => {
     });
 
     if (questionAttempts.length > 0) {
-      const correct = questionAttempts.filter(attempt => attempt.isCorrect).length;
-      const total = questionAttempts.length;
-      const percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
+      let correct = 0;
+      let total = 0;
+      let percentage = 0;
+
+      // Apply scoring method logic (same as gradebook)
+      if (scoringMethod === 'keepTop') {
+        // Keep Top Score: Takes highest scoring attempts up to maxScore limit
+        questionAttempts.sort((a, b) => b.score - a.score);
+
+        if (maxScore && maxScore > 0) {
+          // Take top maxScore questions (best performance)
+          const topAttempts = questionAttempts.slice(0, maxScore);
+          correct = topAttempts.filter(attempt => attempt.isCorrect).length;
+          total = maxScore;  // Use maxScore as fixed denominator
+          percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
+        } else {
+          // No max score set - use all attempts
+          correct = questionAttempts.filter(attempt => attempt.isCorrect).length;
+          total = questionAttempts.length;
+          percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
+        }
+
+      } else if (scoringMethod === 'average') {
+        // Average Scores: Calculate average percentage across all attempts
+        const attemptPercentages = questionAttempts.map(attempt =>
+          attempt.isCorrect ? 100 : 0
+        );
+        percentage = Math.round(attemptPercentages.reduce((sum: number, pct: number) => sum + pct, 0) / attemptPercentages.length);
+        correct = Math.round((percentage / 100) * questionAttempts.length);
+        total = questionAttempts.length;
+
+      } else {
+        // Additive (default): All attempts count, maxScore caps denominator
+        questionAttempts.sort((a, b) => b.score - a.score);
+        const limitedAttempts = maxScore && maxScore > 0 ?
+          questionAttempts.slice(0, maxScore) :
+          questionAttempts;
+
+        correct = limitedAttempts.filter(attempt => attempt.isCorrect).length;
+        total = limitedAttempts.length;
+        percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
+      }
 
       // Count total attempts (number of times this standard was assessed)
       const attempts = esaResults.filter(r => {
@@ -824,7 +844,7 @@ const saMissingAssessments = computed(() => {
   return missing.sort();
 });
 
-// Computed: SA Standards Data (using same logic as StudentResults.vue)
+// Computed: SA Standards Data (using same logic as gradebook with maxScore capping)
 const saStandardsData = computed(() => {
   const saAssessments = filteredAssessments.value.filter(a => a.category === 'SA');
   const saResults = filteredAssessmentResults.value.filter(r => {
@@ -852,6 +872,11 @@ const saStandardsData = computed(() => {
   }>();
 
   uniqueStandards.forEach(standard => {
+    // Get custom standard metadata for maxScore limit (same as gradebook)
+    const customStd = getCustomStandardByCode(standard);
+    const maxScore = customStd?.maxScore;
+    const scoringMethod = customStd?.scoringMethod || 'additive';
+
     // Collect all question attempts for this standard
     const questionAttempts: { isCorrect: boolean; score: number }[] = [];
 
@@ -873,9 +898,11 @@ const saStandardsData = computed(() => {
           // Find the response for this specific question
           const response = result.responses?.find((r: any) => r.questionId === question.id);
           if (response) {
+            const isCorrect = response.isCorrect;
+            const score = response.pointsEarned || (response.isCorrect ? (question.points || 1) : 0);
             questionAttempts.push({
-              isCorrect: response.isCorrect,
-              score: response.pointsEarned || (response.isCorrect ? (question.points || 1) : 0)
+              isCorrect,
+              score
             });
           }
         }
@@ -883,9 +910,48 @@ const saStandardsData = computed(() => {
     });
 
     if (questionAttempts.length > 0) {
-      const correct = questionAttempts.filter(attempt => attempt.isCorrect).length;
-      const total = questionAttempts.length;
-      const percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
+      let correct = 0;
+      let total = 0;
+      let percentage = 0;
+
+      // Apply scoring method logic (same as gradebook)
+      if (scoringMethod === 'keepTop') {
+        // Keep Top Score: Takes highest scoring attempts up to maxScore limit
+        questionAttempts.sort((a, b) => b.score - a.score);
+
+        if (maxScore && maxScore > 0) {
+          // Take top maxScore questions (best performance)
+          const topAttempts = questionAttempts.slice(0, maxScore);
+          correct = topAttempts.filter(attempt => attempt.isCorrect).length;
+          total = maxScore;  // Use maxScore as fixed denominator
+          percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
+        } else {
+          // No max score set - use all attempts
+          correct = questionAttempts.filter(attempt => attempt.isCorrect).length;
+          total = questionAttempts.length;
+          percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
+        }
+
+      } else if (scoringMethod === 'average') {
+        // Average Scores: Calculate average percentage across all attempts
+        const attemptPercentages = questionAttempts.map(attempt =>
+          attempt.isCorrect ? 100 : 0
+        );
+        percentage = Math.round(attemptPercentages.reduce((sum: number, pct: number) => sum + pct, 0) / attemptPercentages.length);
+        correct = Math.round((percentage / 100) * questionAttempts.length);
+        total = questionAttempts.length;
+
+      } else {
+        // Additive (default): All attempts count, maxScore caps denominator
+        questionAttempts.sort((a, b) => b.score - a.score);
+        const limitedAttempts = maxScore && maxScore > 0 ?
+          questionAttempts.slice(0, maxScore) :
+          questionAttempts;
+
+        correct = limitedAttempts.filter(attempt => attempt.isCorrect).length;
+        total = limitedAttempts.length;
+        percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
+      }
 
       // Count total attempts (number of times this standard was assessed)
       const attempts = saResults.filter(r => {
@@ -1062,7 +1128,71 @@ const saByStandard = computed(() => {
   return Array.from(standardMap.values()).sort((a, b) => a.standard.localeCompare(b.standard));
 });
 
-// Computed: PA by Goal
+// Computed: PA Compact Data (compact format showing individual assessments)
+const paCompactData = computed(() => {
+  const paAssessments = filteredAssessments.value.filter(a => a.category === 'PA');
+  const paResults = filteredAssessmentResults.value.filter(r => {
+    const assessment = paAssessments.find(a => a.id === r.assessmentId);
+    return assessment !== undefined;
+  });
+
+  return paAssessments
+    .map(assessment => {
+      const results = paResults.filter(r => r.assessmentId === assessment.id);
+
+      if (results.length > 0) {
+        // Get best result
+        const bestResult = results.reduce((best, r) => r.percentage > best.percentage ? r : best);
+
+        return {
+          id: assessment.id,
+          title: assessment.title,
+          correct: bestResult.score,
+          total: bestResult.totalPoints,
+          percentage: bestResult.percentage,
+          attempts: results.length
+        };
+      }
+      return null; // Filter out incomplete assessments
+    })
+    .filter((item): item is NonNullable<typeof item> => item !== null)
+    .sort((a, b) => {
+      // Sort by title (natural sort)
+      return a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: 'base' });
+    });
+});
+
+// Computed: PA Missing Assessments
+const paMissingAssessments = computed(() => {
+  const paAssessments = filteredAssessments.value.filter(a => a.category === 'PA');
+  const paResults = filteredAssessmentResults.value.filter(r => {
+    const assessment = paAssessments.find(a => a.id === r.assessmentId);
+    return assessment !== undefined;
+  });
+
+  // Find assessments with no results
+  const missing = paAssessments
+    .filter(assessment => !paResults.some(r => r.assessmentId === assessment.id))
+    .map(assessment => assessment.title)
+    .filter((title, index, arr) => arr.indexOf(title) === index); // Remove duplicates
+
+  return missing.sort();
+});
+
+// Computed: Fluency Compact Data
+const fluencyCompactData = computed(() => {
+  return fluencyData.value.map(operation => ({
+    operation: operation.operation,
+    proficiency: operation.proficiencyPercentage || 0,
+    mastery: operation.masteryPercentage || 0,
+    practiceDays: operation.totalPracticeDays || 0
+  })).sort((a, b) => {
+    // Sort by operation name
+    return a.operation.localeCompare(b.operation);
+  });
+});
+
+// Computed: PA by Goal (kept for backward compatibility if needed)
 const paByGoal = computed(() => {
   const paAssessments = filteredAssessments.value.filter(a => a.category === 'PA');
   const paResults = filteredAssessmentResults.value.filter(r => {
@@ -1169,13 +1299,14 @@ const loadData = async () => {
     }
 
     // Load all data in parallel
-    const [assessmentsList, resultsList, goalsList, fluencyList, studentData] = await Promise.all([
+    const [assessmentsList, resultsList, goalsList, fluencyList, studentData, allCustomStandards] = await Promise.all([
       getAssessmentsByStudent(studentId),
       getAssessmentResultsByStudent(studentId),
       getGoalsByStudent(studentId),
       getAllFluencyProgress(studentId),
       // Load student info if viewing another student, otherwise resolve to null
-      isViewingOtherStudent.value ? getStudent(studentId) : Promise.resolve(null)
+      isViewingOtherStudent.value ? getStudent(studentId) : Promise.resolve(null),
+      getAllCustomStandards()
     ]);
 
     // If student info was loaded, store it
@@ -1187,6 +1318,7 @@ const loadData = async () => {
     assessmentResults.value = resultsList;
     goals.value = goalsList;
     fluencyData.value = fluencyList;
+    customStandards.value = allCustomStandards;
 
     console.log(`📊 Loaded ${assessmentsList.length} assessments, ${resultsList.length} results, ${goalsList.length} goals, ${fluencyList.length} fluency operations`);
   } catch (err: any) {
@@ -1230,6 +1362,222 @@ const getScoreClass = (percentage: number): string => {
 
 const capitalizeOperation = (op: string): string => {
   return op.charAt(0).toUpperCase() + op.slice(1);
+};
+
+const printSummary = () => {
+  // Create a new window for printing
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) {
+    alert('Please allow popups to print the summary');
+    return;
+  }
+
+  // Get the summary section HTML
+  const summarySection = document.getElementById('summary-section');
+  if (!summarySection) return;
+
+  // Get student name for header
+  const studentName = isViewingOtherStudent.value ? studentDisplayName.value : authStore.currentUser?.displayName || 'Student';
+  const periodInfo = selectedPeriod.value ? `${selectedPeriod.value.name} - ${selectedPeriodDateRange.value}` : 'All Quarters';
+
+  // Create print HTML
+  const printHTML = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>Student Summary - ${studentName}</title>
+        <style>
+          @page {
+            margin: 1in;
+          }
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            font-size: 12pt;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+          }
+          .print-header {
+            margin-bottom: 0.75rem;
+            padding-bottom: 0.35rem;
+            border-bottom: 2px solid #333;
+          }
+          .print-header h1 {
+            margin: 0 0 0.25rem 0;
+            font-size: 14pt;
+            color: #333;
+          }
+          .print-header .student-info {
+            font-size: 9pt;
+            color: #666;
+            line-height: 1.4;
+          }
+          .summary-overview {
+            background: white;
+            padding: 0;
+          }
+          .summary-overview h2 {
+            font-size: 14pt;
+            margin-bottom: 0.75rem;
+            color: #333;
+            border-bottom: 2px solid #3b82f6;
+            padding-bottom: 0.25rem;
+          }
+          .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            column-gap: 1.5rem;
+          }
+          .summary-group {
+            page-break-inside: avoid;
+            margin-bottom: 0.75rem;
+          }
+          .summary-group-title {
+            font-size: 11pt;
+            margin-bottom: 0.5rem;
+            color: #555;
+            font-weight: 600;
+            border-bottom: 1px solid #e0e0e0;
+            padding-bottom: 0.15rem;
+          }
+          .compact-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+          }
+          .summary-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.35rem 0.5rem;
+            background: #f9f9f9;
+            border-radius: 3px;
+            border-left: 2px solid #3b82f6;
+            font-size: 9pt;
+            page-break-inside: avoid;
+            line-height: 1.2;
+          }
+          .summary-item.excellent {
+            border-left-color: #10b981;
+            background: #f0fdf4;
+          }
+          .summary-item.good {
+            border-left-color: #3b82f6;
+            background: #eff6ff;
+          }
+          .summary-item.fair {
+            border-left-color: #f59e0b;
+            background: #fffbeb;
+          }
+          .summary-item.needs-improvement {
+            border-left-color: #f97316;
+            background: #fff7ed;
+          }
+          .summary-item.poor {
+            border-left-color: #ef4444;
+            background: #fef2f2;
+          }
+          .standard-code {
+            font-weight: 600;
+            color: #333;
+            min-width: 100px;
+          }
+          .standard-info {
+            display: flex;
+            flex-direction: column;
+            gap: 0.1rem;
+            min-width: 120px;
+            flex: 1;
+          }
+          .standard-name {
+            font-weight: 600;
+            color: #333;
+            font-size: 9pt;
+            line-height: 1.2;
+          }
+          .standard-code-small {
+            font-size: 7.5pt;
+            color: #666;
+            font-weight: 500;
+            font-family: 'Courier New', monospace;
+            line-height: 1.1;
+          }
+          .score-info {
+            color: #666;
+            font-family: 'Courier New', monospace;
+            font-size: 9pt;
+            white-space: nowrap;
+            margin-left: 0.5rem;
+          }
+          .score-info strong {
+            font-weight: 700;
+            color: #333;
+          }
+          .missing-assessments {
+            margin-bottom: 0.5rem;
+            padding: 0.35rem 0.5rem;
+            background: #fff3cd;
+            border-left: 3px solid #ffc107;
+            border-radius: 3px;
+            color: #856404;
+            font-size: 8.5pt;
+            page-break-inside: avoid;
+            line-height: 1.3;
+          }
+          .missing-assessments strong {
+            color: #856404;
+          }
+          .empty-state-small {
+            text-align: left;
+            padding: 0.25rem 0;
+            color: #999;
+            font-size: 8.5pt;
+            font-style: italic;
+          }
+          @media print {
+            .print-button {
+              display: none;
+            }
+            .summary-grid {
+              grid-template-columns: repeat(2, 1fr);
+            }
+            @page {
+              margin: 0.5in;
+            }
+          }
+          @media print and (orientation: landscape) {
+            .summary-grid {
+              grid-template-columns: repeat(3, 1fr);
+            }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="print-header">
+          <h1>Student Summary - ${studentName}</h1>
+          <div class="student-info">
+            Period: ${periodInfo}<br>
+            Generated: ${new Date().toLocaleString()}
+          </div>
+        </div>
+        ${summarySection.innerHTML}
+      </body>
+    </html>
+  `;
+
+  printWindow.document.write(printHTML);
+  printWindow.document.close();
+
+  // Wait for content to load, then print
+  printWindow.onload = () => {
+    setTimeout(() => {
+      printWindow.print();
+      // Optionally close the window after printing
+      // printWindow.close();
+    }, 250);
+  };
 };
 
 onMounted(() => {
@@ -1427,6 +1775,27 @@ onMounted(() => {
   min-width: 100px;
 }
 
+.standard-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 150px;
+}
+
+.standard-name {
+  font-weight: 600;
+  color: #333;
+  font-size: 0.95rem;
+  line-height: 1.3;
+}
+
+.standard-code-small {
+  font-size: 0.8rem;
+  color: #666;
+  font-weight: 500;
+  font-family: 'Courier New', monospace;
+}
+
 .score-info {
   color: #666;
   font-family: 'Courier New', monospace;
@@ -1438,6 +1807,178 @@ onMounted(() => {
   color: #333;
   border-bottom: 2px solid #e0e0e0;
   padding-bottom: 0.5rem;
+}
+
+.summary-overview {
+  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+  border: 2px solid #3b82f6;
+  border-radius: 12px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+}
+
+.summary-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.summary-overview h2 {
+  margin: 0;
+  color: #3b82f6;
+  border-bottom: none;
+  padding-bottom: 0;
+  font-size: 1.75rem;
+}
+
+.print-button {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+}
+
+.print-button:hover {
+  background: #2563eb;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.4);
+}
+
+.print-button:active {
+  transform: translateY(0);
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 2rem;
+}
+
+.summary-group {
+  background: white;
+  border-radius: 8px;
+  padding: 1.25rem;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.summary-group-title {
+  font-size: 1.15rem;
+  margin-bottom: 1rem;
+  color: #374151;
+  font-weight: 600;
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 0.5rem;
+}
+
+.empty-state-small {
+  text-align: left;
+  padding: 0.75rem 0;
+  color: #9ca3af;
+  font-size: 0.9rem;
+  font-style: italic;
+}
+
+.summary-item {
+  transition: all 0.2s ease;
+}
+
+.summary-item:hover {
+  transform: translateX(4px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.summary-item.excellent {
+  border-left-color: #10b981;
+  background: #f0fdf4;
+}
+
+.summary-item.good {
+  border-left-color: #3b82f6;
+  background: #eff6ff;
+}
+
+.summary-item.fair {
+  border-left-color: #f59e0b;
+  background: #fffbeb;
+}
+
+.summary-item.needs-improvement {
+  border-left-color: #f97316;
+  background: #fff7ed;
+}
+
+.summary-item.poor {
+  border-left-color: #ef4444;
+  background: #fef2f2;
+}
+
+.summary-item .score-info strong {
+  font-weight: 700;
+  font-size: 1.05em;
+}
+
+@media (max-width: 768px) {
+  .summary-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .summary-header-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .print-button {
+    width: 100%;
+  }
+}
+
+/* Print styles */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  #summary-section,
+  #summary-section * {
+    visibility: visible;
+  }
+
+  #summary-section {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    background: white;
+    padding: 0;
+    border: none;
+    box-shadow: none;
+  }
+
+  .print-button {
+    display: none !important;
+  }
+
+  .summary-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .summary-group {
+    page-break-inside: avoid;
+    border: 1px solid #ddd;
+  }
 }
 
 .two-column-layout {

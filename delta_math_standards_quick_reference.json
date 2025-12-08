@@ -1,0 +1,159 @@
+{
+  "standards": {
+    "4.NF.1": {
+      "description": "Equivalent Fractions (Visual Models)",
+      "goalTemplates": [
+        "Math - Visual Fraction Models"
+      ],
+      "deltaMathSearch": "4.NF.1 or 'Equivalent Fractions'",
+      "topics": [
+        "Equivalent Fractions",
+        "Visual Fraction Models",
+        "Comparing Fractions Using Models"
+      ]
+    },
+    "5.NF.1": {
+      "description": "Adding and Subtracting Fractions (Unlike Denominators)",
+      "goalTemplates": [
+        "Math - Fraction Operations"
+      ],
+      "deltaMathSearch": "5.NF.1 or 'Adding Fractions Unlike Denominators'",
+      "topics": [
+        "Adding Fractions (Unlike Denominators)",
+        "Subtracting Fractions (Unlike Denominators)",
+        "Finding Common Denominators",
+        "Mixed Numbers"
+      ]
+    },
+    "6.NS.B.2": {
+      "description": "Multi-Digit Operations",
+      "goalTemplates": [
+        "Math - Multi-Digit Operations"
+      ],
+      "deltaMathSearch": "6.NS.B.2 or 'Multi-Digit Operations'",
+      "topics": [
+        "Multi-Digit Addition",
+        "Multi-Digit Subtraction",
+        "Multi-Digit Multiplication",
+        "Long Division",
+        "Multi-Digit Operations with Regrouping"
+      ]
+    },
+    "6.NS.3": {
+      "description": "Decimal Operations",
+      "goalTemplates": [
+        "Math - Decimal Operations"
+      ],
+      "deltaMathSearch": "6.NS.3 or 'Decimal Operations'",
+      "topics": [
+        "Adding Decimals",
+        "Subtracting Decimals",
+        "Multiplying Decimals",
+        "Dividing Decimals",
+        "Decimal Place Value",
+        "Decimal Word Problems"
+      ]
+    },
+    "6.NS.5": {
+      "description": "Rational Numbers (Number System)",
+      "goalTemplates": [
+        "Word problems with rational numbers",
+        "Estimation with rational numbers"
+      ],
+      "deltaMathSearch": "6.NS.5 or 'Rational Numbers'",
+      "topics": [
+        "Understanding Rational Numbers",
+        "Number Line with Rational Numbers",
+        "Rational Number Word Problems"
+      ]
+    },
+    "6.NS.7": {
+      "description": "Ordering Rational Numbers",
+      "goalTemplates": [
+        "Math - Rational Number Ordering"
+      ],
+      "deltaMathSearch": "6.NS.7 or 'Ordering Rational Numbers'",
+      "topics": [
+        "Comparing Rational Numbers",
+        "Ordering Rational Numbers (Least to Greatest)",
+        "Ordering Rational Numbers (Greatest to Least)",
+        "Number Line Ordering"
+      ]
+    },
+    "6.EE.2a": {
+      "description": "Writing Algebraic Expressions",
+      "goalTemplates": [
+        "Math - Word Problem with Algebraic Expression"
+      ],
+      "deltaMathSearch": "6.EE.2a or 'Writing Expressions'",
+      "topics": [
+        "Writing Expressions from Word Problems",
+        "Translating Phrases to Expressions",
+        "Variables and Expressions",
+        "Evaluating Expressions"
+      ]
+    },
+    "6.EE.7": {
+      "description": "Solving Equations and Inequalities",
+      "goalTemplates": [
+        "Math - Solving One-Step Equations",
+        "Math - Solving Two-Step Equations",
+        "Math - Two-Step Word Problems",
+        "Math - Multi-Step Word Problems",
+        "Math - Algebra Tiles"
+      ],
+      "deltaMathSearch": "6.EE.7 or 'Solving Equations'",
+      "topics": [
+        "One-Step Equations (Addition/Subtraction)",
+        "One-Step Equations (Multiplication/Division)",
+        "Two-Step Equations",
+        "Two-Step Equations with Integers",
+        "Two-Step Word Problems",
+        "Multi-Step Word Problems"
+      ]
+    },
+    "7.NS.3": {
+      "description": "Operations with Rational Numbers",
+      "goalTemplates": [
+        "Word problems with rational numbers",
+        "All four operations with rational numbers"
+      ],
+      "deltaMathSearch": "7.NS.3 or 'Operations with Rational Numbers'",
+      "topics": [
+        "Adding Integers",
+        "Subtracting Integers",
+        "Multiplying Integers",
+        "Dividing Integers",
+        "Operations with Negative Numbers",
+        "Rational Number Word Problems",
+        "Mixed Operations with Rational Numbers"
+      ]
+    },
+    "7.EE.B.4": {
+      "description": "Solving Multi-Step Equations",
+      "goalTemplates": [
+        "Math - Solving Multi-Step Equations"
+      ],
+      "deltaMathSearch": "7.EE.B.4 or 'Multi-Step Equations'",
+      "topics": [
+        "Multi-Step Equations",
+        "Equations with Distributive Property",
+        "Equations with Variables on Both Sides",
+        "Combining Like Terms",
+        "Equations with Rational Coefficients",
+        "Two-Step Equations with Rational Numbers"
+      ]
+    }
+  },
+  "usage": {
+    "instructions": "1. Find the standard from a student's goal (e.g., '6.EE.7')",
+    "searchDeltaMath": "2. Search Delta Math for that exact standard code",
+    "assignLesson": "3. Assign the corresponding Delta Math lesson(s)"
+  },
+  "notes": [
+    "Delta Math organizes lessons by Common Core standards",
+    "Multiple lessons may exist for each standard at different difficulty levels",
+    "Use Delta Math's search/filter feature to find lessons by standard",
+    "Delta Math RTI has additional intervention-focused lessons"
+  ]
+}
