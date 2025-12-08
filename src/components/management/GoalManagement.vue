@@ -102,8 +102,10 @@
       :show="showSingleQuestionPreview"
       :question="singlePreviewQuestion"
       :is-generating="isGenerating"
+      :goal="currentGoalForGeneration"
       @close="showSingleQuestionPreview = false"
       @approve="handleApproval"
+      @save-template="(templateData: any) => handleSaveAsTemplate(templateData)"
     />
 
     <ConfirmationPreviewModal
@@ -123,6 +125,7 @@
       @approve="handleApproval"
       @update-alternatives="(assessmentIndex: number, qIndex: number) => updateAlternativeAnswers(previewAssessments[assessmentIndex], qIndex)"
       @regenerate="regenerateRemainingQuestions"
+      @save-template="handleSaveAsTemplate"
     />
 
     <!-- Loading Overlay -->
@@ -140,6 +143,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/authStore'
 import { useGoalManagement } from '@/composables/useGoalManagement'
 import { useGoalFilters } from '@/composables/useGoalFilters'
 import { useAssessmentGeneration } from '@/composables/useAssessmentGeneration'
@@ -152,8 +156,9 @@ import SingleQuestionPreviewModal from './modals/SingleQuestionPreviewModal.vue'
 import ConfirmationPreviewModal from './modals/ConfirmationPreviewModal.vue'
 import type { Goal } from '@/types/iep'
 
-// Router
+// Router and Auth
 const router = useRouter()
+const authStore = useAuthStore()
 
 // Use composables
 const goalManagement = useGoalManagement()
@@ -321,6 +326,33 @@ const handleViewEditAssessment = (assessmentId: string) => {
 
 const handleApproval = async () => {
   await handleApprovalService()
+}
+
+const handleSaveAsTemplate = async (templateData?: any) => {
+  // If no templateData provided (from AssessmentPreviewModal), navigate to template management
+  if (!templateData) {
+    router.push('/admin/templates')
+    return
+  }
+
+  try {
+    // Add createdBy field
+    templateData.createdBy = authStore.currentUser?.uid || ''
+
+    // Import and use createTemplate function
+    const { createTemplate } = await import('@/firebase/templateServices')
+    const templateId = await createTemplate(templateData)
+
+    console.log('✅ Template saved with ID:', templateId)
+
+    alert('✅ Template saved successfully! You can find it in Goal Template Management.')
+
+    // Optionally navigate to template management
+    router.push('/admin/templates')
+  } catch (error) {
+    console.error('Error saving template:', error)
+    alert('Failed to save template. Please try again.')
+  }
 }
 
 const confirmAndCreateAssessments = async () => {

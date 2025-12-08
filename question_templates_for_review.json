@@ -907,5 +907,31 @@
     "createdBy": "",
     "createdAt": null,
     "updatedAt": null
+  },
+  {
+    "id": "",
+    "name": "Elapsed Time - Cloze",
+    "subject": "math",
+    "topic": "elapsed time",
+    "questionType": "short-answer",
+    "questionTemplate": "{{scenario}}\n\nHow much time passed? Answer: ___ minutes",
+    "answerTemplate": "{{durationMinutes}}",
+    "alternativeAnswers": ["{{durationMinutes}}", "{{durationMinutes}} minutes", "{{durationHHMM}}"],
+    "explanationTemplate": "Convert times to minutes and subtract.",
+    "requiresPhoto": true,
+    "variableGenerators": {
+      "startHour": { "type": "random", "min": 7, "max": 15 },
+      "startMinute": { "type": "random", "min": 0, "max": 59 },
+      "durationMinutes": { "type": "random", "min": 20, "max": 95 },
+      "endTime": { "type": "calculated", "formula": "timeAddMinutes(startHour, startMinute, durationMinutes)" },
+      "scenario": { "type": "template", "template": "Start time: {{startHour}}:{{startMinute}}. End time: {{endTime}}." },
+      "durationHHMM": { "type": "calculated", "formula": "`${Math.floor(durationMinutes/60)}:${(durationMinutes%60).toString().padStart(2,'0')}`" }
+    },
+    "exampleQuestion": "Start time: 9:20. End time: 10:05.\n\nHow much time passed? Answer: ___ minutes",
+    "exampleAnswer": "45",
+    "isActive": true,
+    "createdBy": "",
+    "createdAt": null,
+    "updatedAt": null
   }
 ]

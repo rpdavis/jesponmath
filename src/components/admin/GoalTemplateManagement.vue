@@ -75,6 +75,9 @@
             <button @click="editTemplate(template)" class="btn-icon" title="Edit">
               ✏️
             </button>
+            <button @click="createFromTemplate(template)" class="btn-icon" title="Save as New Template">
+              📄
+            </button>
             <button
               @click="toggleTemplateActive(template)"
               class="btn-icon"
@@ -93,9 +96,9 @@
             <strong>Area of Need:</strong>
             <span>{{ template.areaOfNeed }}</span>
           </div>
-          <div v-if="template.description" class="template-field">
+          <div v-if="template.description" class="template-field description-field">
             <strong>Description:</strong>
-            <span>{{ template.description }}</span>
+            <div class="description-content">{{ template.description }}</div>
           </div>
           <div class="template-field">
             <strong>Goal Title Template:</strong>
@@ -117,8 +120,17 @@
             <strong>Default Threshold:</strong>
             <span>{{ template.defaultThreshold }}</span>
           </div>
+          <div v-if="template.exampleQuestion" class="template-field example-question-preview">
+            <strong>⭐ Example Question:</strong>
+            <div class="example-question-content">
+              <div><strong>Question:</strong> {{ template.exampleQuestion }}</div>
+              <div v-if="template.exampleAnswer"><strong>Answer:</strong> {{ template.exampleAnswer }}</div>
+              <div v-if="template.exampleAlternativeAnswers"><strong>Alternative Answers:</strong> {{ template.exampleAlternativeAnswers }}</div>
+              <div v-if="template.exampleExplanation"><strong>Explanation:</strong> {{ template.exampleExplanation }}</div>
+            </div>
+          </div>
           <div v-if="template.exampleGoal" class="template-field">
-            <strong>Example:</strong>
+            <strong>Example Goal:</strong>
             <span class="example-text">{{ template.exampleGoal }}</span>
           </div>
         </div>
@@ -300,6 +312,55 @@
             ></textarea>
           </div>
 
+          <!-- EXAMPLE QUESTION SECTION - MOST IMPORTANT -->
+          <div class="example-question-section">
+            <h6 class="section-title">⭐ Example Question (Most Important)</h6>
+            <p class="section-description">This example question will be used to generate accurate similar questions. This is the most important part of the template!</p>
+
+            <div class="form-group">
+              <label>Example Question Text *</label>
+              <textarea
+                v-model="formData.exampleQuestion"
+                required
+                rows="4"
+                class="form-control example-field"
+                placeholder="Enter the example question text..."
+              ></textarea>
+            </div>
+
+            <div class="form-group">
+              <label>Example Correct Answer *</label>
+              <input
+                v-model="formData.exampleAnswer"
+                type="text"
+                required
+                class="form-control example-field"
+                placeholder="Enter the correct answer..."
+              />
+            </div>
+
+            <div class="form-group">
+              <label>Example Alternative Answers (comma-separated)</label>
+              <input
+                v-model="formData.exampleAlternativeAnswers"
+                type="text"
+                class="form-control"
+                placeholder="e.g., 5, 5 minutes, 5 min"
+              />
+              <small class="form-text">Other acceptable answer formats</small>
+            </div>
+
+            <div class="form-group">
+              <label>Example Explanation (Optional)</label>
+              <textarea
+                v-model="formData.exampleExplanation"
+                rows="3"
+                class="form-control"
+                placeholder="Enter explanation for the example question..."
+              ></textarea>
+            </div>
+          </div>
+
           <div class="form-group">
             <label>Example Goal (optional)</label>
             <textarea
@@ -348,6 +409,15 @@
             <div v-if="previewTemplateData.topic" class="preview-field">
               <strong>Topic:</strong> {{ previewTemplateData.topic }}
             </div>
+            <div v-if="previewTemplateData.exampleQuestion" class="preview-field example-question-preview">
+              <strong>⭐ Example Question:</strong>
+              <div class="example-question-content">
+                <div><strong>Question:</strong> {{ previewTemplateData.exampleQuestion }}</div>
+                <div v-if="previewTemplateData.exampleAnswer"><strong>Answer:</strong> {{ previewTemplateData.exampleAnswer }}</div>
+                <div v-if="previewTemplateData.exampleAlternativeAnswers"><strong>Alternative Answers:</strong> {{ previewTemplateData.exampleAlternativeAnswers }}</div>
+                <div v-if="previewTemplateData.exampleExplanation"><strong>Explanation:</strong> {{ previewTemplateData.exampleExplanation }}</div>
+              </div>
+            </div>
           </div>
 
           <div class="preview-section">
@@ -380,6 +450,9 @@
         </div>
 
         <div class="modal-actions">
+          <button @click="createFromPreview" class="btn btn-secondary">
+            📄 Save as New Template
+          </button>
           <button @click="showPreviewModal = false" class="btn btn-primary">
             Close
           </button>
@@ -440,6 +513,11 @@ const formData = ref({
   defaultCondition: '',
   description: '',
   exampleGoal: '',
+  // Example question fields - MOST IMPORTANT
+  exampleQuestion: '',
+  exampleAnswer: '',
+  exampleAlternativeAnswers: '',
+  exampleExplanation: '',
   isActive: true,
 })
 
@@ -521,6 +599,10 @@ const resetForm = () => {
     defaultCondition: '',
     description: '',
     exampleGoal: '',
+    exampleQuestion: '',
+    exampleAnswer: '',
+    exampleAlternativeAnswers: '',
+    exampleExplanation: '',
     isActive: true,
   }
   editingTemplate.value = null
@@ -552,6 +634,10 @@ const editTemplate = (template: GoalTemplate) => {
     defaultCondition: template.defaultCondition || '',
     description: template.description || '',
     exampleGoal: template.exampleGoal || '',
+    exampleQuestion: template.exampleQuestion || '',
+    exampleAnswer: template.exampleAnswer || '',
+    exampleAlternativeAnswers: template.exampleAlternativeAnswers || '',
+    exampleExplanation: template.exampleExplanation || '',
     isActive: template.isActive,
   }
   showEditModal.value = true
@@ -561,25 +647,32 @@ const saveTemplate = async () => {
   try {
     saving.value = true
 
-    const templateData: Omit<GoalTemplate, 'id' | 'createdAt' | 'updatedAt'> = {
+    // Build template data, only including fields that have values (not empty strings for optional fields)
+    const templateData: any = {
       name: formData.value.name,
       subject: formData.value.subject,
-      topic: formData.value.topic || undefined,
       areaOfNeed: formData.value.areaOfNeed,
       goalTitleTemplate: formData.value.goalTitleTemplate,
       goalTextTemplate: formData.value.goalTextTemplate,
-      baselineTemplate: formData.value.baselineTemplate || undefined,
       assessmentMethod: formData.value.assessmentMethod,
-      rubricId: formData.value.rubricId || undefined,
-      defaultGradeLevel: formData.value.defaultGradeLevel,
-      defaultStandard: formData.value.defaultStandard || undefined,
-      defaultThreshold: formData.value.defaultThreshold || undefined,
-      defaultCondition: formData.value.defaultCondition || undefined,
-      description: formData.value.description || undefined,
-      exampleGoal: formData.value.exampleGoal || undefined,
       isActive: formData.value.isActive,
       createdBy: authStore.currentUser?.uid || '',
     }
+
+    // Add optional fields only if they have values
+    if (formData.value.topic) templateData.topic = formData.value.topic
+    if (formData.value.baselineTemplate) templateData.baselineTemplate = formData.value.baselineTemplate
+    if (formData.value.rubricId) templateData.rubricId = formData.value.rubricId
+    if (formData.value.defaultGradeLevel !== undefined) templateData.defaultGradeLevel = formData.value.defaultGradeLevel
+    if (formData.value.defaultStandard) templateData.defaultStandard = formData.value.defaultStandard
+    if (formData.value.defaultThreshold) templateData.defaultThreshold = formData.value.defaultThreshold
+    if (formData.value.defaultCondition) templateData.defaultCondition = formData.value.defaultCondition
+    if (formData.value.description) templateData.description = formData.value.description
+    if (formData.value.exampleGoal) templateData.exampleGoal = formData.value.exampleGoal
+    if (formData.value.exampleQuestion) templateData.exampleQuestion = formData.value.exampleQuestion
+    if (formData.value.exampleAnswer) templateData.exampleAnswer = formData.value.exampleAnswer
+    if (formData.value.exampleAlternativeAnswers) templateData.exampleAlternativeAnswers = formData.value.exampleAlternativeAnswers
+    if (formData.value.exampleExplanation) templateData.exampleExplanation = formData.value.exampleExplanation
 
     if (showEditModal.value && editingTemplate.value) {
       await updateTemplate(editingTemplate.value.id, templateData)
@@ -628,6 +721,39 @@ const toggleTemplateActive = async (template: GoalTemplate) => {
 const previewTemplate = (template: GoalTemplate) => {
   previewTemplateData.value = template
   showPreviewModal.value = true
+}
+
+const createFromPreview = () => {
+  if (!previewTemplateData.value) return
+  const t = previewTemplateData.value
+  createFromTemplate(t)
+  showPreviewModal.value = false
+}
+
+const createFromTemplate = (t: GoalTemplate) => {
+  formData.value = {
+    name: `Copy of ${t.name}`,
+    subject: t.subject,
+    topic: t.topic || '',
+    areaOfNeed: t.areaOfNeed,
+    goalTitleTemplate: t.goalTitleTemplate,
+    goalTextTemplate: t.goalTextTemplate,
+    baselineTemplate: t.baselineTemplate || '',
+    assessmentMethod: t.assessmentMethod,
+    rubricId: t.rubricId || '',
+    defaultGradeLevel: t.defaultGradeLevel,
+    defaultStandard: t.defaultStandard || '',
+    defaultThreshold: t.defaultThreshold || '',
+    defaultCondition: t.defaultCondition || '',
+    description: t.description || '',
+    exampleGoal: t.exampleGoal || '',
+    exampleQuestion: t.exampleQuestion || '',
+    exampleAnswer: t.exampleAnswer || '',
+    exampleAlternativeAnswers: t.exampleAlternativeAnswers || '',
+    exampleExplanation: t.exampleExplanation || '',
+    isActive: true,
+  }
+  showCreateModal.value = true
 }
 
 const closeModals = () => {
@@ -1009,8 +1135,72 @@ onMounted(() => {
   display: flex;
   justify-content: flex-end;
   gap: 1rem;
+  padding: 1.5rem;
   padding-top: 1rem;
   border-top: 1px solid #eee;
+}
+
+/* Example Question Section Styles */
+.example-question-section {
+  background: #fff3cd;
+  border: 2px solid #ffc107;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.section-title {
+  margin: 0 0 0.5rem 0;
+  font-weight: 700;
+  color: #856404;
+  font-size: 1rem;
+}
+
+.section-description {
+  margin: 0 0 1rem 0;
+  color: #856404;
+  font-size: 0.875rem;
+  font-style: italic;
+}
+
+.example-field {
+  border: 2px solid #ffc107;
+  background: #fff;
+}
+
+.example-field:focus {
+  border-color: #ff9800;
+  box-shadow: 0 0 0 3px rgba(255, 193, 7, 0.25);
+}
+
+.example-question-preview {
+  background: #fff3cd !important;
+  border: 2px solid #ffc107 !important;
+}
+
+.example-question-content {
+  margin-top: 0.5rem;
+}
+
+.example-question-content > div {
+  margin-bottom: 0.5rem;
+  padding: 0.5rem;
+  background: #fff;
+  border-radius: 4px;
+}
+
+.description-field {
+  background: #f8f9fa;
+  padding: 0.75rem;
+  border-radius: 4px;
+  border-left: 3px solid #007bff;
+}
+
+.description-content {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  color: #495057;
+  line-height: 1.5;
 }
 
 /* Preview Styles */

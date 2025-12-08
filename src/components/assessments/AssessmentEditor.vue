@@ -694,6 +694,7 @@
                     <option value="multiple-choice">Multiple Choice</option>
                     <option value="true-false">True/False</option>
                     <option value="short-answer">Short Answer</option>
+                    <option value="fill-blank">Fill in the Blank</option>
                     <option value="essay">Essay</option>
                     <option value="number">Number</option>
                     <option value="fraction">Fraction</option>
@@ -1106,6 +1107,78 @@
                     <span v-else class="correct-count">
                       {{ (question.correctHorizontalOrder || []).length }} position(s)
                     </span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Fill in the Blank -->
+              <div v-if="question.questionType === 'fill-blank'" class="fill-blank-section">
+                <div class="form-group">
+                  <label>Blank Format *</label>
+                  <input
+                    v-model="question.blankFormat"
+                    type="text"
+                    class="form-input"
+                    placeholder="e.g., '___ minutes' or 'Answer: ___ dollars'"
+                  >
+                  <small class="form-help">
+                    Use <code>___</code> (three underscores) to mark where the blank should appear.
+                    This helps limit answer variations for questions with units (e.g., "5 minutes" vs "5 min").
+                  </small>
+                </div>
+                <div class="form-group">
+                  <label>Correct Answer (numeric value only) *</label>
+                  <input
+                    v-model="question.correctAnswer"
+                    type="text"
+                    class="form-input"
+                    placeholder="e.g., '5' (without units)"
+                  >
+                  <small class="form-help">
+                    Enter only the numeric value. The unit will be taken from the blank format.
+                  </small>
+                </div>
+                <div class="form-group">
+                  <label>Additional Acceptable Answers (numeric values only)</label>
+                  <div class="acceptable-answers">
+                    <div
+                      v-for="(answer, answerIndex) in question.acceptableAnswers"
+                      :key="answerIndex"
+                      class="acceptable-answer-item"
+                    >
+                      <input
+                        v-model="question.acceptableAnswers![answerIndex]"
+                        type="text"
+                        class="form-input"
+                        placeholder="e.g., '5' or '5.0'"
+                      >
+                      <button
+                        type="button"
+                        @click="removeAcceptableAnswer(question, answerIndex)"
+                        class="remove-answer-button"
+                      >
+                        ×
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      @click="addAcceptableAnswer(question)"
+                      class="add-answer-button"
+                    >
+                      + Add Alternative Answer
+                    </button>
+                  </div>
+                  <small class="form-help">
+                    Add numeric variations (e.g., "5", "5.0", "5.00"). The unit from blank format will be automatically added.
+                  </small>
+                </div>
+                <div class="form-group">
+                  <label>Preview</label>
+                  <div class="fill-blank-preview" v-if="question.blankFormat">
+                    <span v-html="renderFillBlankPreview(question)"></span>
+                  </div>
+                  <div v-else class="preview-placeholder">
+                    Enter a blank format to see preview
                   </div>
                 </div>
               </div>
@@ -1602,6 +1675,13 @@ const addQuestion = () => {
   };
 
   assessment.value.questions.push(newQuestion);
+};
+
+const renderFillBlankPreview = (question: AssessmentQuestion): string => {
+  if (!question.blankFormat) return '';
+  const answer = question.correctAnswer || '___';
+  // Replace ___ with an input field representation
+  return question.blankFormat.replace(/___/g, `<input type="text" style="border: 2px solid #007bff; border-radius: 4px; padding: 4px 8px; min-width: 60px; display: inline-block;" value="${answer}" readonly />`);
 };
 
 const removeQuestion = (index: number) => {

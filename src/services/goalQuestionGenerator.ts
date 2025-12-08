@@ -210,13 +210,31 @@ export function generateWithTemplate(
   detection: GoalDetection,
   questionNumber: number,
 ): QuestionResult | null {
+  let result: QuestionResult | null = null
+
   if (detection.subject === 'math') {
-    return generateMathTemplate(goal, detection, questionNumber)
+    result = generateMathTemplate(goal, detection, questionNumber)
   } else if (detection.subject === 'ela') {
-    return generateELATemplate(goal, detection, questionNumber)
+    result = generateELATemplate(goal, detection, questionNumber)
+  } else {
+    result = generateOtherTemplate(goal, questionNumber)
   }
 
-  return generateOtherTemplate(goal, questionNumber)
+  // Adjust requiresPhoto based on assessmentMethod if result exists
+  if (result && goal.assessmentMethod) {
+    if (goal.assessmentMethod === 'app') {
+      // For app-based assessments, prefer no photo requirement
+      result.requiresPhoto = false
+    } else if (goal.assessmentMethod === 'paper') {
+      // For paper-based assessments, prefer photo requirement for showing work
+      if (detection.subject === 'math' && (detection.isWordProblem || detection.isMultiStep)) {
+        result.requiresPhoto = true
+      }
+    }
+    // For hybrid, keep the default behavior (can have either)
+  }
+
+  return result
 }
 
 /**

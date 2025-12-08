@@ -29,8 +29,11 @@ export async function createTemplate(
   try {
     console.log('📝 Creating new template:', templateData)
 
+    // Remove undefined values before saving
+    const cleanData = removeUndefined(templateData)
+
     const docRef = await addDoc(collection(db, COLLECTIONS.GOAL_TEMPLATES), {
-      ...templateData,
+      ...cleanData,
       usageCount: 0,
       isActive: true,
       createdAt: serverTimestamp(),
@@ -181,6 +184,33 @@ export async function getTemplatesByTopic(topic: string): Promise<GoalTemplate[]
 // ==================== TEMPLATE UPDATES ====================
 
 /**
+ * Helper function to remove undefined and empty string values from objects (Firestore doesn't allow undefined)
+ * Note: We keep empty strings for some fields like description, but remove undefined
+ */
+function removeUndefined<T extends Record<string, any>>(obj: T): Partial<T> {
+  const cleaned: any = {}
+  for (const [key, value] of Object.entries(obj)) {
+    // Only skip undefined values, keep empty strings and null
+    if (value !== undefined) {
+      if (Array.isArray(value)) {
+        // Recursively clean arrays
+        cleaned[key] = value.map((item) =>
+          typeof item === 'object' && item !== null && !(item instanceof Date)
+            ? removeUndefined(item)
+            : item,
+        )
+      } else if (typeof value === 'object' && value !== null && !(value instanceof Date)) {
+        // Recursively clean nested objects
+        cleaned[key] = removeUndefined(value)
+      } else {
+        cleaned[key] = value
+      }
+    }
+  }
+  return cleaned
+}
+
+/**
  * Update a template
  */
 export async function updateTemplate(
@@ -190,9 +220,12 @@ export async function updateTemplate(
   try {
     console.log('📝 Updating template:', templateId, updates)
 
+    // Remove undefined values before saving
+    const cleanUpdates = removeUndefined(updates)
+
     const docRef = doc(db, COLLECTIONS.GOAL_TEMPLATES, templateId)
     await updateDoc(docRef, {
-      ...updates,
+      ...cleanUpdates,
       updatedAt: serverTimestamp(),
     })
 

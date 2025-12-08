@@ -1,0 +1,29 @@
+[
+  {
+    "name": "Elapsed Time – Cloze",
+    "subject": "math",
+    "topic": "elapsed time",
+    "areaOfNeed": "Math - Elapsed Time",
+    "goalTitleTemplate": "Elapsed Time - Cloze",
+    "goalTextTemplate": "{{scenario}}\\n\\nHow much time passed? Answer: ___ minutes",
+    "baselineTemplate": "",
+    "assessmentMethod": "hybrid",
+    "rubricId": null,
+    "defaultGradeLevel": 7,
+    "defaultStandard": "CCSS.MATH.CONTENT.7.EE.B.3",
+    "defaultThreshold": "80%",
+    "defaultCondition": "2 out of 3",
+    "variables": {
+      "startHour": { "type": "random", "min": 7, "max": 15 },
+      "startMinute": { "type": "random", "min": 0, "max": 59 },
+      "durationMinutes": { "type": "random", "min": 20, "max": 95 },
+      "endTime": { "type": "calculated", "formula": "timeAddMinutes(startHour, startMinute, durationMinutes)" },
+      "scenario": { "type": "template", "template": "Start time: {{startHour}}:{{startMinute}}. End time: {{endTime}}." },
+      "durationHHMM": { "type": "calculated", "formula": "`${Math.floor(durationMinutes/60)}:${(durationMinutes%60).toString().padStart(2,'0')}`" }
+    },
+    "description": "Elapsed time word problem with cloze answer for minutes.",
+    "exampleGoal": "Start time: 9:20. End time: 10:05. How much time passed? Answer: ___ minutes",
+    "exampleGoal": "45",
+    "isActive": true
+  }
+]

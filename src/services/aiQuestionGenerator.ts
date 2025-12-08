@@ -412,6 +412,14 @@ ${templateReference.explanation ? `Explanation: ${templateReference.explanation}
 Note: Generate a similar question but with different numbers/scenarios. Keep the same format and structure.`
     : ''
 
+  const assessmentMethod = goal.assessmentMethod || 'app'
+  const assessmentMethodGuidance =
+    assessmentMethod === 'app'
+      ? 'This is an APP-based assessment (digital/automated). Generate questions that can be automatically graded. Avoid requiring photo uploads or manual grading.'
+      : assessmentMethod === 'paper'
+        ? 'This is a PAPER-based assessment (manual grading). Generate questions that may require students to show work, write essays, or demonstrate skills that need teacher evaluation. Photo uploads and rubrics are appropriate.'
+        : 'This is a HYBRID assessment (combination of digital and paper). Generate questions that can include both automated and manual components.'
+
   return `Generate an assessment question based on this IEP goal:
 
 Goal Title: ${goal.goalTitle}
@@ -420,6 +428,9 @@ Area of Need: ${goal.areaOfNeed}
 Subject: ${subject}
 Grade Level: ${goal.gradeLevel || 'Not specified'}
 Question Number: ${questionNumber}
+Assessment Method: ${assessmentMethod.toUpperCase()}
+
+${assessmentMethodGuidance}
 
 Requirements:
 1. The question must directly assess the skill described in the goal
@@ -427,6 +438,7 @@ Requirements:
 3. For ELA: Create age-appropriate reading/writing prompts
 4. Make the question clear and appropriate for the student's grade level
 5. Provide a complete answer with explanation
+6. Consider the assessment method when deciding if photo uploads are needed
 
 DIFFICULTY LEVEL: ${difficulty.toUpperCase()}
 ${

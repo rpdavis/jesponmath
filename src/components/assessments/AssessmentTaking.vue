@@ -247,6 +247,22 @@
                 </p>
               </div>
 
+              <!-- Fill in the Blank -->
+              <div v-else-if="currentQuestion.questionType === 'fill-blank'" class="fill-blank-answer">
+                <div class="fill-blank-display" v-html="renderFillBlankQuestion(currentQuestion)"></div>
+                <input
+                  :key="currentQuestion.id"
+                  v-model="answers[currentQuestion.id] as string"
+                  type="text"
+                  class="fill-blank-input"
+                  :placeholder="getFillBlankPlaceholder(currentQuestion)"
+                  @input="handleFillBlankInput(currentQuestion.id, $event)"
+                />
+                <small class="fill-blank-hint" v-if="currentQuestion.blankFormat">
+                  Enter only the number (the unit is already shown above)
+                </small>
+              </div>
+
               <!-- Short Answer -->
               <div v-else-if="currentQuestion.questionType === 'short-answer'" class="answer-input">
                 <RichTextAnswerInput
@@ -526,37 +542,6 @@ const loadAssessment = async () => {
 
     const data = await getAssessment(assessmentId);
     if (data) {
-      // Normalize correctHorizontalOrder for horizontal ordering questions (handles Firestore object conversion)
-      if (data.questions) {
-        data.questions.forEach((question: any) => {
-          if (question.questionType === 'horizontal-ordering' && question.correctHorizontalOrder) {
-            // Ensure it's an array
-            if (!Array.isArray(question.correctHorizontalOrder)) {
-              // Try to convert to array
-              if (typeof question.correctHorizontalOrder === 'string') {
-                question.correctHorizontalOrder = question.correctHorizontalOrder.split(',').map((item: string) => item.trim()).filter((item: string) => item.length > 0);
-              } else if (typeof question.correctHorizontalOrder === 'object' && question.correctHorizontalOrder !== null) {
-                // Firestore might convert arrays to objects with numeric keys
-                try {
-                  const keys = Object.keys(question.correctHorizontalOrder).sort((a, b) => parseInt(a) - parseInt(b));
-                  question.correctHorizontalOrder = keys.map(key => String(question.correctHorizontalOrder[key])).filter((item: string) => item);
-                } catch (e) {
-                  console.warn('Failed to normalize correctHorizontalOrder:', e);
-                  question.correctHorizontalOrder = [];
-                }
-              } else {
-                question.correctHorizontalOrder = [];
-              }
-            }
-            console.log('📋 Normalized correctHorizontalOrder for question:', question.id, {
-              original: question.correctHorizontalOrder,
-              normalized: question.correctHorizontalOrder,
-              type: Array.isArray(question.correctHorizontalOrder) ? 'array' : typeof question.correctHorizontalOrder
-            });
-          }
-        });
-      }
-
       assessment.value = data;
 
       // Check if any questions require photo upload
@@ -662,6 +647,42 @@ const startAssessment = async () => {
   }
 
   console.log('🚀 Assessment started');
+};
+
+// Fill-blank helper methods
+const renderFillBlankQuestion = (question: AssessmentQuestion): string => {
+  if (!question.blankFormat) {
+    return renderLatexInText(question.questionText);
+  }
+  // Replace ___ with a styled blank indicator
+  const blankFormat = question.blankFormat.replace(/___/g, '<span class="fill-blank-indicator">______</span>');
+  return renderLatexInText(blankFormat);
+};
+
+const getFillBlankPlaceholder = (question: AssessmentQuestion): string => {
+  if (!question.blankFormat) return 'Enter your answer...';
+  // Extract unit from blank format if present
+  const unitMatch = question.blankFormat.match(/(?:___\s*)?(\w+)/);
+  if (unitMatch && unitMatch[1] && unitMatch[1] !== '___') {
+    return `Enter number only (${unitMatch[1]} shown above)`;
+  }
+  return 'Enter number only';
+};
+
+const handleFillBlankInput = (questionId: string, event: Event) => {
+  const input = event.target as HTMLInputElement;
+  // Only allow numeric input (with optional decimal point)
+  const value = input.value.replace(/[^0-9.-]/g, '');
+  answers.value[questionId] = value;
+};
+
+// Extract numeric value from a string (handles units, text, etc.)
+const extractNumericValue = (value: string): number | null => {
+  if (!value) return null;
+  // Remove common units and text, extract number
+  const cleaned = value.replace(/[^0-9.-]/g, '');
+  const num = parseFloat(cleaned);
+  return isNaN(num) ? null : num;
 };
 
 const hideInstructions = () => {
@@ -865,137 +886,109 @@ const submitAssessment = async () => {
         }
       } else if (question.questionType === 'horizontal-ordering') {
         // For horizontal ordering questions, check if items are in correct order
-        // Use correctAnswer as primary (space-separated string), fallback to correctHorizontalOrder
-        let correctOrder: string[] = [];
-
-        // Try to get correct order from correctAnswer first (primary field)
-        if (question.correctAnswer && typeof question.correctAnswer === 'string') {
-          // Parse space-separated string to array
-          correctOrder = question.correctAnswer.split(/\s+/).filter(item => item.length > 0);
-          console.log('📋 Using correctAnswer (primary):', {
-            correctAnswer: question.correctAnswer,
-            parsed: correctOrder
-          });
-        } else if (Array.isArray(question.correctHorizontalOrder)) {
-          // Fallback to correctHorizontalOrder for backward compatibility
-          correctOrder = question.correctHorizontalOrder;
-          console.log('📋 Using correctHorizontalOrder (fallback):', correctOrder);
-        } else if (question.correctHorizontalOrder) {
-          // Handle case where correctHorizontalOrder might be serialized as a string (Firestore can serialize arrays)
-          const correctHorizontalOrderValue = question.correctHorizontalOrder as unknown;
-          if (typeof correctHorizontalOrderValue === 'string') {
-            if (correctHorizontalOrderValue.includes(',')) {
-              correctOrder = correctHorizontalOrderValue.split(',').map((item: string) => item.trim()).filter((item: string) => item.length > 0);
-            } else {
-              correctOrder = correctHorizontalOrderValue.split(/\s+/).filter((item: string) => item.length > 0);
-            }
-          }
-        }
-
-        if (correctOrder.length === 0) {
-          console.error('❌ No correct order found for horizontal ordering question:', question.id);
-          isCorrect = false;
-        } else {
-          // Normalize user answer - handle both array, comma-separated, and space-separated formats
+        if (question.correctHorizontalOrder) {
+          // Handle both array and comma-separated string formats
           let userOrder: string[] = [];
 
           if (Array.isArray(userAnswer)) {
             userOrder = userAnswer as string[];
           } else if (typeof userAnswer === 'string') {
-            // Normalize user answer - handle both comma-separated and space-separated formats
-            // Check if it's comma-separated or space-separated
-            if (userAnswer.includes(',')) {
-              // Comma-separated: "-6,-|-5|,17,|-20|"
-              userOrder = userAnswer.split(',').map(item => item.trim()).filter(item => item.length > 0);
-            } else {
-              // Space-separated: "-6 -|-5| 17 |-20|"
-              userOrder = userAnswer.split(/\s+/).filter(item => item.length > 0);
-            }
-            console.log('📋 Normalized user answer:', {
-              original: userAnswer,
-              normalized: userOrder
-            });
+            // If it's a comma-separated string, split it into an array
+            // Handle cases like "$-17$,-24,$|-45|$,$|53|$"
+            userOrder = userAnswer.split(',').map(item => item.trim()).filter(item => item.length > 0);
           } else {
             isCorrect = false;
           }
 
+          const correctOrder = question.correctHorizontalOrder;
+
           // Check if arrays are same length
           if (userOrder.length !== correctOrder.length) {
-              isCorrect = false;
-              console.log('📊 Horizontal Ordering: Length mismatch', {
-                questionId: question.id,
-                userLength: userOrder.length,
-                correctLength: correctOrder.length,
-                userOrder,
-                correctOrder
-              });
-            } else {
-              // Compare each item using enhanced matching (handles equivalent values, whitespace, LaTeX, etc.)
-              isCorrect = userOrder.every((userItem, index) => {
-                const correctItem = correctOrder[index];
+            isCorrect = false;
+            console.log('📊 Horizontal Ordering: Length mismatch', {
+              userLength: userOrder.length,
+              correctLength: correctOrder.length,
+              userOrder,
+              correctOrder
+            });
+          } else {
+            // Compare each item using enhanced matching (handles equivalent values, whitespace, LaTeX, etc.)
+            isCorrect = userOrder.every((userItem, index) => {
+              const correctItem = correctOrder[index];
 
-                console.log(`🔍 Comparing position ${index}:`, {
-                  questionId: question.id,
-                  userItem: `"${userItem}"`,
-                  correctItem: `"${correctItem}"`,
-                  exactMatch: userItem === correctItem,
-                  userType: typeof userItem,
-                  correctType: typeof correctItem
-                });
+              // First try exact match (handles LaTeX strings like "$\\frac{1}{2}$")
+              if (userItem === correctItem) {
+                return true;
+              }
 
-                // First try exact match (handles LaTeX strings like "$\\frac{1}{2}$")
-                if (userItem === correctItem) {
-                  console.log(`✅ Position ${index}: Exact match`);
-                  return true;
-                }
+              // Normalize LaTeX formatting first (remove $ wrappers, etc.)
+              let normalizedUser = userItem.trim();
+              let normalizedCorrect = correctItem.trim();
 
-                // Normalize LaTeX formatting first (remove $ wrappers, etc.)
-                let normalizedUser = userItem.trim();
-                let normalizedCorrect = correctItem.trim();
+              // Strip LaTeX formatting if present
+              normalizedUser = normalizedUser.replace(/^\$\$?(.*?)\$\$?$/, '$1');
+              normalizedCorrect = normalizedCorrect.replace(/^\$\$?(.*?)\$\$?$/, '$1');
 
-                // Strip LaTeX formatting if present
-                normalizedUser = normalizedUser.replace(/^\$\$?(.*?)\$\$?$/, '$1');
-                normalizedCorrect = normalizedCorrect.replace(/^\$\$?(.*?)\$\$?$/, '$1');
+              // Try normalized comparison after stripping LaTeX
+              if (normalizedUser === normalizedCorrect) {
+                return true;
+              }
 
-                console.log(`🔍 After LaTeX normalization position ${index}:`, {
-                  questionId: question.id,
-                  normalizedUser: `"${normalizedUser}"`,
-                  normalizedCorrect: `"${normalizedCorrect}"`,
-                  match: normalizedUser === normalizedCorrect
-                });
+              // Try enhanced comparison (handles fractions, decimals, LaTeX expressions, etc.)
+              // This will handle cases like:
+              // - "$\\frac{1}{2}$" vs "$\\frac{2}{4}$" (equivalent fractions)
+              // - "$0.5$" vs "$\\frac{1}{2}$" (decimal vs fraction)
+              // - "$\\frac{1}{2}$" vs "1/2" (LaTeX vs plain text)
+              // - "$-17$" vs "-17" (LaTeX vs plain text)
+              // - "$|-45|$" vs "|-45|" (LaTeX vs plain text)
+              return areAnswersEquivalent(normalizedUser, normalizedCorrect);
+            });
+          }
 
-                // Try normalized comparison after stripping LaTeX
-                if (normalizedUser === normalizedCorrect) {
-                  console.log(`✅ Position ${index}: Match after LaTeX normalization`);
-                  return true;
-                }
-
-                // Try enhanced comparison (handles fractions, decimals, LaTeX expressions, etc.)
-                const equivalent = areAnswersEquivalent(normalizedUser, normalizedCorrect);
-                console.log(`🔍 Position ${index} enhanced comparison:`, {
-                  questionId: question.id,
-                  normalizedUser: `"${normalizedUser}"`,
-                  normalizedCorrect: `"${normalizedCorrect}"`,
-                  equivalent
-                });
-                return equivalent;
-              });
-            }
-
-          console.log('📊 Horizontal Ordering Final Check:', {
-            questionId: question.id,
+          console.log('📊 Horizontal Ordering Check:', {
             userOrder,
             correctOrder,
             isCorrect,
-            userOrderType: Array.isArray(userOrder) ? 'array' : typeof userOrder,
-            correctOrderType: Array.isArray(correctOrder) ? 'array' : typeof correctOrder,
             matchDetails: userOrder.map((item, idx) => ({
-              position: idx,
-              user: `"${item}"`,
-              correct: `"${correctOrder[idx]}"`,
-              exactMatch: item === correctOrder[idx],
-              normalizedMatch: item.trim().replace(/^\$\$?(.*?)\$\$?$/, '$1') === correctOrder[idx].trim().replace(/^\$\$?(.*?)\$\$?$/, '$1')
+              user: item,
+              correct: correctOrder[idx],
+              matches: item === correctOrder[idx] || areAnswersEquivalent(item.trim(), correctOrder[idx].trim())
             }))
+          });
+        }
+      } else if (question.questionType === 'fill-blank') {
+        // Fill-blank questions: extract numeric value and compare
+        if (typeof userAnswer === 'string' && typeof question.correctAnswer === 'string') {
+          const trimmedUserAnswer = userAnswer.trim();
+          const trimmedCorrectAnswer = question.correctAnswer.trim();
+
+          // Extract numeric value from user answer (remove any units or text)
+          const userNumeric = extractNumericValue(trimmedUserAnswer);
+          const correctNumeric = extractNumericValue(trimmedCorrectAnswer);
+
+          // Compare numeric values
+          isCorrect = userNumeric !== null && correctNumeric !== null &&
+                     Math.abs(userNumeric - correctNumeric) < 0.0001; // Handle floating point precision
+
+          // Also check acceptable answers if available
+          if (!isCorrect && question.acceptableAnswers && question.acceptableAnswers.length > 0) {
+            for (const acceptableAnswer of question.acceptableAnswers) {
+              const acceptableNumeric = extractNumericValue(acceptableAnswer.trim());
+              if (acceptableNumeric !== null && userNumeric !== null &&
+                  Math.abs(userNumeric - acceptableNumeric) < 0.0001) {
+                isCorrect = true;
+                console.log(`✅ Matched acceptable answer: "${acceptableAnswer}"`);
+                break;
+              }
+            }
+          }
+
+          console.log(`📝 Fill-Blank Answer Comparison for Question ${index + 1}:`, {
+            userAnswer: trimmedUserAnswer,
+            userNumeric,
+            correctAnswer: trimmedCorrectAnswer,
+            correctNumeric,
+            isCorrect
           });
         }
       } else {
@@ -1483,41 +1476,8 @@ const getHorizontalOrderingAnswer = (questionId: string): string[] => {
   if (Array.isArray(answer)) {
     return answer as string[];
   }
-
-  // Try to convert non-array values to arrays (handles backward compatibility)
-  if (answer !== undefined && answer !== null && answer !== '') {
-    // If it's a string (possibly comma-separated), try to split it
-    if (typeof answer === 'string') {
-      const converted = answer.split(',').map(item => item.trim()).filter(item => item.length > 0);
-      if (converted.length > 0) {
-        answers.value[questionId] = converted as any;
-        return converted;
-      }
-    }
-    // If it's an object (Firestore might convert arrays to objects with numeric keys)
-    if (typeof answer === 'object' && !Array.isArray(answer)) {
-      try {
-        // Try to convert object with numeric keys to array
-        const keys = Object.keys(answer).sort((a, b) => parseInt(a) - parseInt(b));
-        const converted = keys.map(key => String(answer[key as keyof typeof answer])).filter(item => item);
-        if (converted.length > 0) {
-          answers.value[questionId] = converted as any;
-          return converted;
-        }
-      } catch (e) {
-        console.warn('Failed to convert object to array for horizontal ordering:', e);
-      }
-    }
-  }
-
-  // Initialize as empty array only if truly not set
-  if (answer === undefined || answer === null || answer === '') {
-    answers.value[questionId] = [] as any;
-    return [];
-  }
-
-  // If we can't convert it, return empty array but don't overwrite the saved value
-  console.warn('Horizontal ordering answer is not an array and could not be converted:', answer);
+  // Initialize as empty array if not set
+  answers.value[questionId] = [] as any;
   return [];
 };
 
@@ -1572,37 +1532,8 @@ const loadSavedProgress = async () => {
       // Only return progress if assessment is still in progress
       if (data.inProgress && data.answers && Object.keys(data.answers).length > 0) {
         console.log('📂 Found saved progress:', Object.keys(data.answers).length, 'answers');
-
-        // Normalize answers for horizontal ordering questions (handles backward compatibility)
-        const normalizedAnswers = { ...data.answers };
-        if (assessment.value?.questions) {
-          assessment.value.questions.forEach(question => {
-            if (question.questionType === 'horizontal-ordering' && normalizedAnswers[question.id]) {
-              const answer = normalizedAnswers[question.id];
-              // Ensure it's an array
-              if (!Array.isArray(answer)) {
-                // Try to convert to array
-                if (typeof answer === 'string') {
-                  normalizedAnswers[question.id] = answer.split(',').map(item => item.trim()).filter(item => item.length > 0);
-                } else if (typeof answer === 'object' && answer !== null) {
-                  // Firestore might convert arrays to objects with numeric keys
-                  try {
-                    const keys = Object.keys(answer).sort((a, b) => parseInt(a) - parseInt(b));
-                    normalizedAnswers[question.id] = keys.map(key => String(answer[key as keyof typeof answer])).filter(item => item);
-                  } catch (e) {
-                    console.warn('Failed to normalize horizontal ordering answer:', e);
-                    normalizedAnswers[question.id] = [];
-                  }
-                } else {
-                  normalizedAnswers[question.id] = [];
-                }
-              }
-            }
-          });
-        }
-
         return {
-          answers: normalizedAnswers,
+          answers: data.answers,
           currentQuestionIndex: data.currentQuestionIndex || 0,
           startTime: data.startTime
         };
@@ -2213,6 +2144,58 @@ onMounted(() => {
   outline: none;
   border-color: #667eea;
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* Fill-Blank Question Styles */
+.fill-blank-answer {
+  margin-top: 20px;
+}
+
+.fill-blank-display {
+  font-size: 1.2rem;
+  font-weight: 500;
+  color: #1f2937;
+  margin-bottom: 15px;
+  padding: 15px;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 2px solid #e2e8f0;
+}
+
+.fill-blank-indicator {
+  display: inline-block;
+  min-width: 80px;
+  height: 40px;
+  border-bottom: 3px solid #3b82f6;
+  margin: 0 8px;
+  vertical-align: middle;
+}
+
+.fill-blank-input {
+  width: 100%;
+  max-width: 200px;
+  padding: 12px 16px;
+  font-size: 1.1rem;
+  border: 2px solid #d1d5db;
+  border-radius: 8px;
+  text-align: center;
+  font-weight: 600;
+  color: #1f2937;
+  transition: all 0.2s;
+}
+
+.fill-blank-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.fill-blank-hint {
+  display: block;
+  margin-top: 8px;
+  color: #6b7280;
+  font-size: 0.875rem;
+  font-style: italic;
 }
 
 .fraction-question {

@@ -29,6 +29,7 @@ export interface Goal {
   goalText: string // The actual goal statement
   iepDate?: string // DEPRECATED: IEP dates are now tracked per student individually
   assignedAssessments: string[] // Array of assessment IDs connected to this goal
+  assessmentMethod?: 'app' | 'paper' | 'hybrid' // How this goal should be assessed (optional)
 
   // Optional fields for enhanced functionality
   standard?: string // Related academic standard
@@ -156,6 +157,9 @@ export interface AssessmentQuestion {
   explanation?: string
   hints?: string[]
   requiresPhoto?: boolean // Whether student must upload a photo of their work
+  // For fill-blank questions
+  blankFormat?: string // Format string with ___ as placeholder (e.g., "___ minutes" or "Answer: ___ dollars")
+  blankPosition?: 'before' | 'after' | 'inline' // Position of blank relative to unit/text
 }
 
 export interface AssessmentResult {
@@ -385,6 +389,13 @@ export interface GoalTemplate {
   // Metadata
   description?: string // Template description/notes
   exampleGoal?: string // Example of a goal created from this template
+
+  // Example question fields - MOST IMPORTANT for accurate question generation
+  exampleQuestion?: string // Example question text
+  exampleAnswer?: string // Example correct answer
+  exampleAlternativeAnswers?: string // Comma-separated alternative answers
+  exampleExplanation?: string // Example explanation
+
   usageCount?: number // How many times this template has been used
   isActive: boolean // Whether template is active/available
   createdBy: string // Admin/teacher UID who created the template

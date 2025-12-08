@@ -135,6 +135,15 @@
           <button type="button" class="btn btn-secondary" @click="$emit('close')">Close</button>
           <button
             type="button"
+            class="btn btn-info"
+            @click="$emit('save-template')"
+            :disabled="!goal || saving || assessments.length === 0"
+            title="Save question pattern as a reusable template"
+          >
+            📄 Save as New Template
+          </button>
+          <button
+            type="button"
             class="btn btn-primary"
             @click="$emit('approve')"
             :disabled="!goal || saving"
@@ -164,6 +173,7 @@ defineEmits<{
   approve: []
   'update-alternatives': [assessmentIndex: number, qIndex: number]
   regenerate: [assessmentIndex: number, qIndex: number]
+  'save-template': []
 }>()
 
 // Clean question text when modal opens or assessments change
@@ -490,6 +500,15 @@ watch(
 
 .btn-secondary:hover:not(:disabled) {
   background: #545b62;
+}
+
+.btn-info {
+  background: #17a2b8;
+  color: white;
+}
+
+.btn-info:hover:not(:disabled) {
+  background: #138496;
 }
 
 .btn:disabled {
