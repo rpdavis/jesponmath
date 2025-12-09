@@ -211,7 +211,38 @@ export const SUB_LEVEL_CONFIGS: SubLevelConfig[] = [
   },
   
   // =========================================================================
-  // MULTIPLICATION (Levels 7-10)
+  // ADDITION + SUBTRACTION INTERLEAVED (Level 7) ⭐ RESEARCH-BACKED SPIRALING
+  // =========================================================================
+  {
+    id: 'addition_subtraction_mixed',
+    operation: 'addition', // Use 'addition' as primary for data organization
+    name: 'Addition & Subtraction - Mixed Operations',
+    shortName: 'Add+Sub',
+    description: 'Practice selecting between addition and subtraction strategies',
+    order: 7,
+    operationOrder: 4, // Special mixed level for addition
+    isMixedReview: true,
+    totalProblems: 40,
+    problemFilter: (num1, num2, result) => {
+      // Accept both addition (sum ≤20) and subtraction (minuend ≤20)
+      return (num1 >= 2 && num2 >= 2 && result <= 20)
+    },
+    categories: ['Addition Facts', 'Subtraction Facts', 'Fact Families'],
+    assessmentDuration: 60,
+    passingAccuracy: 90,
+    targetCPM: { grade3to5: 40, grade6to8: 50, grade9to12: 60 },
+    minimumAcceptableCPM: { grade3to5: 25, grade6to8: 30, grade9to12: 35 },
+    readyThreshold: 85,
+    maintenanceFromPrevious: true,
+    keyStrategies: ['Operation identification', 'Fact family relationships', 'Strategic flexibility'],
+    commonErrors: ['Mixing up operations', 'Forgetting addition facts', 'Slower due to switching'],
+    icon: '➕➖',
+    color: '#16a085',
+    motivationalMessage: 'Mastering both addition AND subtraction!'
+  },
+  
+  // =========================================================================
+  // MULTIPLICATION (Levels 8-11)
   // =========================================================================
   {
     id: 'multiplication_easy',
@@ -219,7 +250,7 @@ export const SUB_LEVEL_CONFIGS: SubLevelConfig[] = [
     name: 'Multiplication - Easy Patterns',
     shortName: '×2,5,10',
     description: 'Master multiplication with 0, 1, 2, 5, and 10 (pattern-based)',
-    order: 7,
+    order: 8,
     operationOrder: 1,
     isMixedReview: false,
     totalProblems: 29,
@@ -248,7 +279,7 @@ export const SUB_LEVEL_CONFIGS: SubLevelConfig[] = [
     name: 'Multiplication - Medium Facts',
     shortName: '×3,4,6',
     description: 'Master ×3, ×4, ×6 and all square facts',
-    order: 8,
+    order: 9,
     operationOrder: 2,
     isMixedReview: false,
     totalProblems: 31,
@@ -280,7 +311,7 @@ export const SUB_LEVEL_CONFIGS: SubLevelConfig[] = [
     name: 'Multiplication - Hard Facts',
     shortName: '×7,8,9,11,12',
     description: 'Master the challenging multiplication facts',
-    order: 9,
+    order: 10,
     operationOrder: 3,
     isMixedReview: false,
     totalProblems: 36,
@@ -315,7 +346,7 @@ export const SUB_LEVEL_CONFIGS: SubLevelConfig[] = [
     name: 'Multiplication Mixed Review',
     shortName: '× Mix',
     description: 'Demonstrate automatic recall of all multiplication facts',
-    order: 10,
+    order: 11,
     operationOrder: 4,
     isMixedReview: true,
     totalProblems: 40,
@@ -335,7 +366,7 @@ export const SUB_LEVEL_CONFIGS: SubLevelConfig[] = [
   },
   
   // =========================================================================
-  // DIVISION (Levels 11-14)
+  // DIVISION (Levels 12-15)
   // =========================================================================
   {
     id: 'division_easy',
@@ -343,7 +374,7 @@ export const SUB_LEVEL_CONFIGS: SubLevelConfig[] = [
     name: 'Division - Easy Facts',
     shortName: '÷2,5,10',
     description: 'Master division by 2, 5, and 10 (pattern-based)',
-    order: 11,
+    order: 12,
     operationOrder: 1,
     isMixedReview: false,
     totalProblems: 36,
@@ -368,7 +399,7 @@ export const SUB_LEVEL_CONFIGS: SubLevelConfig[] = [
     name: 'Division - Medium Facts',
     shortName: '÷3,4,6',
     description: 'Master division by 3, 4, and 6',
-    order: 12,
+    order: 13,
     operationOrder: 2,
     isMixedReview: false,
     totalProblems: 36,
@@ -393,7 +424,7 @@ export const SUB_LEVEL_CONFIGS: SubLevelConfig[] = [
     name: 'Division - Hard Facts',
     shortName: '÷7,8,9,11,12',
     description: 'Master the challenging division facts',
-    order: 13,
+    order: 14,
     operationOrder: 3,
     isMixedReview: false,
     totalProblems: 60,
@@ -419,7 +450,7 @@ export const SUB_LEVEL_CONFIGS: SubLevelConfig[] = [
     name: 'Division Mixed Review',
     shortName: '÷ Mix',
     description: 'Demonstrate automatic division fact recall',
-    order: 14,
+    order: 15,
     operationOrder: 4,
     isMixedReview: true,
     totalProblems: 40,
@@ -431,11 +462,51 @@ export const SUB_LEVEL_CONFIGS: SubLevelConfig[] = [
     minimumAcceptableCPM: { grade3to5: 18, grade6to8: 23, grade9to12: 28 },
     readyThreshold: 85,
     maintenanceFromPrevious: true,
-    keyStrategies: ['Automatic recall', 'All four operations mastery'],
+    keyStrategies: ['Automatic recall', 'Multiplication-division relationship'],
     commonErrors: ['Slower on mixed'],
     icon: '🏆',
     color: '#7e5109',
-    motivationalMessage: 'You\'ve conquered all four operations!'
+    motivationalMessage: 'Division mastery achieved!'
+  },
+  
+  // =========================================================================
+  // ALL OPERATIONS MASTERY (Level 16) ⭐ FINAL CAPSTONE
+  // =========================================================================
+  {
+    id: 'all_operations_mixed',
+    operation: 'addition', // Use 'addition' as primary for data organization
+    name: 'All Operations Mastery',
+    shortName: 'All Ops',
+    description: 'Demonstrate true automaticity across all four operations',
+    order: 16,
+    operationOrder: 5, // Special final level
+    isMixedReview: true,
+    totalProblems: 50,
+    problemFilter: (num1, num2, result) => {
+      // Accept all operations with reasonable ranges
+      return num1 >= 0 && num2 >= 2 && result <= 144 // Up to 12×12
+    },
+    categories: ['Addition', 'Subtraction', 'Multiplication', 'Division', 'All Operations'],
+    assessmentDuration: 60,
+    passingAccuracy: 90,
+    targetCPM: { grade3to5: 40, grade6to8: 50, grade9to12: 60 },
+    minimumAcceptableCPM: { grade3to5: 25, grade6to8: 30, grade9to12: 35 },
+    readyThreshold: 95, // Higher threshold - this is the final level
+    maintenanceFromPrevious: true,
+    keyStrategies: [
+      'Instant operation recognition',
+      'Automatic fact recall',
+      'Strategic flexibility across all operations',
+      'Mental math fluency'
+    ],
+    commonErrors: [
+      'Operation confusion (e.g., 6+4 vs 6×4)',
+      'Slower switching between operations',
+      'Forgetting earlier operations'
+    ],
+    icon: '👑',
+    color: '#8e44ad',
+    motivationalMessage: 'You\'re a math facts MASTER! College-ready fluency achieved! 🎓'
   }
 ]
 

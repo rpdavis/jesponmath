@@ -31,6 +31,9 @@ export type SubLevel =
   | 'subtraction_within_20' // 90 problems: from 11-20
   | 'subtraction_mixed' // 30 problems: mixed review
 
+  // Addition+Subtraction Interleaved (1 level) - Research-backed spiraling
+  | 'addition_subtraction_mixed' // 40 problems: interleaved add/subtract
+
   // Multiplication Sub-Levels (4 levels)
   | 'multiplication_easy' // 29 problems: ×0,1,2,5,10 (pattern-based)
   | 'multiplication_medium' // 31 problems: ×3,4,6 + squares
@@ -42,6 +45,9 @@ export type SubLevel =
   | 'division_medium' // 36 problems: ÷3,4,6
   | 'division_hard' // 60 problems: ÷7,8,9,11,12
   | 'division_mixed' // 40 problems: mixed review
+
+  // All Operations Mastery (1 level) - Final capstone
+  | 'all_operations_mixed' // 50 problems: all 4 operations interleaved
 
 export type AssessmentType =
   | 'initial-diagnostic' // Week 0: All 100 problems tested

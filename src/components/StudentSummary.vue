@@ -546,8 +546,8 @@ const esaMissingAssessments = computed(() => {
   // Find assessments with no results
   const missing = esaAssessments
     .filter(assessment => !esaResults.some(r => r.assessmentId === assessment.id))
-    .map(assessment => extractStandardCode(assessment.title, 'ESA'))
-    .filter((code, index, arr) => arr.indexOf(code) === index); // Remove duplicates
+    .map(assessment => assessment.title)
+    .filter((title, index, arr) => arr.indexOf(title) === index); // Remove duplicates
 
   return missing.sort();
 });
@@ -838,8 +838,8 @@ const saMissingAssessments = computed(() => {
   // Find assessments with no results
   const missing = saAssessments
     .filter(assessment => !saResults.some(r => r.assessmentId === assessment.id))
-    .map(assessment => extractStandardCode(assessment.title, 'SA'))
-    .filter((code, index, arr) => arr.indexOf(code) === index); // Remove duplicates
+    .map(assessment => assessment.title)
+    .filter((title, index, arr) => arr.indexOf(title) === index); // Remove duplicates
 
   return missing.sort();
 });

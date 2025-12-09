@@ -122,7 +122,7 @@
 
       <div v-if="currentPracticeProblem" class="practice-problem">
         <!-- Missing Number Practice -->
-        <div v-if="lesson.practice.type === 'missing-number'" class="missing-number-practice">
+        <div v-if="lesson.practice.type === 'missing-number' || (lesson.practice.type === 'mixed' && currentPracticeProblem.problemType === 'missing-number')" class="missing-number-practice">
           <div class="problem-display">
             <h3>{{ currentPracticeProblem.problemText }}</h3>
           </div>
@@ -146,7 +146,7 @@
         </div>
 
         <!-- Scaffolded Practice -->
-        <div v-else-if="lesson.practice.type === 'scaffolded'" class="scaffolded-practice">
+        <div v-else-if="lesson.practice.type === 'scaffolded' || (lesson.practice.type === 'mixed' && currentPracticeProblem.problemType === 'scaffolded')" class="scaffolded-practice">
           <div class="problem-display">
             <h3>{{ currentPracticeProblem.problemText }}</h3>
           </div>
@@ -189,7 +189,7 @@
         </div>
 
         <!-- Drag-Drop Ten Frames (Placeholder for now) -->
-        <div v-else-if="lesson.practice.type === 'drag-drop'" class="drag-drop-practice">
+        <div v-else-if="lesson.practice.type === 'drag-drop' || (lesson.practice.type === 'mixed' && currentPracticeProblem.problemType === 'drag-drop')" class="drag-drop-practice">
           <div class="problem-display">
             <h3>{{ currentPracticeProblem.problemText }}</h3>
           </div>

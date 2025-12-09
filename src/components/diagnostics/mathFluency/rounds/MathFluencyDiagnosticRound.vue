@@ -140,20 +140,25 @@ async function handleSubmit(timeout: boolean = false) {
     ? (props.timePerProblem || 10) * 1000
     : Date.now() - startTime.value
   const userAnswer = String(answer.value || '').trim()
-  const isCorrect = userAnswer === currentProblem.value.correctAnswer
+  const correctAnswer = String(currentProblem.value.correctAnswer || '').trim()
+  // CRITICAL: Ensure strict boolean comparison and explicit boolean type
+  const isCorrect: boolean = userAnswer === correctAnswer
 
   console.log(`🔍 [DIAGNOSTIC ROUND] Submitting answer:`, {
     problemIndex: currentIndex.value,
     problemId: currentProblem.value.problemId,
     displayText: currentProblem.value.displayText,
     userAnswer,
-    correctAnswer: currentProblem.value.correctAnswer,
+    correctAnswer,
     isCorrect,
+    isCorrectType: typeof isCorrect,
+    isCorrectStrict: isCorrect === true,
     timeout,
     responseTime: `${(responseTime / 1000).toFixed(1)}s`,
   })
 
-  emit('answer', currentProblem.value.problemId, answer.value || '', responseTime, isCorrect)
+  // Ensure we emit a strict boolean
+  emit('answer', currentProblem.value.problemId, answer.value || '', responseTime, isCorrect === true)
 
   // Brief pause before next question
   await new Promise((resolve) => setTimeout(resolve, 600))

@@ -1,7 +1,7 @@
 // Diagnostic round composable
 // Handles diagnostic round logic, problem generation, and results
 
-import { ref, computed, nextTick, watch, type Ref } from 'vue'
+import { ref, shallowRef, computed, nextTick, watch, type Ref } from 'vue'
 import type { ProblemProgress, MathFluencyProgress } from '@/types/mathFluency'
 import { filterProblemsBySubLevel } from '@/utils/subLevelUtils'
 import { sampleRandomUnique } from '@/utils/mathFluencyProblemGenerator'
@@ -16,12 +16,17 @@ export function useMathFluencyDiagnostic(
   const diagnosticProblems = ref<ProblemProgress[]>([])
   const diagnosticCurrentIndex = ref(0)
   const diagnosticAnswer = ref('')
-  const diagnosticResults = ref<{
+  // Use shallowRef to avoid Vue's deep reactivity issues with object counting
+  const diagnosticResults = shallowRef<{
     [problemId: string]: { correct: boolean; responseTime: number }
   }>({})
 
   // Snapshot of problems when diagnostic completes (to prevent reactive changes)
   const diagnosticProblemsSnapshot = ref<ProblemProgress[]>([])
+  // Snapshot of results when diagnostic completes (to prevent reactive changes)
+  const diagnosticResultsSnapshot = ref<{
+    [problemId: string]: { correct: boolean; responseTime: number }
+  }>({})
   const diagnosticInput = ref<HTMLInputElement | null>(null)
   const diagnosticTimeRemaining = ref(10)
   const diagnosticTimerInterval = ref<number | null>(null)
@@ -34,52 +39,18 @@ export function useMathFluencyDiagnostic(
     () => diagnosticProblems.value[diagnosticCurrentIndex.value],
   )
   const diagnosticCorrect = computed(() => {
-    // ALWAYS use snapshot if available (created when diagnostic starts)
-    // This prevents reactive changes from affecting the count
-    const problems =
-      diagnosticProblemsSnapshot.value.length > 0
-        ? diagnosticProblemsSnapshot.value
-        : diagnosticProblems.value
-    const results = diagnosticResults.value
+    // Use snapshot results if available (after diagnostic completes), otherwise current results
+    const results =
+      Object.keys(diagnosticResultsSnapshot.value).length > 0
+        ? diagnosticResultsSnapshot.value
+        : diagnosticResults.value
 
-    const correct = problems.filter((p) => {
-      const result = results[p.problemId]
-      return result && result.correct === true
-    }).length
+    // SIMPLE FIX: Just count ALL results that are correct
+    // Don't try to match problem IDs - just count correct answers
+    const allResults = Object.values(results)
+    const correctCount = allResults.filter((r) => r.correct === true).length
 
-    // Debug logging (only when results screen is showing or during diagnostic)
-    if (currentRound.value === 0.5 || currentRound.value === 0.75) {
-      const problemResults = problems.map((p) => {
-        const result = results[p.problemId]
-        return {
-          problemId: p.problemId,
-          hasResult: result !== undefined,
-          correct: result?.correct,
-          correctType: typeof result?.correct,
-          isCorrectStrict: result?.correct === true,
-        }
-      })
-
-      const incorrectResults = problemResults.filter((pr) => !pr.isCorrectStrict)
-
-      console.log(`🔍 [DIAGNOSTIC] Computed correct count:`, {
-        correct,
-        total: problems.length,
-        usingSnapshot: diagnosticProblemsSnapshot.value.length > 0,
-        currentRound: currentRound.value,
-        resultsCount: Object.keys(results).length,
-        problemsWithResults: problemResults.filter((pr) => pr.hasResult).length,
-        problemResults: problemResults,
-        incorrectResults: incorrectResults,
-        allResultsRaw: Object.entries(results).map(([id, r]) => ({
-          id,
-          correct: r.correct,
-          correctType: typeof r.correct,
-        })),
-      })
-    }
-
-    return correct
+    return correctCount
   })
   const diagnosticScore = computed(() => {
     // Use snapshot if available (after completion), otherwise use current problems
@@ -98,7 +69,8 @@ export function useMathFluencyDiagnostic(
         correct,
         total,
         score: `${score}%`,
-        usingSnapshot: diagnosticProblemsSnapshot.value.length > 0,
+        usingProblemsSnapshot: diagnosticProblemsSnapshot.value.length > 0,
+        usingResultsSnapshot: Object.keys(diagnosticResultsSnapshot.value).length > 0,
       })
     }
 
@@ -197,12 +169,11 @@ export function useMathFluencyDiagnostic(
     diagnosticCurrentIndex.value = 0
     diagnosticAnswer.value = ''
     diagnosticResults.value = {}
+    diagnosticResultsSnapshot.value = {}
     diagnosticTimeRemaining.value = 10
 
-    startDiagnosticTimer()
-
-    await nextTick()
-    diagnosticInput.value?.focus()
+    // NOTE: Don't start composable timer here - the MathFluencyDiagnosticRound component
+    // has its own timer and handles submission via the @answer event
   }
 
   async function startDiagnosticTimer() {
@@ -238,9 +209,13 @@ export function useMathFluencyDiagnostic(
     const userAnswer = timeout ? '' : String(diagnosticAnswer.value || '').trim()
     const correct = userAnswer === currentDiagnosticProblem.value.correctAnswer
 
-    diagnosticResults.value[currentDiagnosticProblem.value.problemId] = {
-      correct,
-      responseTime,
+    // With shallowRef we must create a new object
+    diagnosticResults.value = {
+      ...diagnosticResults.value,
+      [currentDiagnosticProblem.value.problemId]: {
+        correct,
+        responseTime,
+      },
     }
 
     diagnosticCurrentIndex.value++
@@ -271,152 +246,42 @@ export function useMathFluencyDiagnostic(
   ) {
     const problem = diagnosticProblems.value.find((p) => p.problemId === problemId)
 
-    console.log(`🔍 [DIAGNOSTIC] Answer received:`, {
-      problemId,
-      answer,
-      correctAnswer: problem?.correctAnswer,
-      isCorrect,
-      isCorrectType: typeof isCorrect,
-      responseTime: `${(responseTime / 1000).toFixed(1)}s`,
-      problemExists: !!problem,
-    })
-
-    // Check if this problemId already has a result (shouldn't happen, but check for overwrites)
-    const existingResult = diagnosticResults.value[problemId]
-    if (existingResult) {
-      console.warn(`⚠️ [DIAGNOSTIC] Overwriting existing result for ${problemId}:`, {
-        old: existingResult,
-        new: { correct: isCorrect, responseTime },
-      })
+    // Store the result - with shallowRef we must create a new object
+    const correctValue = isCorrect === true
+    diagnosticResults.value = {
+      ...diagnosticResults.value,
+      [problemId]: {
+        correct: correctValue,
+        responseTime,
+      },
     }
 
-    diagnosticResults.value[problemId] = {
-      correct: isCorrect,
-      responseTime,
-    }
-
-    // Verify the stored value
-    const storedResult = diagnosticResults.value[problemId]
-    if (storedResult.correct !== isCorrect) {
-      console.error(`❌ [DIAGNOSTIC] Stored value mismatch!`, {
-        expected: isCorrect,
-        stored: storedResult.correct,
-        problemId,
-      })
-    }
-
-    const allResults = Object.entries(diagnosticResults.value).map(([id, r]) => ({
-      id,
-      correct: r.correct,
-      correctType: typeof r.correct,
-      correctValue: r.correct,
-      correctStrict: r.correct === true,
-      responseTime: r.responseTime,
-      hasProblem: diagnosticProblems.value.some((p) => p.problemId === id),
-    }))
-    const correctResults = allResults.filter((r) => r.correctStrict && r.hasProblem)
-    const incorrectResults = allResults.filter((r) => !r.correctStrict && r.hasProblem)
-
-    console.log(`📊 [DIAGNOSTIC] Results after answer:`, {
-      totalProblems: diagnosticProblems.value.length,
-      resultsCount: Object.keys(diagnosticResults.value).length,
-      correctCount: Object.values(diagnosticResults.value).filter((r) => r.correct).length,
-      correctCountStrict: correctResults.length,
-      allResults: allResults,
-      correctResults: correctResults,
-      incorrectResults: incorrectResults,
-      problemIdsInResults: Object.keys(diagnosticResults.value),
-      problemIdsInProblems: diagnosticProblems.value.map((p) => p.problemId),
-    })
+    // Log the current count
+    const currentCorrectCount = Object.values(diagnosticResults.value).filter(
+      (r) => r.correct === true,
+    ).length
+    const totalAnswered = Object.keys(diagnosticResults.value).length
+    console.log(
+      `💾 ${problem?.displayText} = ${answer} ${correctValue ? '✓' : '✗'} (${currentCorrectCount}/${totalAnswered})`,
+    )
   }
 
   function handleDiagnosticComplete() {
-    console.log(`🔍 [DIAGNOSTIC] Complete handler called`)
+    // Snapshot the results (deep copy to avoid reactive issues)
+    diagnosticResultsSnapshot.value = JSON.parse(JSON.stringify(diagnosticResults.value))
 
-    // Snapshot should already exist (created when diagnostic started)
-    // But ensure it's set if somehow it wasn't
-    if (diagnosticProblemsSnapshot.value.length === 0) {
-      console.warn(`⚠️ [DIAGNOSTIC] Snapshot was empty, creating now`)
-      diagnosticProblemsSnapshot.value = [...diagnosticProblems.value]
-    }
+    // Count correct results
+    const correctCount = Object.values(diagnosticResultsSnapshot.value).filter(
+      (r) => r.correct === true,
+    ).length
+    const totalProblems = Object.keys(diagnosticResultsSnapshot.value).length
 
-    const problemsSnapshot = diagnosticProblemsSnapshot.value
-    const problemIdsSnapshot = problemsSnapshot.map((p) => p.problemId)
-
-    console.log(`📋 [DIAGNOSTIC] Problems list:`, {
-      total: problemsSnapshot.length,
-      problemIds: problemIdsSnapshot,
-      snapshotExists: diagnosticProblemsSnapshot.value.length > 0,
-      snapshotLength: diagnosticProblemsSnapshot.value.length,
-    })
-
-    const allResults = Object.entries(diagnosticResults.value).map(([id, r]) => ({
-      id,
-      correct: r.correct,
-      correctType: typeof r.correct,
-      responseTime: r.responseTime,
-    }))
-
-    console.log(`📊 [DIAGNOSTIC] Results before fill:`, {
-      resultsCount: Object.keys(diagnosticResults.value).length,
-      resultIds: Object.keys(diagnosticResults.value),
-      correctCount: Object.values(diagnosticResults.value).filter((r) => r.correct).length,
-      allResults: allResults,
-      correctResults: allResults.filter((r) => r.correct),
-    })
-
-    // Ensure all problems have results (fill in any missing with incorrect/timeout)
-    const missingProblems: string[] = []
-    problemsSnapshot.forEach((problem) => {
-      if (!diagnosticResults.value[problem.problemId]) {
-        missingProblems.push(problem.problemId)
-        diagnosticResults.value[problem.problemId] = {
-          correct: false,
-          responseTime: 10 * 1000, // Default 10 seconds timeout
-        }
-      }
-    })
-
-    if (missingProblems.length > 0) {
-      console.warn(
-        `⚠️ [DIAGNOSTIC] Filled ${missingProblems.length} missing results:`,
-        missingProblems,
-      )
-    }
-
-    // Calculate final counts using snapshot
-    const finalResults = Object.entries(diagnosticResults.value).map(([id, r]) => ({
-      id,
-      correct: r.correct,
-      correctType: typeof r.correct,
-      responseTime: r.responseTime,
-      hasProblem: problemIdsSnapshot.includes(id),
-    }))
-
-    const correctCountFinal = finalResults.filter((r) => r.correct === true && r.hasProblem).length
-    const scoreFinal =
-      problemsSnapshot.length > 0
-        ? Math.round((correctCountFinal / problemsSnapshot.length) * 100)
-        : 0
-
-    console.log(`📊 [DIAGNOSTIC] Results after fill:`, {
-      resultsCount: Object.keys(diagnosticResults.value).length,
-      correctCount: Object.values(diagnosticResults.value).filter((r) => r.correct).length,
-      correctCountFinal,
-      totalProblems: problemsSnapshot.length,
-      scoreFinal,
-      scoreComputed: diagnosticScore.value,
-      correctComputed: diagnosticCorrect.value,
-      finalResults: finalResults,
-      correctResults: finalResults.filter((r) => r.correct && r.hasProblem),
-      problemsNotInResults: problemsSnapshot
-        .filter((p) => !diagnosticResults.value[p.problemId])
-        .map((p) => p.problemId),
-    })
+    console.log(
+      `📊 [DIAGNOSTIC] Complete: ${correctCount}/${totalProblems} correct (${Math.round((correctCount / totalProblems) * 100)}%)`,
+    )
 
     currentRound.value = 0.75
     diagnosticShowingQuestion.value = true
-    console.log('📊 Diagnostic complete - showing results, waiting for click')
   }
 
   function continueCurrentLevel(
@@ -444,6 +309,13 @@ export function useMathFluencyDiagnostic(
     }
   }
 
+  // Computed: Get diagnostic total (always use snapshot)
+  const diagnosticTotal = computed(() => {
+    return diagnosticProblemsSnapshot.value.length > 0
+      ? diagnosticProblemsSnapshot.value.length
+      : diagnosticProblems.value.length
+  })
+
   return {
     // State
     diagnosticProblems,
@@ -461,6 +333,7 @@ export function useMathFluencyDiagnostic(
     currentDiagnosticProblem,
     diagnosticCorrect,
     diagnosticScore,
+    diagnosticTotal,
     diagnosticWrongProblems,
     timerColorClass,
 

@@ -1,5 +1,14 @@
 <template>
   <div class="start-section">
+    <!-- Sub-Level Progress Map -->
+    <SubLevelProgressMap
+      v-if="currentSubLevel"
+      :current-sub-level="currentSubLevel"
+      :completed-sub-levels="completedSubLevels || []"
+      :current-operation="currentOperation"
+      :proficiency-percentage="proficiencyPercentage"
+    />
+
     <div class="progress-overview">
       <h3>Your Progress - {{ capitalizeOperation(currentOperation) }}</h3>
 
@@ -103,10 +112,13 @@
 </template>
 
 <script setup lang="ts">
-import type { OperationType } from '@/types/mathFluency'
+import type { OperationType, SubLevel } from '@/types/mathFluency'
+import SubLevelProgressMap from '../SubLevelProgressMap.vue'
 
 defineProps<{
   currentOperation: OperationType
+  currentSubLevel?: SubLevel
+  completedSubLevels?: SubLevel[]
   distribution: {
     mastered: number
     proficient: number

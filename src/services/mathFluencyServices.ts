@@ -587,14 +587,27 @@ export async function updateProgressAfterSession(
     round3Results: { [problemId: string]: any }
     allProblems: ProblemProgress[]
   },
-): Promise<void> {
+): Promise<{
+  advanced: boolean
+  newSubLevel?: string
+  previousSubLevel?: string
+  proficiency?: number
+}> {
   try {
     console.log('📊 Updating progress after session...')
 
     const progress = await getFluencyProgress(studentUid, operation)
     if (!progress) {
       console.error('No progress document found')
-      return
+      return { advanced: false }
+    }
+
+    // Track advancement
+    let advancementInfo = {
+      advanced: false,
+      newSubLevel: undefined as string | undefined,
+      previousSubLevel: progress.currentSubLevel as string | undefined,
+      proficiency: undefined as number | undefined,
     }
 
     // ⭐ CRITICAL FIX: Get ALL problems from progress document, not just session problems
@@ -709,8 +722,8 @@ export async function updateProgressAfterSession(
           lastPracticeDate: Timestamp.now(),
         }
 
-        // ⭐ AUTO-ADVANCE: If 90%+ proficient, unlock next sub-level
-        if (subLevelProficiency >= 90 && !currentSubLevelData.completed) {
+        // ⭐ AUTO-ADVANCE: If 85%+ proficient, unlock next sub-level
+        if (subLevelProficiency >= 85 && !currentSubLevelData.completed) {
           console.log(`🎉 Auto-advancing! ${subLevelProficiency}% on ${progress.currentSubLevel}`)
 
           // Mark current as completed
@@ -744,6 +757,15 @@ export async function updateProgressAfterSession(
               progress.currentSubLevel,
             ]
             progress.completedSubLevels = completedSubLevels
+
+            // Track advancement info
+            advancementInfo = {
+              advanced: true,
+              newSubLevel: nextSubLevel,
+              previousSubLevel: progress.currentSubLevel,
+              proficiency: subLevelProficiency,
+            }
+
             progress.currentSubLevel = nextSubLevel
 
             console.log(`✅ Advanced to: ${nextSubLevel}`)
@@ -822,6 +844,9 @@ export async function updateProgressAfterSession(
       completedSubLevels: (progress.completedSubLevels || []).length,
       completedOperation: progress.completedOperation,
     })
+
+    // Return advancement info
+    return advancementInfo
   } catch (error) {
     console.error('Error updating progress:', error)
     throw error

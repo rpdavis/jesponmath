@@ -1,9 +1,16 @@
 <template>
   <div class="gradebook">
     <div class="gradebook-header">
-      <h1>📊 Gradebook</h1>
-      <p>Track student progress across all assessment categories</p>
-      <p class="info-note">💡 Note: Progress Assessments (PA) and Diagnostic assessments are managed separately and not shown in this gradebook. Use <router-link to="/progress-assessment-gradebook">Progress Assessment Gradebook</router-link> for PA assessments.</p>
+      <div class="header-content">
+        <h1>📊 Gradebook</h1>
+        <p>Track student progress across all assessment categories</p>
+        <p class="info-note">💡 Note: Progress Assessments (PA) and Diagnostic assessments are managed separately and not shown in this gradebook. Use <router-link to="/progress-assessment-gradebook">Progress Assessment Gradebook</router-link> for PA assessments.</p>
+      </div>
+      <div class="header-actions">
+        <button @click="openBulkPrintDialog" class="bulk-print-button" title="Print Bulk Student Summaries">
+          🖨️ Print Bulk Summaries
+        </button>
+      </div>
     </div>
 
     <!-- Academic Period Selector -->
@@ -414,6 +421,15 @@
         </div>
       </div>
     </div>
+
+    <!-- Bulk Print Summary Dialog -->
+    <BulkPrintSummaryDialog
+      :show="showBulkPrintDialog"
+      :students="students"
+      :periodsWithStatus="periodsWithStatus"
+      @close="showBulkPrintDialog = false"
+      @print="handleBulkPrint"
+    />
   </div>
 </template>
 
@@ -422,12 +438,16 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import AcademicPeriodSelector from '@/components/AcademicPeriodSelector.vue';
 import AeriesGradeExport from '@/components/admin/AeriesGradeExport.vue';
+import BulkPrintSummaryDialog from '@/components/BulkPrintSummaryDialog.vue';
 import { useGlobalAcademicPeriods } from '@/composables/useAcademicPeriods';
 import type { AcademicPeriod, PeriodType } from '@/types/academicPeriods';
+import { filterAssessmentsByPeriod, filterResultsByPeriod } from '@/types/academicPeriods';
 import { useAuthStore } from '@/stores/authStore';
 import { getStudentsByTeacher } from '@/firebase/userServices';
-import { getAssessmentsByTeacher, getAssessmentResults, getAssessmentResultsBulk, createManualAssessmentResult } from '@/firebase/iepServices';
+import { getAssessmentsByTeacher, getAssessmentResults, getAssessmentResultsBulk, createManualAssessmentResult, getAssessmentsByStudent, getAssessmentResultsByStudent } from '@/firebase/iepServices';
 import { getAllCustomStandards } from '@/firebase/standardsServices';
+import { getGoalsByStudent } from '@/firebase/goalServices';
+import { getAllFluencyProgress } from '@/services/mathFluencyServices';
 import { parseStandards, groupQuestionsByStandards, getAllStandardsFromQuestions } from '@/utils/standardsUtils';
 import { groupStudentsByClassAndPeriod } from '@/utils/studentGroupingUtils';
 import type { Student } from '@/types/users';
@@ -463,8 +483,12 @@ const questionScores = ref<{ [questionId: string]: string }>({});
 // Aeries export modal state
 const showAeriesExport = ref(false);
 
+// Bulk print dialog state
+const showBulkPrintDialog = ref(false);
+const printingSummaries = ref(false);
+
 // Academic period management
-const { filterAssessments, filterResults, selectedPeriod: currentAcademicPeriod } = useGlobalAcademicPeriods();
+const { filterAssessments, filterResults, selectedPeriod: currentAcademicPeriod, periodsWithStatus } = useGlobalAcademicPeriods();
 
 // Academic period event handlers
 const onPeriodChanged = (period: AcademicPeriod) => {
@@ -1221,6 +1245,779 @@ watch([selectedAppCategory, selectedAssessmentCategory], () => {
   console.log('🔄 Cache cleared due to filter change');
 });
 
+const openBulkPrintDialog = () => {
+  console.log('Opening bulk print dialog, students count:', students.value.length);
+  showBulkPrintDialog.value = true;
+};
+
+// Helper function to fetch student summary data directly and render HTML (much faster than iframes)
+const fetchAndRenderStudentSummary = async (studentUid: string, studentName: string, periodId: string | null): Promise<string> => {
+  try {
+    console.log(`📥 Fetching data directly for ${studentName}...`);
+
+    // Fetch all data in parallel (no Vue, no router, just direct Firestore queries)
+    const [assessmentsList, resultsList, goalsList, fluencyList, allCustomStandards] = await Promise.all([
+      getAssessmentsByStudent(studentUid),
+      getAssessmentResultsByStudent(studentUid),
+      getGoalsByStudent(studentUid),
+      getAllFluencyProgress(studentUid),
+      getAllCustomStandards() // Cache this across all students
+    ]);
+
+    console.log(`✅ Data fetched for ${studentName}: ${assessmentsList.length} assessments, ${resultsList.length} results, ${goalsList.length} goals, ${fluencyList.length} fluency ops`);
+
+    // Filter by period - use current academic period if periodId is null
+    let filteredAssessments = assessmentsList;
+    let filteredResults = resultsList;
+
+    // Determine which period to use: provided periodId, or current academic period, or null (all periods)
+    const periodToUse = periodId
+      ? periodsWithStatus.value.find(p => p.id === periodId)
+      : currentAcademicPeriod.value;
+
+    if (periodToUse) {
+      filteredAssessments = filterAssessmentsByPeriod(assessmentsList, periodToUse);
+      filteredResults = filterResultsByPeriod(resultsList, periodToUse);
+      console.log(`📅 Filtering ${studentName} data for period: ${periodToUse.name} (${filteredAssessments.length}/${assessmentsList.length} assessments, ${filteredResults.length}/${resultsList.length} results)`);
+    } else {
+      console.log(`📅 No period filter for ${studentName} - showing all periods (${assessmentsList.length} assessments, ${resultsList.length} results)`);
+    }
+
+    // Helper functions (EXACT same as StudentSummary.vue)
+    const getCustomStandardByCode = (standardCode: string): CustomStandard | null => {
+      if (!standardCode) return null;
+      const cleanCode = standardCode.startsWith('CUSTOM:') ?
+        standardCode.replace('CUSTOM:', '') : standardCode;
+      return allCustomStandards.find(std => std.code === cleanCode) || null;
+    };
+
+    const getCleanStandardName = (standardCode: string): string => {
+      if (!standardCode) return 'No standard';
+      if (standardCode.startsWith('CUSTOM:')) {
+        return standardCode.replace('CUSTOM:', '');
+      } else {
+        return standardCode;
+      }
+    };
+
+    const truncateText = (text: string, maxLength: number): string => {
+      if (!text) return '';
+      if (text.length <= maxLength) return text;
+      return text.substring(0, maxLength) + '...';
+    };
+
+    const getStandardDisplayInfo = (standardCode: string) => {
+      const customStd = getCustomStandardByCode(standardCode);
+      if (customStd) {
+        const description = customStd.description ? truncateText(customStd.description, 40) : '';
+        return {
+          name: customStd.name,
+          code: customStd.code,
+          description: description,
+          isCustom: true
+        };
+      }
+      return {
+        name: getCleanStandardName(standardCode),
+        code: standardCode,
+        description: '',
+        isCustom: false
+      };
+    };
+
+    // Helper to get score class
+    const getScoreClass = (percentage: number): string => {
+      if (percentage >= 90) return 'excellent';
+      if (percentage >= 80) return 'good';
+      if (percentage >= 70) return 'fair';
+      if (percentage >= 60) return 'needs-improvement';
+      return 'poor';
+    };
+
+    // Calculate ESA Standards Data (EXACT same logic as StudentSummary.vue)
+    const esaAssessments = filteredAssessments.filter(a => a.category === 'ESA');
+    const esaResults = filteredResults.filter(r => {
+      const assessment = esaAssessments.find(a => a.id === r.assessmentId);
+      return assessment !== undefined;
+    });
+
+    const allESAQuestions = esaAssessments.flatMap(assessment => [
+      ...(assessment.standard ? [{ standard: assessment.standard }] : []),
+      ...(assessment.questions || [])
+    ]);
+
+    const uniqueESAStandards = getAllStandardsFromQuestions(allESAQuestions);
+
+    const esaStandardsMap = new Map<string, {
+      standard: string;
+      correct: number;
+      total: number;
+      percentage: number;
+    }>();
+
+    uniqueESAStandards.forEach(standard => {
+      const customStd = getCustomStandardByCode(standard);
+      const maxScore = customStd?.maxScore;
+      const scoringMethod = customStd?.scoringMethod || 'additive';
+
+      const questionAttempts: { isCorrect: boolean; score: number }[] = [];
+
+      esaAssessments.forEach(assessment => {
+        const result = esaResults.find(r => r.assessmentId === assessment.id);
+        if (!result) return;
+
+        const assessmentStandards = parseStandards(assessment.standard || '');
+        const assessmentCoversStandard = assessmentStandards.includes(standard);
+
+        assessment.questions?.forEach((question: any) => {
+          const questionStandards = parseStandards(question.standard || '');
+          const questionCoversStandard = questionStandards.includes(standard) || assessmentCoversStandard;
+
+          if (questionCoversStandard) {
+            const response = result.responses?.find((r: any) => r.questionId === question.id);
+            if (response) {
+              const isCorrect = response.isCorrect;
+              const score = response.pointsEarned || (response.isCorrect ? (question.points || 1) : 0);
+              questionAttempts.push({ isCorrect, score });
+            }
+          }
+        });
+      });
+
+      if (questionAttempts.length > 0) {
+        let correct = 0;
+        let total = 0;
+        let percentage = 0;
+
+        if (scoringMethod === 'keepTop') {
+          questionAttempts.sort((a, b) => b.score - a.score);
+          if (maxScore && maxScore > 0) {
+            const topAttempts = questionAttempts.slice(0, maxScore);
+            correct = topAttempts.filter(attempt => attempt.isCorrect).length;
+            total = maxScore;
+            percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
+          } else {
+            correct = questionAttempts.filter(attempt => attempt.isCorrect).length;
+            total = questionAttempts.length;
+            percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
+          }
+        } else if (scoringMethod === 'average') {
+          const attemptPercentages = questionAttempts.map(attempt =>
+            attempt.isCorrect ? 100 : 0
+          );
+          percentage = Math.round(attemptPercentages.reduce((sum: number, pct: number) => sum + pct, 0) / attemptPercentages.length);
+          correct = Math.round((percentage / 100) * questionAttempts.length);
+          total = questionAttempts.length;
+        } else {
+          questionAttempts.sort((a, b) => b.score - a.score);
+          const limitedAttempts = maxScore && maxScore > 0 ?
+            questionAttempts.slice(0, maxScore) :
+            questionAttempts;
+          correct = limitedAttempts.filter(attempt => attempt.isCorrect).length;
+          total = limitedAttempts.length;
+          percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
+        }
+
+        esaStandardsMap.set(standard, { standard, correct, total, percentage });
+      }
+    });
+
+    const esaStandardsData = Array.from(esaStandardsMap.values()).sort((a, b) => {
+      return a.standard.localeCompare(b.standard, undefined, { numeric: true, sensitivity: 'base' });
+    });
+
+    // Calculate missing ESA assessments
+    const esaMissingAssessments = esaAssessments
+      .filter(assessment => !esaResults.some(r => r.assessmentId === assessment.id))
+      .map(assessment => assessment.title)
+      .filter((title, index, arr) => arr.indexOf(title) === index)
+      .sort();
+
+    // Calculate SA Standards Data (EXACT same logic as StudentSummary.vue)
+    const saAssessments = filteredAssessments.filter(a => a.category === 'SA');
+    const saResults = filteredResults.filter(r => {
+      const assessment = saAssessments.find(a => a.id === r.assessmentId);
+      return assessment !== undefined;
+    });
+
+    const allSAQuestions = saAssessments.flatMap(assessment => [
+      ...(assessment.standard ? [{ standard: assessment.standard }] : []),
+      ...(assessment.questions || [])
+    ]);
+
+    const uniqueSAStandards = getAllStandardsFromQuestions(allSAQuestions);
+
+    const saStandardsMap = new Map<string, {
+      standard: string;
+      correct: number;
+      total: number;
+      percentage: number;
+    }>();
+
+    uniqueSAStandards.forEach(standard => {
+      const customStd = getCustomStandardByCode(standard);
+      const maxScore = customStd?.maxScore;
+      const scoringMethod = customStd?.scoringMethod || 'additive';
+
+      const questionAttempts: { isCorrect: boolean; score: number }[] = [];
+
+      saAssessments.forEach(assessment => {
+        const result = saResults.find(r => r.assessmentId === assessment.id);
+        if (!result) return;
+
+        const assessmentStandards = parseStandards(assessment.standard || '');
+        const assessmentCoversStandard = assessmentStandards.includes(standard);
+
+        assessment.questions?.forEach((question: any) => {
+          const questionStandards = parseStandards(question.standard || '');
+          const questionCoversStandard = questionStandards.includes(standard) || assessmentCoversStandard;
+
+          if (questionCoversStandard) {
+            const response = result.responses?.find((r: any) => r.questionId === question.id);
+            if (response) {
+              const isCorrect = response.isCorrect;
+              const score = response.pointsEarned || (response.isCorrect ? (question.points || 1) : 0);
+              questionAttempts.push({ isCorrect, score });
+            }
+          }
+        });
+      });
+
+      if (questionAttempts.length > 0) {
+        let correct = 0;
+        let total = 0;
+        let percentage = 0;
+
+        if (scoringMethod === 'keepTop') {
+          questionAttempts.sort((a, b) => b.score - a.score);
+          if (maxScore && maxScore > 0) {
+            const topAttempts = questionAttempts.slice(0, maxScore);
+            correct = topAttempts.filter(attempt => attempt.isCorrect).length;
+            total = maxScore;
+            percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
+          } else {
+            correct = questionAttempts.filter(attempt => attempt.isCorrect).length;
+            total = questionAttempts.length;
+            percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
+          }
+        } else if (scoringMethod === 'average') {
+          const attemptPercentages = questionAttempts.map(attempt =>
+            attempt.isCorrect ? 100 : 0
+          );
+          percentage = Math.round(attemptPercentages.reduce((sum: number, pct: number) => sum + pct, 0) / attemptPercentages.length);
+          correct = Math.round((percentage / 100) * questionAttempts.length);
+          total = questionAttempts.length;
+        } else {
+          questionAttempts.sort((a, b) => b.score - a.score);
+          const limitedAttempts = maxScore && maxScore > 0 ?
+            questionAttempts.slice(0, maxScore) :
+            questionAttempts;
+          correct = limitedAttempts.filter(attempt => attempt.isCorrect).length;
+          total = limitedAttempts.length;
+          percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
+        }
+
+        saStandardsMap.set(standard, { standard, correct, total, percentage });
+      }
+    });
+
+    const saStandardsData = Array.from(saStandardsMap.values()).sort((a, b) => {
+      return a.standard.localeCompare(b.standard, undefined, { numeric: true, sensitivity: 'base' });
+    });
+
+    // Calculate missing SA assessments
+    const saMissingAssessments = saAssessments
+      .filter(assessment => !saResults.some(r => r.assessmentId === assessment.id))
+      .map(assessment => assessment.title)
+      .filter((title, index, arr) => arr.indexOf(title) === index)
+      .sort();
+
+    // PA Compact Data (by assessment title)
+    const paAssessments = filteredAssessments.filter(a => a.category === 'PA');
+    const paResults = filteredResults.filter(r => {
+      const assessment = paAssessments.find(a => a.id === r.assessmentId);
+      return assessment !== undefined;
+    });
+
+    const paCompactData = paAssessments
+      .map(assessment => {
+        const results = paResults.filter(r => r.assessmentId === assessment.id);
+        if (results.length > 0) {
+          const bestResult = results.reduce((best, r) => r.percentage > best.percentage ? r : best);
+          return {
+            id: assessment.id,
+            title: assessment.title,
+            correct: bestResult.score,
+            total: bestResult.totalPoints,
+            percentage: bestResult.percentage,
+            attempts: results.length
+          };
+        }
+        return null;
+      })
+      .filter((item): item is NonNullable<typeof item> => item !== null)
+      .sort((a, b) => {
+        return a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: 'base' });
+      });
+
+    const paMissingAssessments = paAssessments
+      .filter(assessment => !paResults.some(r => r.assessmentId === assessment.id))
+      .map(assessment => assessment.title)
+      .filter((title, index, arr) => arr.indexOf(title) === index)
+      .sort();
+
+    // Generate HTML summary (EXACTLY matching individual summary format)
+    const summaryHTML = `
+      <div class="summary-section summary-overview" id="summary-section">
+        <div class="summary-header-row">
+          <h2>📊 Summary of Scores</h2>
+        </div>
+        <div class="summary-grid">
+          <div class="summary-group">
+            <h3 class="summary-group-title">📝 ESA Standards</h3>
+            ${esaStandardsData.length === 0 && esaMissingAssessments.length === 0 ? `
+            <div class="empty-state-small">
+              <p>No ESA data</p>
+            </div>
+            ` : `
+            <div>
+              ${esaMissingAssessments.length > 0 ? `
+              <div class="missing-assessments">
+                <strong>Missing:</strong> ${esaMissingAssessments.join(', ')}
+              </div>
+              ` : ''}
+              ${esaStandardsData.length > 0 ? `
+              <div class="compact-list">
+                ${esaStandardsData.map(item => {
+                  const displayInfo = getStandardDisplayInfo(item.standard);
+                  const scoreClass = getScoreClass(item.percentage);
+                  return `
+                    <div class="compact-item summary-item ${scoreClass}">
+                      <div class="standard-info">
+                        <span class="standard-name">${displayInfo.name}</span>
+                        <span class="standard-code-small">
+                          ${displayInfo.code}${displayInfo.description ? ' - ' + displayInfo.description : ''}
+                        </span>
+                      </div>
+                      <span class="score-info">
+                        ${item.correct}/${item.total} <strong>${item.percentage}%</strong>
+                      </span>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+              ` : ''}
+            </div>
+            `}
+          </div>
+          <div class="summary-group">
+            <h3 class="summary-group-title">📋 Standard Assessment Standards</h3>
+            ${saStandardsData.length === 0 && saMissingAssessments.length === 0 ? `
+            <div class="empty-state-small">
+              <p>No Standard Assessment data</p>
+            </div>
+            ` : `
+            <div>
+              ${saMissingAssessments.length > 0 ? `
+              <div class="missing-assessments">
+                <strong>Missing:</strong> ${saMissingAssessments.join(', ')}
+              </div>
+              ` : ''}
+              ${saStandardsData.length > 0 ? `
+              <div class="compact-list">
+                ${saStandardsData.map(item => {
+                  const displayInfo = getStandardDisplayInfo(item.standard);
+                  const scoreClass = getScoreClass(item.percentage);
+                  return `
+                    <div class="compact-item summary-item ${scoreClass}">
+                      <div class="standard-info">
+                        <span class="standard-name">${displayInfo.name}</span>
+                        <span class="standard-code-small">
+                          ${displayInfo.code}${displayInfo.description ? ' - ' + displayInfo.description : ''}
+                        </span>
+                      </div>
+                      <span class="score-info">
+                        ${item.correct}/${item.total} <strong>${item.percentage}%</strong>
+                      </span>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+              ` : ''}
+            </div>
+            `}
+          </div>
+          <div class="summary-group">
+            <h3 class="summary-group-title">🎯 Progress Assessment</h3>
+            ${paCompactData.length === 0 && paMissingAssessments.length === 0 ? `
+            <div class="empty-state-small">
+              <p>No Progress Assessment data</p>
+            </div>
+            ` : `
+            <div>
+              ${paMissingAssessments.length > 0 ? `
+              <div class="missing-assessments">
+                <strong>Missing:</strong> ${paMissingAssessments.join(', ')}
+              </div>
+              ` : ''}
+              ${paCompactData.length > 0 ? `
+              <div class="compact-list">
+                ${paCompactData.map(item => {
+                  const scoreClass = getScoreClass(item.percentage);
+                  return `
+                    <div class="compact-item summary-item ${scoreClass}">
+                      <span class="standard-code">${item.title}</span>
+                      <span class="score-info">
+                        ${item.correct}/${item.total} <strong>${item.percentage}%</strong>
+                      </span>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+              ` : ''}
+            </div>
+            `}
+          </div>
+          ${fluencyList.length > 0 ? `
+          <div class="summary-group">
+            <h3 class="summary-group-title">🔢 Fluency</h3>
+            <div class="compact-list">
+              ${fluencyList.map(fluency => {
+                const proficiency = fluency.proficiencyPercentage || 0;
+                const scoreClass = getScoreClass(proficiency);
+                return `
+                <div class="compact-item summary-item ${scoreClass}">
+                  <div class="standard-info">
+                    <span class="standard-name">${fluency.operation.charAt(0).toUpperCase() + fluency.operation.slice(1)}</span>
+                  </div>
+                  <span class="score-info">${proficiency}% proficiency</span>
+                </div>
+              `;
+              }).join('')}
+            </div>
+          </div>
+          ` : ''}
+        </div>
+      </div>
+    `;
+
+    return summaryHTML;
+  } catch (error: any) {
+    console.error(`Error fetching summary for ${studentName}:`, error);
+    return `<div class="summary-section"><p>Error loading summary: ${error.message}</p></div>`;
+  }
+};
+
+const handleBulkPrint = async (studentUids: string[], periodId: string | null) => {
+  if (studentUids.length === 0) return;
+
+  // Prevent multiple simultaneous executions
+  if (printingSummaries.value) {
+    console.warn('Bulk print already in progress, ignoring duplicate call');
+    return;
+  }
+
+  printingSummaries.value = true;
+  showBulkPrintDialog.value = false;
+
+  console.log(`📋 Starting bulk print for ${studentUids.length} students`);
+  console.log(`⚡ Fetching data directly (no Vue/iframes) - MUCH faster!`);
+
+  // Get period info for header - use current academic period if periodId is null
+  const periodToUseForHeader = periodId
+    ? periodsWithStatus.value.find(p => p.id === periodId)
+    : currentAcademicPeriod.value;
+  const periodInfo = periodToUseForHeader
+    ? `${periodToUseForHeader.name}`
+    : 'All Quarters';
+
+  // Load all student summaries by fetching data directly (no iframes!)
+  const summaryHTMLs: Array<{ studentName: string; html: string }> = [];
+
+  // Process all students in parallel (much faster than iframes!)
+  const summaryPromises = studentUids.map(async (studentUid, index) => {
+    const student = students.value.find(s => s.uid === studentUid);
+
+    if (!student) {
+      console.warn(`Student ${studentUid} not found`);
+      return { studentName: 'Unknown', html: '<p>Student not found</p>' };
+    }
+
+    const studentName = `${student.lastName}, ${student.firstName}`;
+    console.log(`📥 Loading summary ${index + 1}/${studentUids.length}: ${studentName}`);
+
+    // Use current academic period ID if periodId is null
+    const effectivePeriodId = periodId || currentAcademicPeriod.value?.id || null;
+    const html = await fetchAndRenderStudentSummary(studentUid, studentName, effectivePeriodId);
+
+    console.log(`✅ Collected summary ${index + 1}/${studentUids.length} for ${studentName} (HTML length: ${html.length})`);
+
+    return { studentName, html };
+  });
+
+  // Wait for all summaries to load in parallel
+  const results = await Promise.all(summaryPromises);
+
+  // Add all results
+  results.forEach(result => {
+    summaryHTMLs.push(result);
+  });
+
+
+  console.log(`✅ Finished collecting ${summaryHTMLs.length}/${studentUids.length} summaries - opening print window...`);
+
+  if (summaryHTMLs.length === 0) {
+    alert('No summaries were loaded. Please try again.');
+    printingSummaries.value = false;
+    return;
+  }
+
+  // Combine all summaries into one document with page breaks
+  const studentName = summaryHTMLs.length === 1
+    ? summaryHTMLs[0].studentName
+    : `${summaryHTMLs.length} Students`;
+
+  const combinedHTML = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>Bulk Student Summaries - ${studentName}</title>
+        <meta charset="UTF-8">
+        <style>
+          @page {
+            margin: 1in;
+          }
+          * {
+            box-sizing: border-box;
+          }
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            font-size: 12pt;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            background: white;
+          }
+          .student-summary-page {
+            page-break-after: always;
+            page-break-inside: avoid;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+          }
+          .student-summary-page:last-child {
+            page-break-after: auto;
+          }
+          .print-header {
+            margin-bottom: 0.75rem;
+            padding-bottom: 0.35rem;
+            border-bottom: 2px solid #333;
+            page-break-after: avoid;
+          }
+          .print-header h1 {
+            margin: 0 0 0.25rem 0;
+            font-size: 14pt;
+            color: #333;
+          }
+          .print-header .student-info {
+            font-size: 9pt;
+            color: #666;
+            line-height: 1.4;
+          }
+          .summary-overview {
+            background: white;
+            padding: 0;
+          }
+          .summary-overview h2 {
+            font-size: 18pt;
+            margin-bottom: 0.75rem;
+            color: #333;
+            border-bottom: 2px solid #3b82f6;
+            padding-bottom: 0.25rem;
+            page-break-after: avoid;
+          }
+          .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            column-gap: 1.5rem;
+          }
+          .summary-group {
+            page-break-inside: avoid;
+            margin-bottom: 0.75rem;
+          }
+          .summary-group-title {
+            font-size: 13pt;
+            margin-bottom: 0.5rem;
+            color: #555;
+            font-weight: 600;
+            border-bottom: 1px solid #e0e0e0;
+            padding-bottom: 0.15rem;
+          }
+          .compact-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+          }
+          .summary-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.45rem 0.65rem;
+            background: #f9f9f9;
+            border-radius: 3px;
+            border-left: 2px solid #3b82f6;
+            font-size: 11.5pt;
+            page-break-inside: avoid;
+            line-height: 1.4;
+          }
+          .summary-item.excellent {
+            border-left-color: #10b981;
+            background: #f0fdf4;
+          }
+          .summary-item.good {
+            border-left-color: #3b82f6;
+            background: #eff6ff;
+          }
+          .summary-item.fair {
+            border-left-color: #f59e0b;
+            background: #fffbeb;
+          }
+          .summary-item.needs-improvement {
+            border-left-color: #f97316;
+            background: #fff7ed;
+          }
+          .summary-item.poor {
+            border-left-color: #ef4444;
+            background: #fef2f2;
+          }
+          .standard-info {
+            display: flex;
+            flex-direction: column;
+            gap: 0.1rem;
+            min-width: 120px;
+            flex: 1;
+          }
+          .standard-name {
+            font-weight: 600;
+            color: #333;
+            font-size: 12pt;
+            line-height: 1.4;
+          }
+          .standard-code-small {
+            font-size: 10.5pt;
+            color: #666;
+            font-weight: 500;
+            font-family: 'Courier New', monospace;
+            line-height: 1.3;
+          }
+          .standard-code {
+            font-size: 12pt;
+            color: #333;
+            font-weight: 600;
+            line-height: 1.4;
+          }
+          .score-info {
+            color: #666;
+            font-family: 'Courier New', monospace;
+            font-size: 11.5pt;
+            white-space: nowrap;
+            margin-left: 0.5rem;
+          }
+          .score-info strong {
+            font-weight: 700;
+            color: #333;
+          }
+          .missing-assessments {
+            margin-bottom: 0.5rem;
+            padding: 0.45rem 0.65rem;
+            background: #fff3cd;
+            border-left: 3px solid #ffc107;
+            border-radius: 3px;
+            color: #856404;
+            font-size: 11pt;
+            page-break-inside: avoid;
+            line-height: 1.5;
+          }
+          .missing-assessments strong {
+            color: #856404;
+          }
+          .empty-state-small {
+            text-align: left;
+            padding: 0.25rem 0;
+            color: #999;
+            font-size: 8.5pt;
+            font-style: italic;
+          }
+          .print-button {
+            display: none !important;
+          }
+          @media print {
+            .print-button {
+              display: none !important;
+            }
+            .summary-grid {
+              grid-template-columns: repeat(2, 1fr);
+            }
+            @page {
+              margin: 0.5in;
+            }
+            .student-summary-page {
+              page-break-after: always !important;
+              page-break-inside: avoid !important;
+            }
+            .student-summary-page:last-child {
+              page-break-after: auto !important;
+            }
+          }
+          @media print and (orientation: landscape) {
+            .summary-grid {
+              grid-template-columns: repeat(3, 1fr);
+            }
+          }
+        </style>
+      </head>
+      <body>
+        ${summaryHTMLs.map((summary, index) => `
+          <div class="student-summary-page">
+            <div class="print-header">
+              <h1>Student Summary - ${summary.studentName}</h1>
+              <div class="student-info">
+                Period: ${periodInfo}<br>
+                Generated: ${new Date().toLocaleString()}
+              </div>
+            </div>
+            <div class="summary-overview">
+              ${summary.html}
+            </div>
+          </div>
+        `).join('')}
+      </body>
+    </html>
+  `;
+
+  // Open single print window with all summaries - use unique name to prevent multiple windows
+  const printWindowName = `bulk_print_${Date.now()}`;
+  const printWindow = window.open('', printWindowName);
+  if (!printWindow) {
+    alert('Please allow popups to print summaries');
+    printingSummaries.value = false;
+    return;
+  }
+
+  printWindow.document.write(combinedHTML);
+  printWindow.document.close();
+
+  // Wait for content to load, then print
+  printWindow.onload = () => {
+    setTimeout(() => {
+      printWindow.print();
+      printingSummaries.value = false;
+      console.log(`🎉 Bulk print complete! Print dialog should now be open with all ${summaryHTMLs.length} student summaries.`);
+    }, 1000); // Increased delay to ensure content is fully rendered
+  };
+};
+
 onMounted(() => {
   loadGradebookData();
 });
@@ -1234,8 +2031,24 @@ onMounted(() => {
 }
 
 .gradebook-header {
-  text-align: center;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 2rem;
+  flex-wrap: wrap;
   margin-bottom: 40px;
+}
+
+.gradebook-header .header-content {
+  flex: 1;
+  min-width: 300px;
+  text-align: left;
+}
+
+.gradebook-header .header-actions {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
 }
 
 .gradebook-header h1 {
@@ -1247,6 +2060,23 @@ onMounted(() => {
 .gradebook-header p {
   color: #6b7280;
   font-size: 1.1rem;
+}
+
+.bulk-print-button {
+  padding: 0.75rem 1.5rem;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+
+.bulk-print-button:hover {
+  background: #2563eb;
 }
 
 .info-note {

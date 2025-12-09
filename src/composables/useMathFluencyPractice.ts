@@ -410,15 +410,26 @@ export function useMathFluencyPractice() {
           }
         })
 
-        // Update progress
-        await updateProgressAfterSession(authStore.currentUser!.uid, currentOperation.value, {
-          diagnosticResults,
-          round2Results: formattedRound2Results,
-          round3Results: formattedRound3Results,
-          allProblems,
-        })
+        // Update progress and check for advancement
+        const advancementResult = await updateProgressAfterSession(
+          authStore.currentUser!.uid,
+          currentOperation.value,
+          {
+            diagnosticResults,
+            round2Results: formattedRound2Results,
+            round3Results: formattedRound3Results,
+            allProblems,
+          },
+        )
 
         console.log('✅ Progress document updated')
+
+        // Show celebration if advanced
+        if (advancementResult.advanced) {
+          console.log('🎉 Level advanced!', advancementResult)
+          // Store advancement info for celebration display
+          ;(session.value as any).advancementInfo = advancementResult
+        }
       } catch (error) {
         console.error('Error updating progress:', error)
         // Don't fail the session save if progress update fails

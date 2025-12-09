@@ -50,6 +50,8 @@
     <MathFluencyStartScreen
       v-else-if="!practiceStarted"
       :current-operation="currentOperation"
+      :current-sub-level="progress?.currentSubLevel || undefined"
+      :completed-sub-levels="progress?.completedSubLevels || []"
       :distribution="distribution"
       :proficiency-percentage="proficiencyPercentage"
       :next-operation-name="nextOperationName"
@@ -83,7 +85,7 @@
       v-if="practiceStarted && currentRound === 0.75"
       :score="diagnosticScore"
       :correct="diagnosticCorrect"
-      :total="diagnosticProblems.length"
+      :total="diagnosticTotal"
       :wrong-problems="diagnosticWrongProblems"
       @continue="handleContinueCurrentLevel"
     />
@@ -132,11 +134,21 @@
       @view-progress="viewProgress"
       @finish="finishSessionAction"
     />
+
+    <!-- Level Advancement Celebration -->
+    <LevelAdvancementCelebration
+      v-if="showAdvancementCelebration"
+      :show="showAdvancementCelebration"
+      :previous-sub-level="advancementInfo?.previousSubLevel"
+      :new-sub-level="advancementInfo?.newSubLevel"
+      :proficiency="advancementInfo?.proficiency"
+      @close="closeAdvancementCelebration"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useMathFluencyPractice } from '@/composables/useMathFluencyPractice'
 import { useMathFluencyDiagnostic } from '@/composables/useMathFluencyDiagnostic'
@@ -148,6 +160,7 @@ import MathFluencyStartScreen from './mathFluency/rounds/MathFluencyStartScreen.
 import MathFluencyWarmupRound from './mathFluency/rounds/MathFluencyWarmupRound.vue'
 import MathFluencyDiagnosticRound from './mathFluency/rounds/MathFluencyDiagnosticRound.vue'
 import MathFluencyDiagnosticResults from './mathFluency/rounds/MathFluencyDiagnosticResults.vue'
+import LevelAdvancementCelebration from './mathFluency/LevelAdvancementCelebration.vue'
 import MathFluencyRound1Learning from './mathFluency/rounds/MathFluencyRound1Learning.vue'
 import MathFluencyRound2Practice from './mathFluency/rounds/MathFluencyRound2Practice.vue'
 import MathFluencyRound3Assessment from './mathFluency/rounds/MathFluencyRound3Assessment.vue'
@@ -159,6 +172,15 @@ const authStore = useAuthStore()
 
 // Track if we've checked for lessons to prevent redirect loops
 const lessonCheckCompleted = ref(false)
+
+// Track level advancement for celebration
+const showAdvancementCelebration = ref(false)
+const advancementInfo = ref<{
+  advanced: boolean
+  newSubLevel?: string
+  previousSubLevel?: string
+  proficiency?: number
+} | null>(null)
 
 // Use composables
 const practice = useMathFluencyPractice()
@@ -222,6 +244,7 @@ const {
   currentDiagnosticProblem,
   diagnosticCorrect,
   diagnosticScore,
+  diagnosticTotal,
   diagnosticWrongProblems,
   timerColorClass,
   startDiagnosticRound,
@@ -399,6 +422,22 @@ async function checkForRequiredLessonBeforePractice() {
   }
 }
 
+// Check for advancement after session complete
+function checkForAdvancement() {
+  const sessionAdv = (session.value as any)?.advancementInfo
+  if (sessionAdv && sessionAdv.advanced) {
+    advancementInfo.value = sessionAdv
+    // Show celebration after a brief delay
+    setTimeout(() => {
+      showAdvancementCelebration.value = true
+    }, 1000)
+  }
+}
+
+function closeAdvancementCelebration() {
+  showAdvancementCelebration.value = false
+}
+
 // Initialize
 onMounted(async () => {
   assignmentId.value = (route.query.assignment as string) || null
@@ -414,6 +453,13 @@ onMounted(async () => {
 onUnmounted(() => {
   clearAllTimers()
   clearDiagnosticTimer()
+})
+
+// Watch for session completion to check for advancement
+watch(() => sessionComplete.value, (isComplete) => {
+  if (isComplete) {
+    checkForAdvancement()
+  }
 })
 </script>
 <!-- Temporarily commented out due to CSS syntax errors - needs fixing -->
