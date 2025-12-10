@@ -96,3 +96,4 @@ async function analyzeTemplates() {
 
 // Run the analysis
 analyzeTemplates()
+

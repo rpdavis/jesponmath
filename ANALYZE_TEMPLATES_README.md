@@ -125,3 +125,4 @@ The analysis will be saved as `template_analysis_report.md` with:
 - **GPT-3.5 Turbo**: ~$0.002 per analysis (one-time)
 
 These are one-time costs for analysis. The templates themselves don't cost anything to use.
+

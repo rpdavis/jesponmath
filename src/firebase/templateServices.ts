@@ -357,3 +357,4 @@ export function generateGoalFromTemplate(
     standard: allVariables.standard || undefined,
   }
 }
+

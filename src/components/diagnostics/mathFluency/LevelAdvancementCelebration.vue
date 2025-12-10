@@ -296,3 +296,4 @@ function getConfettiStyle(index: number) {
   }
 }
 </style>
+

@@ -31,6 +31,12 @@ import type {
 } from '@/types/mathFluency'
 import { Timestamp } from 'firebase/firestore'
 import { markFluencyAssignmentComplete } from '@/services/mathFluencyAssignmentServices'
+import {
+  isDebugEnabled,
+  createSessionLog,
+  saveSessionLog,
+  type DetailedSessionLog,
+} from '@/utils/detailedDebugLogger'
 
 export function useMathFluencyPractice() {
   const router = useRouter()
@@ -63,6 +69,11 @@ export function useMathFluencyPractice() {
   const sessionStartTime = ref(0)
   const totalSessionTime = ref(0)
   const promotionsEarned = ref<string[]>([])
+
+  // ⭐ Detailed debug logging (if enabled for this student)
+  const currentDetailedLog = ref<DetailedSessionLog | null>(null)
+  const debugModeActive = ref(false)
+
   const session = ref<Partial<MathFluencyPracticeSession>>({
     round1_learning: {
       problemsTargeted: [],
@@ -140,6 +151,12 @@ export function useMathFluencyPractice() {
         completedToday.value = true
         todaysSession.value = today
       } else {
+        // ⭐ Check if debug mode is enabled for this student
+        debugModeActive.value = isDebugEnabled(authStore.currentUser.uid)
+        if (debugModeActive.value) {
+          console.log('🔬 DEBUG MODE ACTIVE for this student')
+        }
+
         preparePracticeSession()
       }
     } catch (error) {
@@ -151,7 +168,34 @@ export function useMathFluencyPractice() {
   }
 
   async function preparePracticeSession() {
-    if (!progress.value) return
+    if (!progress.value || !authStore.currentUser) return
+
+    // ⭐ Initialize detailed debug log if enabled
+    if (debugModeActive.value) {
+      const sessionNumber = (progress.value.totalPracticeDays || 0) + 1
+      currentDetailedLog.value = createSessionLog(
+        authStore.currentUser.uid,
+        authStore.currentUser.displayName || 'Unknown',
+        `session_${Date.now()}`,
+        sessionNumber,
+        progress.value.operation,
+        progress.value.currentSubLevel || 'addition_within_10',
+        {
+          proficiencyPercentage: progress.value.proficiencyPercentage,
+          masteryPercentage: progress.value.masteryPercentage,
+          problemBankDistribution: {
+            doesNotKnow: progress.value.proficiencyDistribution.doesNotKnow,
+            emerging: progress.value.proficiencyDistribution.emerging,
+            approaching: progress.value.proficiencyDistribution.approaching,
+            proficient: progress.value.proficiencyDistribution.proficient,
+            mastered: progress.value.proficiencyDistribution.mastered,
+          },
+          consecutiveDays: progress.value.consecutivePracticeDays,
+          totalSessions: progress.value.totalPracticeDays,
+        },
+      )
+      sessionStartTime.value = Date.now()
+    }
 
     const banks = progress.value.problemBanks
 
@@ -208,11 +252,16 @@ export function useMathFluencyPractice() {
 
     // Use sub-level aware selection if available
     if (progress.value.currentSubLevel && allProblems.length > 0) {
+      // ⭐ Detect fast-track mode: 90%+ proficiency on current sub-level
+      const currentSubLevelData = progress.value.subLevelProgress?.[progress.value.currentSubLevel]
+      const isFastTrack = (currentSubLevelData?.proficiencyPercentage || 0) >= 90
+
       const selection = selectDailyPracticeProblems(
         allProblems,
         progress.value.currentSubLevel,
         progress.value.completedSubLevels,
         15,
+        isFastTrack,
       )
 
       const currentSubLevelProblems = filterProblemsBySubLevel(
@@ -429,10 +478,87 @@ export function useMathFluencyPractice() {
           console.log('🎉 Level advanced!', advancementResult)
           // Store advancement info for celebration display
           ;(session.value as any).advancementInfo = advancementResult
+
+          // ⭐ Log advancement in detailed log
+          if (currentDetailedLog.value && debugModeActive.value) {
+            currentDetailedLog.value.advancement.advanced = true
+            currentDetailedLog.value.advancement.previousSubLevel =
+              advancementResult.previousSubLevel as any
+            currentDetailedLog.value.advancement.newSubLevel = advancementResult.newSubLevel as any
+            currentDetailedLog.value.advancement.reason = 'Auto-advanced after session completion'
+          }
+        }
+
+        // ⭐ Save detailed log with final state
+        if (currentDetailedLog.value && debugModeActive.value) {
+          // Reload progress to get updated state
+          const updatedProgress = await getFluencyProgress(
+            authStore.currentUser!.uid,
+            currentOperation.value,
+          )
+
+          if (updatedProgress) {
+            currentDetailedLog.value.endState = {
+              proficiencyPercentage: updatedProgress.proficiencyPercentage,
+              masteryPercentage: updatedProgress.masteryPercentage,
+              problemBankDistribution: {
+                doesNotKnow: updatedProgress.proficiencyDistribution.doesNotKnow,
+                emerging: updatedProgress.proficiencyDistribution.emerging,
+                approaching: updatedProgress.proficiencyDistribution.approaching,
+                proficient: updatedProgress.proficiencyDistribution.proficient,
+                mastered: updatedProgress.proficiencyDistribution.mastered,
+              },
+              proficiencyChange:
+                updatedProgress.proficiencyPercentage -
+                currentDetailedLog.value.startState.proficiencyPercentage,
+              problemsPromoted: 0, // Calculate from comparing banks
+              problemsDemoted: 0,
+            }
+
+            // Calculate session summary
+            const allCorrect =
+              currentDetailedLog.value.diagnostic.score +
+              currentDetailedLog.value.round2.score +
+              currentDetailedLog.value.round3.score
+            const allTotal =
+              currentDetailedLog.value.diagnostic.total +
+              currentDetailedLog.value.round2.total +
+              currentDetailedLog.value.round3.total
+
+            currentDetailedLog.value.summary = {
+              totalDuration: sessionStartTime.value
+                ? (Date.now() - sessionStartTime.value) / 1000
+                : 0,
+              totalProblems: allTotal,
+              totalCorrect: allCorrect,
+              overallAccuracy: allTotal > 0 ? Math.round((allCorrect / allTotal) * 100) : 0,
+              averageResponseTime: 0, // Calculate from all problems
+              sessionQuality:
+                allTotal > 0 && allCorrect / allTotal >= 0.9
+                  ? 'Excellent'
+                  : allTotal > 0 && allCorrect / allTotal >= 0.75
+                    ? 'Good'
+                    : allTotal > 0 && allCorrect / allTotal >= 0.6
+                      ? 'Fair'
+                      : 'Needs Improvement',
+            }
+
+            saveSessionLog(currentDetailedLog.value)
+          }
         }
       } catch (error) {
         console.error('Error updating progress:', error)
         // Don't fail the session save if progress update fails
+
+        // ⭐ Log error in detailed log
+        if (currentDetailedLog.value && debugModeActive.value) {
+          currentDetailedLog.value.issues.push({
+            timestamp: new Date(),
+            type: 'error',
+            message: 'Failed to update progress after session',
+            context: error,
+          })
+        }
       }
 
       if (assignmentId.value) {
@@ -446,6 +572,16 @@ export function useMathFluencyPractice() {
       }
     } catch (error) {
       console.error('Error saving session:', error)
+
+      // ⭐ Log error in detailed log
+      if (currentDetailedLog.value && debugModeActive.value) {
+        currentDetailedLog.value.issues.push({
+          timestamp: new Date(),
+          type: 'error',
+          message: 'Failed to save session',
+          context: error,
+        })
+      }
     }
 
     sessionComplete.value = true

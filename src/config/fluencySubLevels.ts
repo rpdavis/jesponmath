@@ -11,39 +11,40 @@ export interface SubLevelConfig {
   name: string
   shortName: string
   description: string
-  
+
   // Progression
-  order: number  // Global order (1-14)
-  operationOrder: number  // Order within operation (1-3 or 1-4)
+  order: number // Global order (1-14)
+  operationOrder: number // Order within operation (1-3 or 1-4)
   isMixedReview: boolean
-  
+
   // Problem Criteria
-  totalProblems: number  // Total unique problems in this sub-level
+  totalProblems: number // Total unique problems in this sub-level
   problemFilter: (num1: number, num2: number, result: number) => boolean
-  categories: string[]  // Problem categories included
-  
+  categories: string[] // Problem categories included
+
   // Assessment Criteria
-  assessmentDuration: number  // seconds (always 60 for 1-minute tests)
-  passingAccuracy: number  // percentage (always 90)
+  assessmentDuration: number // seconds (always 60 for 1-minute tests)
+  passingAccuracy: number // percentage (always 90)
   targetCPM: {
     grade3to5: number
     grade6to8: number
     grade9to12: number
   }
-  minimumAcceptableCPM: {  // ⭐ NEW: For struggling students (3+ years behind)
+  minimumAcceptableCPM: {
+    // ⭐ NEW: For struggling students (3+ years behind)
     grade3to5: number
     grade6to8: number
     grade9to12: number
   }
-  
+
   // Practice Criteria
-  readyThreshold: number  // Proficiency % to be ready for assessment (always 85)
-  maintenanceFromPrevious: boolean  // Include problems from previous sub-levels
-  
+  readyThreshold: number // Proficiency % to be ready for assessment (always 85)
+  maintenanceFromPrevious: boolean // Include problems from previous sub-levels
+
   // Strategy Support
-  keyStrategies: string[]  // Teaching strategies for this level
-  commonErrors: string[]  // Typical student mistakes
-  
+  keyStrategies: string[] // Teaching strategies for this level
+  commonErrors: string[] // Typical student mistakes
+
   // Motivation
   icon: string
   color: string
@@ -79,9 +80,9 @@ export const SUB_LEVEL_CONFIGS: SubLevelConfig[] = [
     commonErrors: ['Counting by 1s instead of known facts', 'Making 10 without recognizing pairs'],
     icon: '🌱',
     color: '#27ae60',
-    motivationalMessage: 'Building your addition foundation!'
+    motivationalMessage: 'Building your addition foundation!',
   },
-  
+
   {
     id: 'addition_within_20',
     operation: 'addition',
@@ -101,12 +102,16 @@ export const SUB_LEVEL_CONFIGS: SubLevelConfig[] = [
     readyThreshold: 85,
     maintenanceFromPrevious: true,
     keyStrategies: ['Make 10 first', 'Near doubles (+1)', 'Decompose to 10'],
-    commonErrors: ['Not using make 10 strategy', 'Losing track when bridging', 'Near double confusion'],
+    commonErrors: [
+      'Not using make 10 strategy',
+      'Losing track when bridging',
+      'Near double confusion',
+    ],
     icon: '🌿',
     color: '#229954',
-    motivationalMessage: 'Mastering harder addition facts!'
+    motivationalMessage: 'Mastering harder addition facts!',
   },
-  
+
   {
     id: 'addition_mixed',
     operation: 'addition',
@@ -129,9 +134,9 @@ export const SUB_LEVEL_CONFIGS: SubLevelConfig[] = [
     commonErrors: ['Slower on mixed vs. blocked practice'],
     icon: '🌳',
     color: '#1e8449',
-    motivationalMessage: 'Prove your addition mastery!'
+    motivationalMessage: 'Prove your addition mastery!',
   },
-  
+
   // =========================================================================
   // SUBTRACTION (Levels 4-6)
   // =========================================================================
@@ -145,21 +150,22 @@ export const SUB_LEVEL_CONFIGS: SubLevelConfig[] = [
     operationOrder: 1,
     isMixedReview: false,
     totalProblems: 36,
-    problemFilter: (minuend, subtrahend, diff) => minuend <= 10 && minuend >= 2 && subtrahend >= 2 && subtrahend < minuend,
+    problemFilter: (minuend, subtrahend, diff) =>
+      minuend <= 10 && minuend >= 2 && subtrahend >= 2 && subtrahend < minuend,
     categories: ['From 10', 'From 5-9', 'Think Addition'],
     assessmentDuration: 60,
     passingAccuracy: 90,
     targetCPM: { grade3to5: 40, grade6to8: 50, grade9to12: 60 },
     minimumAcceptableCPM: { grade3to5: 25, grade6to8: 30, grade9to12: 35 },
     readyThreshold: 85,
-    maintenanceFromPrevious: true,  // Include addition maintenance
+    maintenanceFromPrevious: true, // Include addition maintenance
     keyStrategies: ['Think addition', 'Count back', 'Part-part-whole'],
     commonErrors: ['Not connecting to addition facts', 'Counting instead of recalling'],
     icon: '🔻',
     color: '#c0392b',
-    motivationalMessage: 'Building subtraction skills!'
+    motivationalMessage: 'Building subtraction skills!',
   },
-  
+
   {
     id: 'subtraction_within_20',
     operation: 'subtraction',
@@ -170,11 +176,12 @@ export const SUB_LEVEL_CONFIGS: SubLevelConfig[] = [
     operationOrder: 2,
     isMixedReview: false,
     totalProblems: 90,
-    problemFilter: (minuend, subtrahend, diff) => minuend >= 11 && minuend <= 20 && subtrahend >= 2 && subtrahend < minuend,
+    problemFilter: (minuend, subtrahend, diff) =>
+      minuend >= 11 && minuend <= 20 && subtrahend >= 2 && subtrahend < minuend,
     categories: ['From 11-15', 'From 16-20', 'Crossing 10'],
     assessmentDuration: 60,
     passingAccuracy: 90,
-    targetCPM: { grade3to5: 35, grade6to8: 45, grade9to12: 55 },  // Slightly lower - harder
+    targetCPM: { grade3to5: 35, grade6to8: 45, grade9to12: 55 }, // Slightly lower - harder
     minimumAcceptableCPM: { grade3to5: 20, grade6to8: 25, grade9to12: 30 },
     readyThreshold: 85,
     maintenanceFromPrevious: true,
@@ -182,9 +189,9 @@ export const SUB_LEVEL_CONFIGS: SubLevelConfig[] = [
     commonErrors: ['Crossing 10 errors', 'Not using addition relationship'],
     icon: '🔺',
     color: '#a93226',
-    motivationalMessage: 'Conquering harder subtraction!'
+    motivationalMessage: 'Conquering harder subtraction!',
   },
-  
+
   {
     id: 'subtraction_mixed',
     operation: 'subtraction',
@@ -195,7 +202,8 @@ export const SUB_LEVEL_CONFIGS: SubLevelConfig[] = [
     operationOrder: 3,
     isMixedReview: true,
     totalProblems: 30,
-    problemFilter: (minuend, subtrahend, diff) => minuend >= 2 && minuend <= 20 && subtrahend >= 2 && subtrahend < minuend,
+    problemFilter: (minuend, subtrahend, diff) =>
+      minuend >= 2 && minuend <= 20 && subtrahend >= 2 && subtrahend < minuend,
     categories: ['All Subtraction'],
     assessmentDuration: 60,
     passingAccuracy: 90,
@@ -207,9 +215,9 @@ export const SUB_LEVEL_CONFIGS: SubLevelConfig[] = [
     commonErrors: ['Slower on mixed'],
     icon: '📐',
     color: '#922b21',
-    motivationalMessage: 'Subtraction mastery unlocked!'
+    motivationalMessage: 'Subtraction mastery unlocked!',
   },
-  
+
   // =========================================================================
   // ADDITION + SUBTRACTION INTERLEAVED (Level 7) ⭐ RESEARCH-BACKED SPIRALING
   // =========================================================================
@@ -225,7 +233,7 @@ export const SUB_LEVEL_CONFIGS: SubLevelConfig[] = [
     totalProblems: 40,
     problemFilter: (num1, num2, result) => {
       // Accept both addition (sum ≤20) and subtraction (minuend ≤20)
-      return (num1 >= 2 && num2 >= 2 && result <= 20)
+      return num1 >= 2 && num2 >= 2 && result <= 20
     },
     categories: ['Addition Facts', 'Subtraction Facts', 'Fact Families'],
     assessmentDuration: 60,
@@ -234,13 +242,17 @@ export const SUB_LEVEL_CONFIGS: SubLevelConfig[] = [
     minimumAcceptableCPM: { grade3to5: 25, grade6to8: 30, grade9to12: 35 },
     readyThreshold: 85,
     maintenanceFromPrevious: true,
-    keyStrategies: ['Operation identification', 'Fact family relationships', 'Strategic flexibility'],
+    keyStrategies: [
+      'Operation identification',
+      'Fact family relationships',
+      'Strategic flexibility',
+    ],
     commonErrors: ['Mixing up operations', 'Forgetting addition facts', 'Slower due to switching'],
     icon: '➕➖',
     color: '#16a085',
-    motivationalMessage: 'Mastering both addition AND subtraction!'
+    motivationalMessage: 'Mastering both addition AND subtraction!',
   },
-  
+
   // =========================================================================
   // MULTIPLICATION (Levels 8-11)
   // =========================================================================
@@ -256,8 +268,13 @@ export const SUB_LEVEL_CONFIGS: SubLevelConfig[] = [
     totalProblems: 29,
     problemFilter: (num1, num2, product) => {
       const factors = [num1, num2]
-      return factors.includes(0) || factors.includes(1) || factors.includes(2) || 
-             factors.includes(5) || factors.includes(10)
+      return (
+        factors.includes(0) ||
+        factors.includes(1) ||
+        factors.includes(2) ||
+        factors.includes(5) ||
+        factors.includes(10)
+      )
     },
     categories: ['×0', '×1', '×2 (doubles)', '×5 (clock)', '×10 (place value)'],
     assessmentDuration: 60,
@@ -265,14 +282,14 @@ export const SUB_LEVEL_CONFIGS: SubLevelConfig[] = [
     targetCPM: { grade3to5: 40, grade6to8: 50, grade9to12: 60 },
     minimumAcceptableCPM: { grade3to5: 25, grade6to8: 30, grade9to12: 35 },
     readyThreshold: 85,
-    maintenanceFromPrevious: true,  // Include add/subtract maintenance
+    maintenanceFromPrevious: true, // Include add/subtract maintenance
     keyStrategies: ['Skip counting', 'Repeated addition', 'Pattern recognition'],
     commonErrors: ['Not recognizing patterns', 'Counting by 1s'],
     icon: '✖️',
     color: '#8e44ad',
-    motivationalMessage: 'Learning multiplication patterns!'
+    motivationalMessage: 'Learning multiplication patterns!',
   },
-  
+
   {
     id: 'multiplication_medium',
     operation: 'multiplication',
@@ -287,8 +304,12 @@ export const SUB_LEVEL_CONFIGS: SubLevelConfig[] = [
       const factors = [num1, num2]
       const isSquare = num1 === num2
       const hasMediumFactor = factors.includes(3) || factors.includes(4) || factors.includes(6)
-      const noEasyFactor = !factors.includes(0) && !factors.includes(1) && 
-                          !factors.includes(2) && !factors.includes(5) && !factors.includes(10)
+      const noEasyFactor =
+        !factors.includes(0) &&
+        !factors.includes(1) &&
+        !factors.includes(2) &&
+        !factors.includes(5) &&
+        !factors.includes(10)
       return (isSquare || hasMediumFactor) && noEasyFactor
     },
     categories: ['×3', '×4 (double ×2)', '×6 (double ×3)', 'Squares'],
@@ -302,9 +323,9 @@ export const SUB_LEVEL_CONFIGS: SubLevelConfig[] = [
     commonErrors: ['Confusing ×3 and ×4', 'Not using doubling'],
     icon: '✖️✖️',
     color: '#7d3c98',
-    motivationalMessage: 'Building multiplication strength!'
+    motivationalMessage: 'Building multiplication strength!',
   },
-  
+
   {
     id: 'multiplication_hard',
     operation: 'multiplication',
@@ -317,29 +338,38 @@ export const SUB_LEVEL_CONFIGS: SubLevelConfig[] = [
     totalProblems: 36,
     problemFilter: (num1, num2, product) => {
       const factors = [num1, num2]
-      const hasHardFactor = factors.includes(7) || factors.includes(8) || 
-                           factors.includes(9) || factors.includes(11) || factors.includes(12)
-      const noEasyFactor = !factors.includes(0) && !factors.includes(1) && 
-                          !factors.includes(2) && !factors.includes(5) && !factors.includes(10)
-      const noMediumOnly = !(factors.includes(3) && factors.includes(4)) &&
-                          !(factors.includes(3) && factors.includes(6)) &&
-                          !(factors.includes(4) && factors.includes(6))
+      const hasHardFactor =
+        factors.includes(7) ||
+        factors.includes(8) ||
+        factors.includes(9) ||
+        factors.includes(11) ||
+        factors.includes(12)
+      const noEasyFactor =
+        !factors.includes(0) &&
+        !factors.includes(1) &&
+        !factors.includes(2) &&
+        !factors.includes(5) &&
+        !factors.includes(10)
+      const noMediumOnly =
+        !(factors.includes(3) && factors.includes(4)) &&
+        !(factors.includes(3) && factors.includes(6)) &&
+        !(factors.includes(4) && factors.includes(6))
       return hasHardFactor && noEasyFactor
     },
     categories: ['×7', '×8', '×9 (nifty nines)', '×11 (pattern)', '×12'],
     assessmentDuration: 60,
     passingAccuracy: 90,
-    targetCPM: { grade3to5: 25, grade6to8: 35, grade9to12: 45 },  // Adjusted - these are the hardest facts
-    minimumAcceptableCPM: { grade3to5: 15, grade6to8: 20, grade9to12: 25 },  // Struggling students can still progress
+    targetCPM: { grade3to5: 25, grade6to8: 35, grade9to12: 45 }, // Adjusted - these are the hardest facts
+    minimumAcceptableCPM: { grade3to5: 15, grade6to8: 20, grade9to12: 25 }, // Struggling students can still progress
     readyThreshold: 85,
     maintenanceFromPrevious: true,
     keyStrategies: ['9s finger trick', '11s pattern', 'Break apart', 'Related facts'],
     commonErrors: ['×7 and ×8 confusion', 'Not using 9s trick', 'Calculation errors'],
     icon: '✖️✖️✖️',
     color: '#6c3483',
-    motivationalMessage: 'Conquering the hardest facts!'
+    motivationalMessage: 'Conquering the hardest facts!',
   },
-  
+
   {
     id: 'multiplication_mixed',
     operation: 'multiplication',
@@ -350,7 +380,8 @@ export const SUB_LEVEL_CONFIGS: SubLevelConfig[] = [
     operationOrder: 4,
     isMixedReview: true,
     totalProblems: 40,
-    problemFilter: (num1, num2, product) => num1 >= 0 && num2 >= 0 && num1 <= 12 && num2 <= 12 && num1 <= num2,
+    problemFilter: (num1, num2, product) =>
+      num1 >= 0 && num2 >= 0 && num1 <= 12 && num2 <= 12 && num1 <= num2,
     categories: ['All Multiplication'],
     assessmentDuration: 60,
     passingAccuracy: 90,
@@ -362,9 +393,9 @@ export const SUB_LEVEL_CONFIGS: SubLevelConfig[] = [
     commonErrors: ['Slower on mixed'],
     icon: '🎯',
     color: '#5b2c6f',
-    motivationalMessage: 'You\'re a multiplication master!'
+    motivationalMessage: "You're a multiplication master!",
   },
-  
+
   // =========================================================================
   // DIVISION (Levels 12-15)
   // =========================================================================
@@ -385,14 +416,14 @@ export const SUB_LEVEL_CONFIGS: SubLevelConfig[] = [
     targetCPM: { grade3to5: 35, grade6to8: 45, grade9to12: 55 },
     minimumAcceptableCPM: { grade3to5: 20, grade6to8: 25, grade9to12: 30 },
     readyThreshold: 85,
-    maintenanceFromPrevious: true,  // Maintain multiplication
+    maintenanceFromPrevious: true, // Maintain multiplication
     keyStrategies: ['Think multiplication', 'Pattern recognition', 'Fact families'],
     commonErrors: ['Not using multiplication relationship', 'Pattern confusion'],
     icon: '➗',
     color: '#d68910',
-    motivationalMessage: 'Division patterns unlocked!'
+    motivationalMessage: 'Division patterns unlocked!',
   },
-  
+
   {
     id: 'division_medium',
     operation: 'division',
@@ -415,9 +446,9 @@ export const SUB_LEVEL_CONFIGS: SubLevelConfig[] = [
     commonErrors: ['÷3 and ÷6 confusion', 'Calculation errors'],
     icon: '➗➗',
     color: '#b9770e',
-    motivationalMessage: 'Division skills growing!'
+    motivationalMessage: 'Division skills growing!',
   },
-  
+
   {
     id: 'division_hard',
     operation: 'division',
@@ -428,22 +459,22 @@ export const SUB_LEVEL_CONFIGS: SubLevelConfig[] = [
     operationOrder: 3,
     isMixedReview: false,
     totalProblems: 60,
-    problemFilter: (dividend, divisor, quotient) => 
+    problemFilter: (dividend, divisor, quotient) =>
       [7, 8, 9, 11, 12].includes(divisor) && divisor >= 2,
     categories: ['÷7', '÷8', '÷9', '÷11', '÷12'],
     assessmentDuration: 60,
     passingAccuracy: 90,
-    targetCPM: { grade3to5: 20, grade6to8: 30, grade9to12: 40 },  // Adjusted - hardest facts
-    minimumAcceptableCPM: { grade3to5: 12, grade6to8: 18, grade9to12: 23 },  // Struggling students can still progress
+    targetCPM: { grade3to5: 20, grade6to8: 30, grade9to12: 40 }, // Adjusted - hardest facts
+    minimumAcceptableCPM: { grade3to5: 12, grade6to8: 18, grade9to12: 23 }, // Struggling students can still progress
     readyThreshold: 85,
     maintenanceFromPrevious: true,
     keyStrategies: ['Strong multiplication foundation', 'Fact families', 'Estimation check'],
     commonErrors: ['÷7 and ÷8 confusion', '÷12 calculation errors', 'Guessing'],
     icon: '➗➗➗',
     color: '#9a7d0a',
-    motivationalMessage: 'You\'re almost there!'
+    motivationalMessage: "You're almost there!",
   },
-  
+
   {
     id: 'division_mixed',
     operation: 'division',
@@ -466,9 +497,9 @@ export const SUB_LEVEL_CONFIGS: SubLevelConfig[] = [
     commonErrors: ['Slower on mixed'],
     icon: '🏆',
     color: '#7e5109',
-    motivationalMessage: 'Division mastery achieved!'
+    motivationalMessage: 'Division mastery achieved!',
   },
-  
+
   // =========================================================================
   // ALL OPERATIONS MASTERY (Level 16) ⭐ FINAL CAPSTONE
   // =========================================================================
@@ -497,17 +528,17 @@ export const SUB_LEVEL_CONFIGS: SubLevelConfig[] = [
       'Instant operation recognition',
       'Automatic fact recall',
       'Strategic flexibility across all operations',
-      'Mental math fluency'
+      'Mental math fluency',
     ],
     commonErrors: [
       'Operation confusion (e.g., 6+4 vs 6×4)',
       'Slower switching between operations',
-      'Forgetting earlier operations'
+      'Forgetting earlier operations',
     ],
     icon: '👑',
     color: '#8e44ad',
-    motivationalMessage: 'You\'re a math facts MASTER! College-ready fluency achieved! 🎓'
-  }
+    motivationalMessage: "You're a math facts MASTER! College-ready fluency achieved! 🎓",
+  },
 ]
 
 /**
@@ -515,39 +546,43 @@ export const SUB_LEVEL_CONFIGS: SubLevelConfig[] = [
  */
 
 export function getSubLevelConfig(subLevel: SubLevel): SubLevelConfig | undefined {
-  return SUB_LEVEL_CONFIGS.find(config => config.id === subLevel)
+  return SUB_LEVEL_CONFIGS.find((config) => config.id === subLevel)
 }
 
 export function getSubLevelsForOperation(operation: OperationType): SubLevelConfig[] {
-  return SUB_LEVEL_CONFIGS.filter(config => config.operation === operation)
+  return SUB_LEVEL_CONFIGS.filter((config) => config.operation === operation)
 }
 
 export function getFirstSubLevel(operation: OperationType): SubLevel | null {
-  const configs = getSubLevelsForOperation(operation).sort((a, b) => a.operationOrder - b.operationOrder)
+  const configs = getSubLevelsForOperation(operation).sort(
+    (a, b) => a.operationOrder - b.operationOrder,
+  )
   return configs.length > 0 ? configs[0].id : null
 }
 
 export function getNextSubLevel(currentSubLevel: SubLevel): SubLevel | null {
   const currentConfig = getSubLevelConfig(currentSubLevel)
   if (!currentConfig) return null
-  
+
   const nextConfig = SUB_LEVEL_CONFIGS.find(
-    config => config.operation === currentConfig.operation && 
-              config.operationOrder === currentConfig.operationOrder + 1
+    (config) =>
+      config.operation === currentConfig.operation &&
+      config.operationOrder === currentConfig.operationOrder + 1,
   )
-  
+
   return nextConfig ? nextConfig.id : null
 }
 
 export function getPreviousSubLevel(currentSubLevel: SubLevel): SubLevel | null {
   const currentConfig = getSubLevelConfig(currentSubLevel)
   if (!currentConfig) return null
-  
+
   const prevConfig = SUB_LEVEL_CONFIGS.find(
-    config => config.operation === currentConfig.operation && 
-              config.operationOrder === currentConfig.operationOrder - 1
+    (config) =>
+      config.operation === currentConfig.operation &&
+      config.operationOrder === currentConfig.operationOrder - 1,
   )
-  
+
   return prevConfig ? prevConfig.id : null
 }
 
@@ -555,20 +590,27 @@ export function getAllSubLevelsByOrder(): SubLevelConfig[] {
   return SUB_LEVEL_CONFIGS.sort((a, b) => a.order - b.order)
 }
 
-export function isSubLevelComplete(operation: OperationType, completedSubLevels: SubLevel[]): boolean {
+export function isSubLevelComplete(
+  operation: OperationType,
+  completedSubLevels: SubLevel[],
+): boolean {
   const operationSubLevels = getSubLevelsForOperation(operation)
-  return operationSubLevels.every(config => completedSubLevels.includes(config.id))
+  return operationSubLevels.every((config) => completedSubLevels.includes(config.id))
 }
 
 export function getTargetCPM(subLevel: SubLevel, gradeLevel: '3-5' | '6-8' | '9-12'): number {
   const config = getSubLevelConfig(subLevel)
-  if (!config) return 40  // Default
-  
+  if (!config) return 40 // Default
+
   switch (gradeLevel) {
-    case '3-5': return config.targetCPM.grade3to5
-    case '6-8': return config.targetCPM.grade6to8
-    case '9-12': return config.targetCPM.grade9to12
-    default: return 40
+    case '3-5':
+      return config.targetCPM.grade3to5
+    case '6-8':
+      return config.targetCPM.grade6to8
+    case '9-12':
+      return config.targetCPM.grade9to12
+    default:
+      return 40
   }
 }
 
@@ -587,4 +629,3 @@ export function getSubLevelMotivation(subLevel: SubLevel): string {
   const config = getSubLevelConfig(subLevel)
   return config ? config.motivationalMessage : 'Keep practicing!'
 }
-

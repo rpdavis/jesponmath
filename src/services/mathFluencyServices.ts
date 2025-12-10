@@ -576,6 +576,53 @@ export async function deletePracticeSession(sessionId: string): Promise<void> {
 }
 
 /**
+ * Calculate adaptive advancement threshold based on student performance
+ * ⭐ NEW: For 7th grade RSP acceleration - lowers threshold for high performers
+ *
+ * Standard: 85% proficiency required
+ * High Performers (90%+ avg accuracy, <3s response): 80% threshold
+ * Fast-Track (95%+ avg accuracy, <2s response): 75% threshold
+ */
+function calculateAdaptiveAdvancementThreshold(
+  progress: MathFluencyProgress,
+  currentSubLevelProficiency: number,
+): number {
+  // Default threshold
+  let threshold = 85
+  let mode = 'Standard'
+
+  // Calculate average accuracy from recent sessions (if available)
+  // For now, use current sub-level proficiency as proxy for performance
+  // In future, could track last 3 session accuracies
+
+  // Fast-track mode: 95%+ proficiency and likely fast response times
+  if (currentSubLevelProficiency >= 95) {
+    threshold = 75
+    mode = 'Fast-Track'
+  }
+  // High performer mode: 90%+ proficiency
+  else if (currentSubLevelProficiency >= 90) {
+    threshold = 80
+    mode = 'High Performer'
+  }
+
+  // ⭐ ENHANCED LOGGING
+  console.log('📊 ADVANCEMENT CHECK', {
+    currentProficiency: `${currentSubLevelProficiency.toFixed(1)}%`,
+    standardThreshold: '85%',
+    adaptiveThreshold: `${threshold}%`,
+    mode: mode,
+    willAdvance: currentSubLevelProficiency >= threshold,
+    proficiencyAboveThreshold:
+      currentSubLevelProficiency >= threshold
+        ? `+${(currentSubLevelProficiency - threshold).toFixed(1)}%`
+        : `${(currentSubLevelProficiency - threshold).toFixed(1)}%`,
+  })
+
+  return threshold
+}
+
+/**
  * Update main progress document after practice session completes
  */
 export async function updateProgressAfterSession(
@@ -722,9 +769,17 @@ export async function updateProgressAfterSession(
           lastPracticeDate: Timestamp.now(),
         }
 
-        // ⭐ AUTO-ADVANCE: If 85%+ proficient, unlock next sub-level
-        if (subLevelProficiency >= 85 && !currentSubLevelData.completed) {
-          console.log(`🎉 Auto-advancing! ${subLevelProficiency}% on ${progress.currentSubLevel}`)
+        // ⭐ ADAPTIVE AUTO-ADVANCE: Threshold adjusts based on student performance
+        // Calculate adaptive threshold based on recent performance
+        const adaptiveThreshold = calculateAdaptiveAdvancementThreshold(
+          progress,
+          subLevelProficiency,
+        )
+
+        if (subLevelProficiency >= adaptiveThreshold && !currentSubLevelData.completed) {
+          console.log(
+            `🎉 Auto-advancing! ${subLevelProficiency}% on ${progress.currentSubLevel} (threshold: ${adaptiveThreshold}%)`,
+          )
 
           // Mark current as completed
           subLevelProgress[progress.currentSubLevel] = {

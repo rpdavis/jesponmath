@@ -273,3 +273,4 @@ If you want to integrate Delta Math assignments directly into the app:
 - Delta Math provides **automatic grading** and **progress tracking**
 - Lessons are aligned with **Common Core Standards**
 - Delta Math has **limited Geometry coverage** compared to other topics
+

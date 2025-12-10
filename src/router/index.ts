@@ -45,6 +45,9 @@ import MathFluencyPlacementDiagnostic from '@/components/diagnostics/MathFluency
 import MathFluencyTeacherView from '@/components/diagnostics/MathFluencyTeacherView.vue'
 import MathFluencyStudentProgressView from '@/components/diagnostics/MathFluencyStudentProgressView.vue'
 import StrategyLesson from '@/components/lessons/StrategyLesson.vue'
+import AccelerationSimulator from '@/views/AccelerationSimulator.vue'
+import DebugModeManager from '@/components/diagnostics/DebugModeManager.vue'
+import FluencyCPMReport from '@/components/diagnostics/FluencyCPMReport.vue'
 import Gradebook from '@/components/Gradebook.vue'
 import { authGuard, guestGuard, teacherGuard, adminGuard, studentGuard } from './guards'
 
@@ -181,6 +184,36 @@ const router = createRouter({
       name: 'fluency-teacher-view',
       component: MathFluencyTeacherView,
       beforeEnter: [authGuard, teacherGuard], // Teachers only
+    },
+    {
+      path: '/fluency/acceleration-simulator',
+      name: 'acceleration-simulator',
+      component: AccelerationSimulator,
+      beforeEnter: [authGuard, teacherGuard], // Teachers only - test acceleration logic
+    },
+    {
+      path: '/fluency/debug-manager',
+      name: 'debug-mode-manager',
+      component: DebugModeManager,
+      beforeEnter: [authGuard, teacherGuard], // Teachers only - enable debug logging for students
+    },
+    {
+      path: '/fluency/cpm-report',
+      name: 'fluency-cpm-report',
+      component: FluencyCPMReport,
+      beforeEnter: [authGuard, teacherGuard], // Teachers only - CPM reporting for IEPs
+    },
+    {
+      path: '/fluency/cpm-report',
+      name: 'fluency-cpm-report',
+      component: FluencyCPMReport,
+      beforeEnter: [authGuard, teacherGuard], // Teachers only - CPM reporting for IEPs
+    },
+    {
+      path: '/fluency/cpm-report',
+      name: 'fluency-cpm-report',
+      component: FluencyCPMReport,
+      beforeEnter: [authGuard, teacherGuard], // Teachers only - CPM tracking for IEP reporting
     },
     {
       path: '/fluency/teacher-view/:studentUid',
