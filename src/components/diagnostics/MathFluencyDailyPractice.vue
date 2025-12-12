@@ -219,6 +219,8 @@ const {
   totalSessionTime,
   promotionsEarned,
   session,
+  currentDetailedLog,
+  debugModeActive,
   currentOperation,
   distribution,
   proficiencyPercentage,
@@ -355,6 +357,21 @@ function handleDiagnosticCompleteWithStorage() {
       resultsCount: Object.keys(diagnosticResults.value).length,
     })
   }
+
+  // ⭐ POPULATE DETAILED DEBUG LOG - Diagnostic Round
+  if (currentDetailedLog.value && debugModeActive.value) {
+    currentDetailedLog.value.diagnostic.score = diagnosticCorrect.value
+    currentDetailedLog.value.diagnostic.total = diagnosticTotal.value
+    currentDetailedLog.value.diagnostic.percentage = diagnosticTotal.value > 0
+      ? Math.round((diagnosticCorrect.value / diagnosticTotal.value) * 100)
+      : 0
+
+    console.log('🔬 DEBUG: Populated diagnostic data', {
+      score: currentDetailedLog.value.diagnostic.score,
+      total: currentDetailedLog.value.diagnostic.total,
+      percentage: currentDetailedLog.value.diagnostic.percentage
+    })
+  }
 }
 
 function handleContinueCurrentLevel() {
@@ -398,7 +415,8 @@ async function checkForRequiredLessonBeforePractice() {
 
     const requiredLessonId = await checkForRequiredLesson(
       authStore.currentUser.uid,
-      sessionNumber
+      sessionNumber,
+      practice.progress.value.currentSubLevel || undefined // ⭐ Pass current sub-level for better targeting
     )
 
     if (requiredLessonId) {

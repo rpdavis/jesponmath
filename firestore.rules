@@ -259,7 +259,8 @@ service cloud.firestore {
       // Teachers/admins can update any progress
       allow update: if isTeacher() || isAdmin();
       
-      allow delete: if isAuthenticated() && isAdmin();
+      // Teachers/admins can delete progress (for testing/reset)
+      allow delete: if isTeacher() || isAdmin();
     }
     
     // Math Fluency Assessments - weekly fluency checks and initial diagnostics
@@ -350,15 +351,33 @@ service cloud.firestore {
     match /strategyLessonProgress/{progressId} {
       // Students can read their own lesson progress
       allow read: if isAuthenticated();
-      
+
       // Students can create/update their own progress (any authenticated user can write)
       allow create, update: if isAuthenticated();
-      
+
       // Teachers and admins can read/write all progress
       allow read, write: if isTeacher() || isAdmin();
-      
+
       // Allow delete for admins only
       allow delete: if isAdmin();
+    }
+    
+    // Fluency Debug Logs - detailed session tracking for testing
+    match /fluencyDebugLogs/{logId} {
+      // Students can write their own logs
+      allow create: if isAuthenticated() && request.resource.data.studentUid == request.auth.uid;
+      
+      // Teachers and admins can read all logs
+      allow read: if isTeacher() || isAdmin();
+      
+      // Only admins can delete
+      allow delete: if isAdmin();
+    }
+    
+    // Fluency Debug Settings - tracks which students have debug enabled
+    match /fluencyDebugSettings/{studentUid} {
+      // Teachers and admins can read/write
+      allow read, write: if isTeacher() || isAdmin();
     }
     
     // REMOVED: Development rule for security

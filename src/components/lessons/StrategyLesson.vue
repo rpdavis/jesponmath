@@ -480,6 +480,14 @@ function retryPractice() {
 async function completeLesson() {
   if (!lesson.value || !authStore.currentUser) return;
 
+  console.log('💾 SAVING LESSON COMPLETION:', {
+    lessonId: lesson.value.id,
+    studentUid: authStore.currentUser.uid,
+    attempted: lesson.value.practice.problems.length,
+    correct: practiceCorrect.value,
+    passed: passedPractice.value
+  });
+
   try {
     // Save lesson completion to Firestore
     await saveLessonCompletion(
@@ -492,12 +500,13 @@ async function completeLesson() {
       }
     );
 
-    console.log('✅ Lesson completed and saved:', lesson.value.id);
+    console.log('✅ Lesson completed and saved successfully:', lesson.value.id);
 
     // Mark as complete
     currentStep.value = 4;
   } catch (error) {
-    console.error('Error saving lesson completion:', error);
+    console.error('❌ ERROR saving lesson completion:', error);
+    alert(`Error saving lesson completion: ${error instanceof Error ? error.message : 'Unknown error'}`);
     // Still allow progression even if save fails
     currentStep.value = 4;
   }

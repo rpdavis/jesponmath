@@ -183,12 +183,13 @@ import {
   disableDebugMode,
   isDebugEnabled,
   getDebugEnabledStudents,
-  getDetailedLogs,
   printAnalysis,
   exportDetailedLogsToCSV,
   exportProblemDetailsToCSV,
   downloadDetailedCSV,
 } from '@/utils/detailedDebugLogger'
+import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore'
+import { db } from '@/firebase/config'
 
 const authStore = useAuthStore()
 
@@ -249,13 +250,50 @@ function getStudentName(uid: string): string {
   return student ? `${student.lastName}, ${student.firstName}` : uid
 }
 
-function getLogCount(uid: string): number {
-  return getDetailedLogs(uid).length
+async function getLogCount(uid: string): Promise<number> {
+  try {
+    const q = query(
+      collection(db, 'fluencyDebugLogs'),
+      where('studentUid', '==', uid)
+    )
+    const snapshot = await getDocs(q)
+    return snapshot.size
+  } catch {
+    return 0
+  }
 }
 
-function viewLogs(uid: string) {
+async function viewLogs(uid: string) {
   viewingStudentUid.value = uid
-  viewingLogs.value = getDetailedLogs(uid).reverse() // Most recent first
+
+  // Load logs from Firestore (without orderBy to avoid index requirement)
+  try {
+    const q = query(
+      collection(db, 'fluencyDebugLogs'),
+      where('studentUid', '==', uid)
+    )
+    const snapshot = await getDocs(q)
+
+    // Sort in JavaScript instead of Firestore
+    viewingLogs.value = snapshot.docs
+      .map(doc => ({
+        ...doc.data(),
+        id: doc.id
+      }))
+      .sort((a: any, b: any) => {
+        // Sort by timestamp descending (most recent first)
+        const aTime = a.timestamp?.seconds || 0
+        const bTime = b.timestamp?.seconds || 0
+        return bTime - aTime
+      })
+      .slice(0, 20) as any[] // Limit to 20 most recent
+
+    console.log(`📂 Loaded ${viewingLogs.value.length} logs from Firestore`)
+  } catch (error) {
+    console.error('Error loading logs:', error)
+    viewingLogs.value = []
+  }
+
   showLogViewer.value = true
 }
 
@@ -626,3 +664,5 @@ function exportViewingLogs() {
   gap: 1rem;
 }
 </style>
+
+

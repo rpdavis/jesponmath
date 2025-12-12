@@ -69,14 +69,20 @@ export async function getCompletedLessonIds(studentUid: string): Promise<LessonI
 /**
  * Check if a lesson should be shown before the next practice session
  * Returns lessonId if a lesson should be shown, null otherwise
+ * ⭐ ENHANCED: Now checks sub-level in addition to session number
  */
 export async function checkForRequiredLesson(
   studentUid: string,
   sessionNumber: number,
+  currentSubLevel?: string, // ⭐ NEW: Current sub-level for better targeting
 ): Promise<LessonId | null> {
   try {
     const completedLessonIds = await getCompletedLessonIds(studentUid)
-    const nextLesson = getNextRequiredLesson(sessionNumber, completedLessonIds as string[])
+    const nextLesson = getNextRequiredLesson(
+      sessionNumber,
+      completedLessonIds as string[],
+      currentSubLevel,
+    )
 
     if (nextLesson) {
       console.log(`📚 Lesson required before session ${sessionNumber}: ${nextLesson.title}`)

@@ -317,7 +317,7 @@ import { getGoalsByStudent } from '@/firebase/goalServices';
 import { getAllFluencyProgress } from '@/services/mathFluencyServices';
 import { getStudent } from '@/firebase/userServices';
 import { getAllCustomStandards } from '@/firebase/standardsServices';
-import { parseStandards, getAllStandardsFromQuestions } from '@/utils/standardsUtils';
+import { parseStandards, getAllStandardsFromQuestions, calculateStandardScore } from '@/utils/standardsUtils';
 import type { Assessment, AssessmentResult } from '@/types/iep';
 import type { Goal } from '@/types/iep';
 import type { MathFluencyProgress } from '@/types/mathFluency';
@@ -669,48 +669,8 @@ const esaStandardsData = computed(() => {
     });
 
     if (questionAttempts.length > 0) {
-      let correct = 0;
-      let total = 0;
-      let percentage = 0;
-
-      // Apply scoring method logic (same as gradebook)
-      if (scoringMethod === 'keepTop') {
-        // Keep Top Score: Takes highest scoring attempts up to maxScore limit
-        questionAttempts.sort((a, b) => b.score - a.score);
-
-        if (maxScore && maxScore > 0) {
-          // Take top maxScore questions (best performance)
-          const topAttempts = questionAttempts.slice(0, maxScore);
-          correct = topAttempts.filter(attempt => attempt.isCorrect).length;
-          total = maxScore;  // Use maxScore as fixed denominator
-          percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
-        } else {
-          // No max score set - use all attempts
-          correct = questionAttempts.filter(attempt => attempt.isCorrect).length;
-          total = questionAttempts.length;
-          percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
-        }
-
-      } else if (scoringMethod === 'average') {
-        // Average Scores: Calculate average percentage across all attempts
-        const attemptPercentages = questionAttempts.map(attempt =>
-          attempt.isCorrect ? 100 : 0
-        );
-        percentage = Math.round(attemptPercentages.reduce((sum: number, pct: number) => sum + pct, 0) / attemptPercentages.length);
-        correct = Math.round((percentage / 100) * questionAttempts.length);
-        total = questionAttempts.length;
-
-      } else {
-        // Additive (default): All attempts count, maxScore caps denominator
-        questionAttempts.sort((a, b) => b.score - a.score);
-        const limitedAttempts = maxScore && maxScore > 0 ?
-          questionAttempts.slice(0, maxScore) :
-          questionAttempts;
-
-        correct = limitedAttempts.filter(attempt => attempt.isCorrect).length;
-        total = limitedAttempts.length;
-        percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
-      }
+      // Use centralized scoring calculation
+      const { correct, total, percentage } = calculateStandardScore(questionAttempts, customStd);
 
       // Count total attempts (number of times this standard was assessed)
       const attempts = esaResults.filter(r => {
@@ -910,48 +870,8 @@ const saStandardsData = computed(() => {
     });
 
     if (questionAttempts.length > 0) {
-      let correct = 0;
-      let total = 0;
-      let percentage = 0;
-
-      // Apply scoring method logic (same as gradebook)
-      if (scoringMethod === 'keepTop') {
-        // Keep Top Score: Takes highest scoring attempts up to maxScore limit
-        questionAttempts.sort((a, b) => b.score - a.score);
-
-        if (maxScore && maxScore > 0) {
-          // Take top maxScore questions (best performance)
-          const topAttempts = questionAttempts.slice(0, maxScore);
-          correct = topAttempts.filter(attempt => attempt.isCorrect).length;
-          total = maxScore;  // Use maxScore as fixed denominator
-          percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
-        } else {
-          // No max score set - use all attempts
-          correct = questionAttempts.filter(attempt => attempt.isCorrect).length;
-          total = questionAttempts.length;
-          percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
-        }
-
-      } else if (scoringMethod === 'average') {
-        // Average Scores: Calculate average percentage across all attempts
-        const attemptPercentages = questionAttempts.map(attempt =>
-          attempt.isCorrect ? 100 : 0
-        );
-        percentage = Math.round(attemptPercentages.reduce((sum: number, pct: number) => sum + pct, 0) / attemptPercentages.length);
-        correct = Math.round((percentage / 100) * questionAttempts.length);
-        total = questionAttempts.length;
-
-      } else {
-        // Additive (default): All attempts count, maxScore caps denominator
-        questionAttempts.sort((a, b) => b.score - a.score);
-        const limitedAttempts = maxScore && maxScore > 0 ?
-          questionAttempts.slice(0, maxScore) :
-          questionAttempts;
-
-        correct = limitedAttempts.filter(attempt => attempt.isCorrect).length;
-        total = limitedAttempts.length;
-        percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
-      }
+      // Use centralized scoring calculation
+      const { correct, total, percentage } = calculateStandardScore(questionAttempts, customStd);
 
       // Count total attempts (number of times this standard was assessed)
       const attempts = saResults.filter(r => {

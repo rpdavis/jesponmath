@@ -315,7 +315,7 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { useAuthStore } from '@/stores/authStore';
 import { getAssessmentResultsByStudent, getAssessmentsByStudent } from '@/firebase/iepServices';
 import { getAllCustomStandards } from '@/firebase/standardsServices';
-import { parseStandards, getAllStandardsFromQuestions } from '@/utils/standardsUtils';
+import { parseStandards, getAllStandardsFromQuestions, calculateStandardScore } from '@/utils/standardsUtils';
 import { useGlobalAcademicPeriods } from '@/composables/useAcademicPeriods';
 import { renderLatexInText } from '@/utils/latexUtils';
 import type { AssessmentResult, Assessment } from '@/types/iep';
@@ -642,60 +642,8 @@ const getStudentStandardScore = (standard: string) => {
     });
   });
 
-  // If no attempts, return 0/0
-  if (questionAttempts.length === 0) {
-    const result = { correct: 0, total: 0, percentage: 0 };
-    standardScoreCache.value.set(cacheKey, result);
-    return result;
-  }
-
-  // Apply scoring method logic
-  const scoringMethod = customStd?.scoringMethod || 'additive';
-  let correct = 0;
-  let total = 0;
-  let percentage = 0;
-
-  if (scoringMethod === 'keepTop') {
-    // Keep Top Score: Show the BEST performance out of maxScore possible
-    questionAttempts.sort((a, b) => b.score - a.score);
-
-    if (maxScore && maxScore > 0) {
-      // Take top maxScore questions (best performance)
-      const topAttempts = questionAttempts.slice(0, maxScore);
-      correct = topAttempts.filter(attempt => attempt.isCorrect).length;
-      total = maxScore;  // Use maxScore as fixed denominator
-      percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
-    } else {
-      // No max score set - use all attempts
-      correct = questionAttempts.filter(attempt => attempt.isCorrect).length;
-      total = questionAttempts.length;
-      percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
-    }
-
-  } else if (scoringMethod === 'average') {
-    // Average Scores: Calculate average percentage across all attempts
-    if (questionAttempts.length > 0) {
-      const attemptPercentages = questionAttempts.map(attempt =>
-        attempt.isCorrect ? 100 : 0
-      );
-      percentage = Math.round(attemptPercentages.reduce((sum: number, pct: number) => sum + pct, 0) / attemptPercentages.length);
-      correct = Math.round((percentage / 100) * questionAttempts.length);
-      total = questionAttempts.length;
-    }
-
-  } else {
-    // Additive (current behavior): All attempts count, maxScore caps denominator
-    questionAttempts.sort((a, b) => b.score - a.score);
-    const limitedAttempts = maxScore && maxScore > 0 ?
-      questionAttempts.slice(0, maxScore) :
-      questionAttempts;
-
-    correct = limitedAttempts.filter(attempt => attempt.isCorrect).length;
-    total = limitedAttempts.length;
-    percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
-  }
-
-  const result = { correct, total, percentage };
+  // Use centralized scoring calculation
+  const result = calculateStandardScore(questionAttempts, customStd);
 
   // Cache the result for performance (avoids recalculating 30,000+ times)
   standardScoreCache.value.set(cacheKey, result);

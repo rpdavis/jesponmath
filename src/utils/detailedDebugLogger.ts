@@ -164,6 +164,58 @@ export interface DetailedSessionLog {
 
 const detailedLogs: Map<string, DetailedSessionLog[]> = new Map()
 const debugEnabledStudents: Set<string> = new Set()
+const savedSessionIds: Set<string> = new Set() // ⭐ Track already-saved sessions
+
+const STORAGE_KEY = 'fluency_debug_enabled_students'
+
+// Load from Firestore on initialization
+async function loadDebugStudentsFromFirestore(): Promise<void> {
+  try {
+    const { collection, getDocs } = await import('firebase/firestore')
+    const { db } = await import('@/firebase/config')
+
+    const snapshot = await getDocs(collection(db, 'fluencyDebugSettings'))
+    snapshot.docs.forEach((doc) => {
+      const data = doc.data()
+      if (data.debugEnabled) {
+        debugEnabledStudents.add(data.studentUid)
+      }
+    })
+
+    // Also save to localStorage for faster loads
+    saveDebugStudentsToStorage()
+
+    console.log(`🔬 Loaded ${debugEnabledStudents.size} debug-enabled students from Firestore`)
+  } catch (error) {
+    console.error('Error loading from Firestore, trying localStorage:', error)
+    // Fallback to localStorage if Firestore fails
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY)
+      if (stored) {
+        const studentUids = JSON.parse(stored) as string[]
+        studentUids.forEach((uid) => debugEnabledStudents.add(uid))
+        console.log(
+          `🔬 Loaded ${studentUids.length} debug-enabled students from localStorage (fallback)`,
+        )
+      }
+    } catch (localError) {
+      console.error('Error loading from localStorage:', localError)
+    }
+  }
+}
+
+// Save to localStorage
+function saveDebugStudentsToStorage(): void {
+  try {
+    const studentUids = Array.from(debugEnabledStudents)
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(studentUids))
+  } catch (error) {
+    console.error('Error saving debug students to storage:', error)
+  }
+}
+
+// Initialize on module load
+loadDebugStudentsFromFirestore()
 
 // ============================================================================
 // ENABLE/DISABLE DEBUG MODE
@@ -172,19 +224,49 @@ const debugEnabledStudents: Set<string> = new Set()
 /**
  * Enable detailed debug logging for a student
  */
-export function enableDebugMode(studentUid: string): void {
+export async function enableDebugMode(studentUid: string): Promise<void> {
   debugEnabledStudents.add(studentUid)
-  console.log(`🔬 DEBUG MODE ENABLED for student: ${studentUid}`)
-  console.log('  → All session details will be logged')
-  console.log('  → View with: getDetailedLogs("${studentUid}")')
+  saveDebugStudentsToStorage()
+
+  // ⭐ ALSO SAVE TO FIRESTORE (persists across browsers/cache clears)
+  try {
+    const { setDoc, doc } = await import('firebase/firestore')
+    const { db } = await import('@/firebase/config')
+
+    await setDoc(doc(db, 'fluencyDebugSettings', studentUid), {
+      studentUid,
+      debugEnabled: true,
+      enabledAt: new Date().toISOString(),
+      enabledBy: 'teacher', // Could track which teacher enabled it
+    })
+
+    console.log(`🔬 DEBUG MODE ENABLED for student: ${studentUid}`)
+    console.log('  → Saved to Firestore (persists permanently)')
+  } catch (error) {
+    console.error('Error saving to Firestore:', error)
+    // Still works with localStorage
+    console.log(`🔬 DEBUG MODE ENABLED for student: ${studentUid}`)
+    console.log('  → Saved to localStorage only')
+  }
 }
 
 /**
  * Disable detailed debug logging for a student
  */
-export function disableDebugMode(studentUid: string): void {
+export async function disableDebugMode(studentUid: string): Promise<void> {
   debugEnabledStudents.delete(studentUid)
-  console.log(`🔬 DEBUG MODE DISABLED for student: ${studentUid}`)
+  saveDebugStudentsToStorage()
+
+  // ⭐ ALSO REMOVE FROM FIRESTORE
+  try {
+    const { deleteDoc, doc } = await import('firebase/firestore')
+    const { db } = await import('@/firebase/config')
+
+    await deleteDoc(doc(db, 'fluencyDebugSettings', studentUid))
+    console.log(`🔬 DEBUG MODE DISABLED for student: ${studentUid}`)
+  } catch (error) {
+    console.log(`🔬 DEBUG MODE DISABLED for student: ${studentUid}`)
+  }
 }
 
 /**
@@ -297,16 +379,34 @@ export function createSessionLog(
 }
 
 /**
- * Save a completed session log
+ * Save a completed session log to Firestore
  */
-export function saveSessionLog(log: DetailedSessionLog): void {
+export async function saveSessionLog(log: DetailedSessionLog): Promise<void> {
   if (!debugEnabledStudents.has(log.studentUid)) {
     return // Debug mode not enabled for this student
   }
 
+  // Keep in memory
   const studentLogs = detailedLogs.get(log.studentUid) || []
   studentLogs.push(log)
   detailedLogs.set(log.studentUid, studentLogs)
+
+  // ⭐ SAVE TO FIRESTORE for teacher access
+  try {
+    const { addDoc, collection, Timestamp } = await import('firebase/firestore')
+    const { db } = await import('@/firebase/config')
+
+    await addDoc(collection(db, 'fluencyDebugLogs'), {
+      ...log,
+      timestamp: Timestamp.now(),
+      createdAt: Timestamp.now(),
+    })
+
+    console.log('💾 Saved log to Firestore')
+  } catch (error) {
+    console.error('Error saving log to Firestore:', error)
+    // Don't fail - keep the in-memory log at least
+  }
 
   // Print detailed summary
   console.group(`🔬 DEBUG SESSION COMPLETE: ${log.studentName}`)
@@ -683,3 +783,4 @@ export function printDebugCommands(): void {
 
 // Auto-print commands on import
 console.log('🔬 Detailed Debug Logger loaded. Type printDebugCommands() for usage.')
+

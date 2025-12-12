@@ -14,19 +14,19 @@
       <div class="export-type-selection">
         <h3>Select Export Type:</h3>
         <div class="export-type-buttons">
-          <button 
+          <button
             @click="exportType = 'ESA'"
             :class="['export-type-btn', { active: exportType === 'ESA' }]"
           >
             Essential Standards (ESA)
           </button>
-          <button 
+          <button
             @click="exportType = 'SA'"
             :class="['export-type-btn', { active: exportType === 'SA' }]"
           >
             Standard Assessment (SA)
           </button>
-          <button 
+          <button
             @click="exportType = 'BOTH'"
             :class="['export-type-btn', { active: exportType === 'BOTH' }]"
           >
@@ -39,7 +39,7 @@
       <div class="period-selection" v-if="availableCourses.length > 0">
         <h3>Select Classes to Export:</h3>
         <div class="period-buttons">
-          <button 
+          <button
             v-for="course in availableCourses"
             :key="course.courseId"
             @click="toggleCourse(course.courseId)"
@@ -47,7 +47,7 @@
           >
             {{ course.label }}
           </button>
-          <button 
+          <button
             @click="selectAllCourses"
             :class="['period-btn', { active: selectedCourses.length === availableCourses.length }]"
           >
@@ -78,8 +78,8 @@
       <!-- Include Totals Option -->
       <div class="include-totals-option" v-if="selectedCourses.length > 0">
         <label class="checkbox-label">
-          <input 
-            type="checkbox" 
+          <input
+            type="checkbox"
             v-model="includeTotals"
             class="checkbox-input"
           >
@@ -92,22 +92,22 @@
 
       <!-- Export Buttons -->
       <div class="export-actions" v-if="selectedCourses.length > 0">
-        <button 
-          @click="exportToCSV" 
+        <button
+          @click="exportToCSV"
           class="export-btn"
           :disabled="loading"
         >
           📥 Export CSV (By Assessment)
         </button>
-        <button 
-          @click="exportByStandard" 
+        <button
+          @click="exportByStandard"
           class="export-btn standard-export-btn"
           :disabled="loading"
         >
           📊 Export by Standard (Gradebook Format)
         </button>
-        <button 
-          @click="syncToGoogleSheets" 
+        <button
+          @click="syncToGoogleSheets"
           class="export-btn sheets-btn"
           :disabled="loading || syncing"
         >
@@ -136,7 +136,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { getAllAssessments } from '@/firebase/iepServices'
 import { getAllStudents, getStudentsByTeacher } from '@/firebase/userServices'
 import { getAssessmentResultsByStudent } from '@/firebase/iepServices'
-import { parseStandards } from '@/utils/standardsUtils'
+import { parseStandards, calculateStandardScore } from '@/utils/standardsUtils'
 import { useAuthStore } from '@/stores/authStore'
 import { googleSheetsService, isGoogleSheetsAuthenticated, getGoogleSheetsToken } from '@/services/googleSheets'
 import { getAllCustomStandards } from '@/firebase/standardsServices'
@@ -178,7 +178,7 @@ const standardAssessments = computed(() => filteredAssessments.value)
 // Get unique courses from students (more accurate than period alone)
 const availableCourses = computed(() => {
   const coursesMap = new Map<string, { courseId: string; label: string }>()
-  
+
   students.value.forEach(student => {
     const courseId = student.courseId
     if (courseId) {
@@ -186,20 +186,20 @@ const availableCourses = computed(() => {
       const courseName = student.courseName || student.className || 'Unknown Course'
       const period = (student.section || student.period || '').trim()
       const label = period ? `${period} - ${courseName}` : courseName
-      
+
       if (!coursesMap.has(courseId)) {
         coursesMap.set(courseId, { courseId, label })
       }
     }
   })
-  
+
   return Array.from(coursesMap.values()).sort((a, b) => a.label.localeCompare(b.label))
 })
 
 // Total students in selected courses
 const totalStudents = computed(() => {
   if (selectedCourses.value.length === 0) return 0
-  return students.value.filter(s => 
+  return students.value.filter(s =>
     s.courseId && selectedCourses.value.includes(s.courseId)
   ).length
 })
@@ -228,7 +228,7 @@ const loadData = async () => {
 
     // Load assessment results for all students
     await loadAssessmentResults()
-    
+
     // Load custom standards for maxScore and scoringMethod data
     try {
       customStandards.value = await getAllCustomStandards()
@@ -251,7 +251,7 @@ const loadData = async () => {
 // Load assessment results for all students - optimized to query by category
 const loadAssessmentResults = async () => {
   const resultsMap = new Map<string, AssessmentResult[]>()
-  
+
   // Determine which categories to load based on export type
   const categoriesToLoad: string[] = []
   if (exportType.value === 'ESA' || exportType.value === 'BOTH') {
@@ -260,15 +260,15 @@ const loadAssessmentResults = async () => {
   if (exportType.value === 'SA' || exportType.value === 'BOTH') {
     categoriesToLoad.push('SA')
   }
-  
+
   // Try to use optimized query by assessmentCategory if available
   try {
     console.log(`📊 Loading ${categoriesToLoad.join(' and ')} assessment results using category field...`)
-    
+
     // Import query functions dynamically
     const { collection, query, where, getDocs } = await import('firebase/firestore')
     const { db } = await import('@/firebase/config')
-    
+
     // Build query for selected categories
     let resultsQuery
     if (categoriesToLoad.length === 1) {
@@ -284,34 +284,34 @@ const loadAssessmentResults = async () => {
         where('assessmentCategory', 'in', categoriesToLoad)
       )
     }
-    
+
     const resultsSnapshot = await getDocs(resultsQuery)
     console.log(`✅ Found ${resultsSnapshot.size} ${categoriesToLoad.join(' and ')} results using category field`)
-    
+
     // Group results by student
     resultsSnapshot.docs.forEach(doc => {
       const result = { id: doc.id, ...doc.data() } as AssessmentResult
       const studentUid = result.studentUid
-      
+
       if (!resultsMap.has(studentUid)) {
         resultsMap.set(studentUid, [])
       }
       resultsMap.get(studentUid)!.push(result)
     })
-    
+
     // Ensure all students have an entry (even if empty)
     students.value.forEach(student => {
       if (!resultsMap.has(student.uid)) {
         resultsMap.set(student.uid, [])
       }
     })
-    
+
     console.log(`📊 Loaded results for ${resultsMap.size} students`)
-    
+
   } catch (err) {
     // Fallback to old method if category field doesn't exist yet
     console.warn('⚠️ Could not query by category field (may not exist yet), falling back to per-student queries:', err)
-    
+
     for (const student of students.value) {
       try {
         const results = await getAssessmentResultsByStudent(student.uid)
@@ -327,7 +327,7 @@ const loadAssessmentResults = async () => {
       }
     }
   }
-  
+
   assessmentResults.value = resultsMap
 }
 
@@ -348,19 +348,19 @@ const selectAllCourses = () => {
 // Get all unique standards from assessments
 const getAllStandards = (): string[] => {
   const standardsSet = new Set<string>()
-  
+
   standardAssessments.value.forEach(assessment => {
     // Add assessment-level standards
     const assessmentStandards = parseStandards(assessment.standard)
     assessmentStandards.forEach(std => standardsSet.add(std))
-    
+
     // Add question-level standards
     assessment.questions?.forEach(question => {
       const standards = parseStandards(question.standard)
       standards.forEach(std => standardsSet.add(std))
     })
   })
-  
+
   return Array.from(standardsSet).sort()
 }
 
@@ -372,25 +372,25 @@ const getStandardScoreForStudent = (
   const customStd = getCustomStandardByCode(standard)
   const maxScore = customStd?.maxScore
   const scoringMethod = customStd?.scoringMethod || 'additive'
-  
+
   // Collect all question attempts for this standard across all assessments
   const questionAttempts: { isCorrect: boolean; score: number }[] = []
-  
+
   const studentResults = assessmentResults.value.get(student.uid) || []
-  
+
   filteredAssessments.value.forEach(assessment => {
     const result = studentResults.find(r => r.assessmentId === assessment.id)
     if (!result || !result.responses) return
-    
+
     // Check if assessment-level standard matches
     const assessmentStandards = parseStandards(assessment.standard)
     const assessmentCoversStandard = assessmentStandards.includes(standard)
-    
+
     assessment.questions?.forEach(question => {
       // Check if question covers this standard
       const questionStandards = parseStandards(question.standard)
       const questionCoversStandard = questionStandards.includes(standard) || assessmentCoversStandard
-      
+
       if (questionCoversStandard) {
         const response = result.responses.find(r => r.questionId === question.id)
         if (response) {
@@ -402,78 +402,23 @@ const getStandardScoreForStudent = (
       }
     })
   })
-  
-  if (questionAttempts.length === 0) {
-    return { correct: 0, total: 0, percentage: 0 }
-  }
-  
-  let correct = 0
-  let total = 0
-  let percentage = 0
-  
-  if (scoringMethod === 'keepTop') {
-    // Keep Top Score: Takes highest scoring attempts up to maxScore limit
-    questionAttempts.sort((a, b) => b.score - a.score)
-    
-    if (maxScore && maxScore > 0) {
-      // Take top maxScore questions (best performance)
-      const topAttempts = questionAttempts.slice(0, maxScore)
-      correct = topAttempts.filter(attempt => attempt.isCorrect).length
-      total = maxScore  // Use maxScore as fixed denominator
-      percentage = total > 0 ? Math.round((correct / total) * 100) : 0
-    } else {
-      // No max score set - use all attempts
-      correct = questionAttempts.filter(attempt => attempt.isCorrect).length
-      total = questionAttempts.length
-      percentage = total > 0 ? Math.round((correct / total) * 100) : 0
-    }
-    
-  } else if (scoringMethod === 'average') {
-    // Average Scores: Calculate average percentage across all attempts
-    if (questionAttempts.length > 0) {
-      const attemptPercentages = questionAttempts.map(attempt => 
-        attempt.isCorrect ? 100 : 0
-      )
-      percentage = Math.round(
-        attemptPercentages.reduce((sum: number, pct: number) => sum + pct, 0) / attemptPercentages.length
-      )
-      correct = Math.round((percentage / 100) * questionAttempts.length)
-      total = questionAttempts.length
-      
-      // If maxScore is set, use it as the denominator
-      if (maxScore && maxScore > 0) {
-        correct = Math.round((percentage / 100) * maxScore)
-        total = maxScore
-      }
-    }
-    
-  } else {
-    // Additive (default): All attempts count, maxScore caps denominator
-    questionAttempts.sort((a, b) => b.score - a.score)
-    const limitedAttempts = maxScore && maxScore > 0 ? 
-      questionAttempts.slice(0, maxScore) : 
-      questionAttempts
-    
-    correct = limitedAttempts.filter(attempt => attempt.isCorrect).length
-    total = limitedAttempts.length
-    percentage = total > 0 ? Math.round((correct / total) * 100) : 0
-  }
-  
-  return { correct, total, percentage }
+
+  // Use centralized scoring calculation
+  return calculateStandardScore(questionAttempts, customStd)
 }
 
 // Calculate student's overall standards mastery (average across all standards)
 const getStudentStandardsAverage = (student: Student): number => {
   const uniqueStandards = getAllStandards()
   const standardMasteries: number[] = []
-  
+
   uniqueStandards.forEach(standard => {
     const customStd = getCustomStandardByCode(standard)
     const scoreData = getStandardScoreForStudent(student, standard)
-    
+
     if (scoreData.total > 0) {
       let mastery: number
-      
+
       if (customStd?.maxScore && customStd.maxScore > 0) {
         // If maxScore is set, calculate mastery as (correct / maxScore) * 100
         mastery = Math.min(100, Math.round((scoreData.correct / customStd.maxScore) * 100))
@@ -481,13 +426,13 @@ const getStudentStandardsAverage = (student: Student): number => {
         // If no maxScore set, use regular percentage
         mastery = scoreData.percentage
       }
-      
+
       standardMasteries.push(mastery)
     }
   })
-  
+
   if (standardMasteries.length === 0) return 0
-  
+
   const total = standardMasteries.reduce((sum, mastery) => sum + mastery, 0)
   return Math.round(total / standardMasteries.length)
 }
@@ -495,11 +440,11 @@ const getStudentStandardsAverage = (student: Student): number => {
 // Get custom standard metadata by code
 const getCustomStandardByCode = (standardCode: string): CustomStandard | null => {
   if (!standardCode) return null
-  
+
   // Remove CUSTOM: prefix if present
-  const cleanCode = standardCode.startsWith('CUSTOM:') ? 
+  const cleanCode = standardCode.startsWith('CUSTOM:') ?
     standardCode.replace('CUSTOM:', '') : standardCode
-  
+
   return customStandards.value.find(std => std.code === cleanCode) || null
 }
 
@@ -512,25 +457,25 @@ const getScoreForStandard = (
 ): string | null => {
   const results = assessmentResults.value.get(student.uid) || []
   const result = results.find(r => r.assessmentId === assessment.id)
-  
+
   if (!result || !result.responses) return null
-  
+
   // Check if assessment-level standard matches
   const assessmentStandards = parseStandards(assessment.standard)
   const assessmentCoversStandard = assessmentStandards.includes(standard)
-  
+
   // Find questions that match this standard (either question-level or assessment-level)
   const matchingQuestions = assessment.questions?.filter(q => {
     const questionStandards = parseStandards(q.standard)
     return questionStandards.includes(standard) || assessmentCoversStandard
   }) || []
-  
+
   if (matchingQuestions.length === 0) return null
-  
+
   // Count correct answers and total questions
   let correct = 0
   let total = matchingQuestions.length
-  
+
   matchingQuestions.forEach(question => {
     const response = result.responses.find(r => r.questionId === question.id)
     if (response) {
@@ -540,7 +485,7 @@ const getScoreForStandard = (
       }
     }
   })
-  
+
   return `${correct}/${total}`
 }
 
@@ -554,25 +499,25 @@ const getTotalStandardScore = (
   const customStd = getCustomStandardByCode(standard)
   const maxScore = customStd?.maxScore
   const scoringMethod = customStd?.scoringMethod || 'additive'
-  
+
   // Collect all question attempts for this standard across all assessments
   const questionAttempts: { isCorrect: boolean; score: number }[] = []
-  
+
   const studentResults = assessmentResults.value.get(student.uid) || []
-  
+
   assessments.forEach(assessment => {
     const result = studentResults.find(r => r.assessmentId === assessment.id)
     if (!result || !result.responses) return
-    
+
     // Check if assessment-level standard matches
     const assessmentStandards = parseStandards(assessment.standard)
     const assessmentCoversStandard = assessmentStandards.includes(standard)
-    
+
     assessment.questions?.forEach(question => {
       // Check if question covers this standard
       const questionStandards = parseStandards(question.standard)
       const questionCoversStandard = questionStandards.includes(standard) || assessmentCoversStandard
-      
+
       if (questionCoversStandard) {
         const response = result.responses.find(r => r.questionId === question.id)
         if (response) {
@@ -584,57 +529,10 @@ const getTotalStandardScore = (
       }
     })
   })
-  
-  if (questionAttempts.length === 0) return null
-  
-  let correct = 0
-  let total = 0
-  
-  if (scoringMethod === 'keepTop') {
-    // Keep Top Score: Show the BEST performance out of maxScore possible
-    questionAttempts.sort((a, b) => b.score - a.score)
-    
-    if (maxScore && maxScore > 0) {
-      // Take top maxScore questions (best performance)
-      const topAttempts = questionAttempts.slice(0, maxScore)
-      correct = topAttempts.filter(attempt => attempt.isCorrect).length
-      total = maxScore  // Use maxScore as fixed denominator
-    } else {
-      // No max score set - use all attempts
-      correct = questionAttempts.filter(attempt => attempt.isCorrect).length
-      total = questionAttempts.length
-    }
-    
-  } else if (scoringMethod === 'average') {
-    // Average Scores: Calculate average percentage across all attempts
-    if (questionAttempts.length > 0) {
-      const attemptPercentages = questionAttempts.map(attempt => 
-        attempt.isCorrect ? 100 : 0
-      )
-      const percentage = Math.round(
-        attemptPercentages.reduce((sum: number, pct: number) => sum + pct, 0) / attemptPercentages.length
-      )
-      correct = Math.round((percentage / 100) * questionAttempts.length)
-      total = questionAttempts.length
-      
-      // If maxScore is set, use it as the denominator
-      if (maxScore && maxScore > 0) {
-        correct = Math.round((percentage / 100) * maxScore)
-        total = maxScore
-      }
-    }
-    
-  } else {
-    // Additive (default): All attempts count, maxScore caps denominator
-    questionAttempts.sort((a, b) => b.score - a.score)
-    const limitedAttempts = maxScore && maxScore > 0 ? 
-      questionAttempts.slice(0, maxScore) : 
-      questionAttempts
-    
-    correct = limitedAttempts.filter(attempt => attempt.isCorrect).length
-    total = limitedAttempts.length
-  }
-  
+
+  // Use centralized scoring calculation
+  const { correct, total } = calculateStandardScore(questionAttempts, customStd)
+
   return total > 0 ? `${correct}/${total}` : null
 }
 
@@ -648,14 +546,14 @@ watch(exportType, async () => {
 // Export by Standard (Gradebook Format)
 const exportByStandard = () => {
   try {
-    const coursesToExport = selectedCourses.value.length > 0 
-      ? selectedCourses.value 
+    const coursesToExport = selectedCourses.value.length > 0
+      ? selectedCourses.value
       : availableCourses.value.map(c => c.courseId)
-    
-    const exportTypeLabel = exportType.value === 'ESA' ? 'Essential_Standards' 
-      : exportType.value === 'SA' ? 'Standard_Assessments' 
+
+    const exportTypeLabel = exportType.value === 'ESA' ? 'Essential_Standards'
+      : exportType.value === 'SA' ? 'Standard_Assessments'
       : 'Assessments'
-    
+
     coursesToExport.forEach(courseId => {
       const csvContent = generateCSVByStandard(courseId)
       const courseInfo = availableCourses.value.find(c => c.courseId === courseId)
@@ -663,7 +561,7 @@ const exportByStandard = () => {
       const filename = `${exportTypeLabel}_By_Standard_${courseLabel.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.csv`
       downloadCSV(csvContent, filename)
     })
-    
+
     alert(`Successfully exported ${coursesToExport.length} class(es) by standard!`)
   } catch (err) {
     console.error('Error exporting by standard:', err)
@@ -683,20 +581,20 @@ const generateCSVByStandard = (courseId: string): string => {
       const bFirst = (b.firstName || '').toLowerCase()
       return aFirst.localeCompare(bFirst)
     })
-  
+
   const courseInfo = availableCourses.value.find(c => c.courseId === courseId)
   const courseLabel = courseInfo?.label || courseId
-  
+
   const uniqueStandards = getAllStandards()
-  
+
   // Build CSV rows
   const csvRows: string[][] = []
-  
+
   // Header: Course name and student count
   csvRows.push([courseLabel])
   csvRows.push([`${courseStudents.length} students`])
   csvRows.push([]) // Empty row
-  
+
   // Header row 1: Student, then standard codes, then "Standard Mastery"
   const headerRow1: string[] = ['Student']
   uniqueStandards.forEach(std => {
@@ -704,7 +602,7 @@ const generateCSVByStandard = (courseId: string): string => {
   })
   headerRow1.push('Standard Mastery')
   csvRows.push(headerRow1)
-  
+
   // Header row 2: Empty for Student, then "Correct/Total" for each standard, then empty
   const headerRow2: string[] = ['']
   uniqueStandards.forEach(() => {
@@ -712,7 +610,7 @@ const generateCSVByStandard = (courseId: string): string => {
   })
   headerRow2.push('')
   csvRows.push(headerRow2)
-  
+
   // Data rows: Each student takes 2 rows
   // Row 1: Student name, then correct/total for each standard, then overall mastery %
   // Row 2: Student email, then percentage for each standard, then empty
@@ -720,7 +618,7 @@ const generateCSVByStandard = (courseId: string): string => {
     // Row 1: Name and correct/total scores
     const nameRow: string[] = []
     nameRow.push(`${student.lastName || ''}, ${student.firstName || ''}`)
-    
+
     // Standard scores (correct/total)
     uniqueStandards.forEach(standard => {
       const scoreData = getStandardScoreForStudent(student, standard)
@@ -730,17 +628,17 @@ const generateCSVByStandard = (courseId: string): string => {
         nameRow.push('0/0')
       }
     })
-    
+
     // Overall Standard Mastery
     const overallMastery = getStudentStandardsAverage(student)
     nameRow.push(`${overallMastery}%`)
-    
+
     csvRows.push(nameRow)
-    
+
     // Row 2: Email and percentages
     const emailRow: string[] = []
     emailRow.push(student.email || '')
-    
+
     // Standard percentages
     uniqueStandards.forEach(standard => {
       const scoreData = getStandardScoreForStudent(student, standard)
@@ -750,16 +648,16 @@ const generateCSVByStandard = (courseId: string): string => {
         emailRow.push('0%')
       }
     })
-    
+
     // Empty for mastery column
     emailRow.push('')
-    
+
     csvRows.push(emailRow)
   })
-  
+
   // Empty row
   csvRows.push([])
-  
+
   // Summary statistics row
   const standardsCovered = uniqueStandards.length
   const allMasteries: number[] = []
@@ -769,24 +667,24 @@ const generateCSVByStandard = (courseId: string): string => {
       allMasteries.push(mastery)
     }
   })
-  const avgMastery = allMasteries.length > 0 
+  const avgMastery = allMasteries.length > 0
     ? Math.round(allMasteries.reduce((sum, m) => sum + m, 0) / allMasteries.length)
     : 0
-  const studentsAbove80 = courseStudents.filter(student => 
+  const studentsAbove80 = courseStudents.filter(student =>
     getStudentStandardsAverage(student) >= 80
   ).length
-  
+
   csvRows.push(['Standards Covered:', standardsCovered.toString()])
   csvRows.push(['Avg Mastery:', `${avgMastery}%`])
   csvRows.push(['Students Above 80%:', studentsAbove80.toString()])
-  
+
   // Convert to CSV string
-  return csvRows.map(row => 
+  return csvRows.map(row =>
     row.map(cell => {
       // Handle cells with newlines (student name/email, correct/total with percentage)
       const hasNewline = cell.includes('\n')
       const isFraction = /^\d+\/\d+$/.test(cell.split('\n')[0])
-      
+
       if (cell.includes(',') || cell.includes('"') || hasNewline || isFraction) {
         return `"${cell.replace(/"/g, '""')}"`
       }
@@ -799,15 +697,15 @@ const generateCSVByStandard = (courseId: string): string => {
 const exportToCSV = () => {
   try {
     const allStandards = getAllStandards()
-    const coursesToExport = selectedCourses.value.length > 0 
-      ? selectedCourses.value 
+    const coursesToExport = selectedCourses.value.length > 0
+      ? selectedCourses.value
       : availableCourses.value.map(c => c.courseId)
-    
+
     // Create CSV for each course
-    const exportTypeLabel = exportType.value === 'ESA' ? 'Essential_Standards' 
-      : exportType.value === 'SA' ? 'Standard_Assessments' 
+    const exportTypeLabel = exportType.value === 'ESA' ? 'Essential_Standards'
+      : exportType.value === 'SA' ? 'Standard_Assessments'
       : 'Assessments'
-    
+
     coursesToExport.forEach(courseId => {
       const courseInfo = availableCourses.value.find(c => c.courseId === courseId)
       const csv = generateCSVForCourse(courseId, allStandards)
@@ -815,7 +713,7 @@ const exportToCSV = () => {
       const filename = `${exportTypeLabel}_${courseLabel.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.csv`
       downloadCSV(csv, filename)
     })
-    
+
     alert(`Successfully exported ${coursesToExport.length} class(es)!`)
   } catch (err) {
     console.error('Error exporting CSV:', err)
@@ -836,20 +734,20 @@ const generateCSVForCourse = (courseId: string, allStandards: string[]): string 
       const bFirst = (b.firstName || '').toLowerCase()
       return aFirst.localeCompare(bFirst)
     })
-  
+
   const periodAssessments = standardAssessments.value
-  
+
   // Get unique standards across all assessments
   const uniqueStandards = getAllStandards()
-  
+
   // Build header row 1: Assessment names with empty cells
   const headerRow1: string[] = ['', ''] // Last Name, First Name columns
-  
+
   periodAssessments.forEach((assessment, index) => {
     const assessmentStandards = getStandardsForAssessment(assessment)
     const testNumber = index + 1
     const totalTests = periodAssessments.length
-    
+
     // Add assessment name for first column of this assessment
     headerRow1.push(`${assessment.title} (${testNumber}/${totalTests})`)
     // Add empty cells for remaining standards
@@ -857,40 +755,40 @@ const generateCSVForCourse = (courseId: string, allStandards: string[]): string 
       headerRow1.push('')
     }
   })
-  
+
   // Add "Total" columns if includeTotals is enabled
   if (includeTotals.value) {
     uniqueStandards.forEach(() => {
       headerRow1.push('Total')
     })
   }
-  
+
   // Build header row 2: Standard names
   const headerRow2: string[] = ['Last Name', 'First Name']
-  
+
   periodAssessments.forEach(assessment => {
     const assessmentStandards = getStandardsForAssessment(assessment)
     assessmentStandards.forEach(std => {
       headerRow2.push(std)
     })
   })
-  
+
   // Add "Total" standard names if includeTotals is enabled
   if (includeTotals.value) {
     uniqueStandards.forEach(std => {
       headerRow2.push(`${std} Total`)
     })
   }
-  
+
   // Build data rows
   const dataRows: string[][] = []
-  
+
   courseStudents.forEach(student => {
     const row: string[] = [
       student.lastName || '',
       student.firstName || ''
     ]
-    
+
     periodAssessments.forEach(assessment => {
       const assessmentStandards = getStandardsForAssessment(assessment)
       assessmentStandards.forEach(standard => {
@@ -898,31 +796,31 @@ const generateCSVForCourse = (courseId: string, allStandards: string[]): string 
         row.push(score !== null ? score : '')
       })
     })
-    
+
     dataRows.push(row)
   })
-  
+
   // Build totals row - for each standard, show maximum possible score (e.g., "4/4" if there are 4 questions)
   const totalsRow: string[] = ['Total', ''] // "Total" label in Last Name column
-  
+
   // Create a map to track maximum possible score (total questions) for each standard
   const standardMaxTotals = new Map<string, number>()
-  
+
   periodAssessments.forEach(assessment => {
     const assessmentStandards = getStandardsForAssessment(assessment)
     const assessmentLevelStandards = parseStandards(assessment.standard)
-    
+
     assessmentStandards.forEach(standard => {
       // Check if assessment-level standard matches
       const assessmentCoversStandard = assessmentLevelStandards.includes(standard)
-      
+
       // Find the maximum number of questions for this standard in this assessment
       // Include questions that match either question-level or assessment-level standards
       const matchingQuestions = assessment.questions?.filter(q => {
         const questionStandards = parseStandards(q.standard)
         return questionStandards.includes(standard) || assessmentCoversStandard
       }) || []
-      
+
       const totalQuestions = matchingQuestions.length
       if (totalQuestions > 0) {
         const currentMax = standardMaxTotals.get(standard) || 0
@@ -930,7 +828,7 @@ const generateCSVForCourse = (courseId: string, allStandards: string[]): string 
       }
     })
   })
-  
+
   // Build totals row columns in order of appearance (assessment columns)
   periodAssessments.forEach(assessment => {
     const assessmentStandards = getStandardsForAssessment(assessment)
@@ -940,13 +838,13 @@ const generateCSVForCourse = (courseId: string, allStandards: string[]): string 
       totalsRow.push(maxTotal > 0 ? `${maxTotal}/${maxTotal}` : '')
     })
   })
-  
+
   // Add total column max scores if includeTotals is enabled
   if (includeTotals.value) {
     uniqueStandards.forEach(standard => {
       const customStd = getCustomStandardByCode(standard)
       const maxScore = customStd?.maxScore
-      
+
       if (maxScore && maxScore > 0) {
         // Use maxScore from standard configuration
         totalsRow.push(`${maxScore}/${maxScore}`)
@@ -957,7 +855,7 @@ const generateCSVForCourse = (courseId: string, allStandards: string[]): string 
       }
     })
   }
-  
+
   // Combine all rows including totals row
   const csvRows = [
     headerRow1,
@@ -965,13 +863,13 @@ const generateCSVForCourse = (courseId: string, allStandards: string[]): string 
     ...dataRows,
     totalsRow
   ]
-  
+
   // Convert to CSV string
-  return csvRows.map(row => 
+  return csvRows.map(row =>
     row.map(cell => {
       // Always wrap fraction strings (like "2/4") in quotes to prevent Excel from interpreting them as dates
       const isFraction = /^\d+\/\d+$/.test(cell)
-      
+
       // Escape commas, quotes, newlines, or fractions
       if (cell.includes(',') || cell.includes('"') || cell.includes('\n') || isFraction) {
         return `"${cell.replace(/"/g, '""')}"`
@@ -984,17 +882,17 @@ const generateCSVForCourse = (courseId: string, allStandards: string[]): string 
 // Get standards for a specific assessment (includes both assessment-level and question-level standards)
 const getStandardsForAssessment = (assessment: Assessment): string[] => {
   const standardsSet = new Set<string>()
-  
+
   // Add assessment-level standards
   const assessmentStandards = parseStandards(assessment.standard)
   assessmentStandards.forEach(std => standardsSet.add(std))
-  
+
   // Add question-level standards
   assessment.questions?.forEach(question => {
     const standards = parseStandards(question.standard)
     standards.forEach(std => standardsSet.add(std))
   })
-  
+
   return Array.from(standardsSet).sort()
 }
 
@@ -1003,15 +901,15 @@ const downloadCSV = (csvContent: string, filename: string) => {
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
   const link = document.createElement('a')
   const url = URL.createObjectURL(blob)
-  
+
   link.setAttribute('href', url)
   link.setAttribute('download', filename)
   link.style.visibility = 'hidden'
-  
+
   document.body.appendChild(link)
   link.click()
   document.body.removeChild(link)
-  
+
   URL.revokeObjectURL(url)
 }
 
@@ -1033,16 +931,16 @@ const syncToGoogleSheets = async () => {
       googleSheetsService.setAccessToken(token)
     }
 
-    const coursesToExport = selectedCourses.value.length > 0 
-      ? selectedCourses.value 
+    const coursesToExport = selectedCourses.value.length > 0
+      ? selectedCourses.value
       : availableCourses.value.map(c => c.courseId)
-    
+
     const allStandards = getAllStandards()
     const results: string[] = []
 
     // Get or create the main spreadsheet
     let mainSpreadsheetId = spreadsheetId.value
-    
+
     if (!mainSpreadsheetId) {
       // Check localStorage for stored ID
       const storedId = localStorage.getItem('sheets_spreadsheet_id')
@@ -1056,7 +954,7 @@ const syncToGoogleSheets = async () => {
           const spreadsheetTitle = exportType.value === 'ESA' ? 'Essential Standards'
             : exportType.value === 'SA' ? 'Standard Assessments'
             : 'Assessments'
-          
+
           if (!mainSpreadsheetId) {
             sheetsStatus.value = 'Creating Google Sheet...'
             const sheet = await googleSheetsService.createSpreadsheet(spreadsheetTitle)
@@ -1074,20 +972,20 @@ const syncToGoogleSheets = async () => {
       try {
         const courseInfo = availableCourses.value.find(c => c.courseId === courseId)
         const courseLabel = courseInfo?.label || courseId
-        
+
         // Generate CSV data for this course
         const csvData = generateCSVDataForCourse(courseId, allStandards)
-        
+
         // Use course label as tab name (sanitize for Google Sheets - max 100 chars, no special chars)
         const tabName = courseLabel
           .replace(/[\\\/\?\*\[\]]/g, '_') // Replace invalid chars
           .substring(0, 100) // Max 100 characters
-        
+
         sheetsStatus.value = `Updating tab "${tabName}"...`
-        
+
         // Update the tab with data (will create tab if it doesn't exist)
         await googleSheetsService.updateSpreadsheet(mainSpreadsheetId, tabName, csvData)
-        
+
         results.push(`✅ ${courseLabel}`)
       } catch (courseError: any) {
         console.error(`Error syncing course ${courseId}:`, courseError)
@@ -1121,59 +1019,59 @@ const generateCSVDataForCourse = (courseId: string, allStandards: string[]): str
       const bFirst = (b.firstName || '').toLowerCase()
       return aFirst.localeCompare(bFirst)
     })
-  
+
   const periodAssessments = standardAssessments.value
-  
+
   // Get unique standards across all assessments
   const uniqueStandards = getAllStandards()
-  
+
   // Build header row 1: Assessment names
   const headerRow1: string[] = ['', '']
-  
+
   periodAssessments.forEach((assessment, index) => {
     const assessmentStandards = getStandardsForAssessment(assessment)
     const testNumber = index + 1
     const totalTests = periodAssessments.length
-    
+
     headerRow1.push(`${assessment.title} (${testNumber}/${totalTests})`)
     for (let i = 1; i < assessmentStandards.length; i++) {
       headerRow1.push('')
     }
   })
-  
+
   // Add "Total" columns if includeTotals is enabled
   if (includeTotals.value) {
     uniqueStandards.forEach(() => {
       headerRow1.push('Total')
     })
   }
-  
+
   // Build header row 2: Standard names
   const headerRow2: string[] = ['Last Name', 'First Name']
-  
+
   periodAssessments.forEach(assessment => {
     const assessmentStandards = getStandardsForAssessment(assessment)
     assessmentStandards.forEach(std => {
       headerRow2.push(std)
     })
   })
-  
+
   // Add "Total" standard names if includeTotals is enabled
   if (includeTotals.value) {
     uniqueStandards.forEach((std: string) => {
       headerRow2.push(`${std} Total`)
     })
   }
-  
+
   // Build data rows
   const dataRows: string[][] = []
-  
+
   courseStudents.forEach(student => {
     const row: string[] = [
       student.lastName || '',
       student.firstName || ''
     ]
-    
+
     // Add assessment scores
     periodAssessments.forEach(assessment => {
       const assessmentStandards = getStandardsForAssessment(assessment)
@@ -1182,7 +1080,7 @@ const generateCSVDataForCourse = (courseId: string, allStandards: string[]): str
         row.push(score !== null ? score : '')
       })
     })
-    
+
     // Add total scores if enabled
     if (includeTotals.value) {
       uniqueStandards.forEach(standard => {
@@ -1190,27 +1088,27 @@ const generateCSVDataForCourse = (courseId: string, allStandards: string[]): str
         row.push(totalScore !== null ? totalScore : '')
       })
     }
-    
+
     dataRows.push(row)
   })
-  
+
   // Build totals row
   const totalsRow: string[] = ['Total', '']
-  
+
   const standardMaxTotals = new Map<string, number>()
-  
+
   periodAssessments.forEach(assessment => {
     const assessmentStandards = getStandardsForAssessment(assessment)
     const assessmentLevelStandards = parseStandards(assessment.standard)
-    
+
     assessmentStandards.forEach(standard => {
       const assessmentCoversStandard = assessmentLevelStandards.includes(standard)
-      
+
       const matchingQuestions = assessment.questions?.filter(q => {
         const questionStandards = parseStandards(q.standard)
         return questionStandards.includes(standard) || assessmentCoversStandard
       }) || []
-      
+
       const totalQuestions = matchingQuestions.length
       if (totalQuestions > 0) {
         const currentMax = standardMaxTotals.get(standard) || 0
@@ -1218,7 +1116,7 @@ const generateCSVDataForCourse = (courseId: string, allStandards: string[]): str
       }
     })
   })
-  
+
   // Build totals row columns in order of appearance (assessment columns)
   periodAssessments.forEach(assessment => {
     const assessmentStandards = getStandardsForAssessment(assessment)
@@ -1227,13 +1125,13 @@ const generateCSVDataForCourse = (courseId: string, allStandards: string[]): str
       totalsRow.push(maxTotal > 0 ? `${maxTotal}/${maxTotal}` : '')
     })
   })
-  
+
   // Add total column max scores if includeTotals is enabled
   if (includeTotals.value) {
     uniqueStandards.forEach(standard => {
       const customStd = getCustomStandardByCode(standard)
       const maxScore = customStd?.maxScore
-      
+
       if (maxScore && maxScore > 0) {
         // Use maxScore from standard configuration
         totalsRow.push(`${maxScore}/${maxScore}`)
@@ -1244,13 +1142,13 @@ const generateCSVDataForCourse = (courseId: string, allStandards: string[]): str
       }
     })
   }
-  
+
   return [headerRow1, headerRow2, ...dataRows, totalsRow]
 }
 
 onMounted(async () => {
   await loadData()
-  
+
   // Load stored spreadsheet ID from localStorage
   const storedId = localStorage.getItem('sheets_spreadsheet_id')
   if (storedId) {

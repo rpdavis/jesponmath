@@ -667,6 +667,15 @@ export async function updateProgressAfterSession(
       ...(progress.problemBanks.mastered || []),
     ]
 
+    console.log('📊 PROGRESS UPDATE - Before session:', {
+      totalProblemsInBanks: allExistingProblems.length,
+      doesNotKnow: progress.problemBanks.doesNotKnow?.length || 0,
+      emerging: progress.problemBanks.emerging?.length || 0,
+      approaching: progress.problemBanks.approaching?.length || 0,
+      proficient: progress.problemBanks.proficient?.length || 0,
+      mastered: progress.problemBanks.mastered?.length || 0,
+    })
+
     // Create a map of existing problems for quick lookup
     const existingProblemsMap = new Map<string, ProblemProgress>()
     allExistingProblems.forEach((p) => existingProblemsMap.set(p.problemId, p))
@@ -697,6 +706,20 @@ export async function updateProgressAfterSession(
     // Convert map back to array
     const updatedProblems = Array.from(existingProblemsMap.values())
 
+    console.log('📊 PROGRESS UPDATE - After processing:', {
+      totalProblemsAfterUpdate: updatedProblems.length,
+      problemsFromSession: sessionResults.allProblems.length,
+      problemsLost: allExistingProblems.length - updatedProblems.length,
+    })
+
+    if (allExistingProblems.length > updatedProblems.length) {
+      console.error('⚠️ WARNING: Lost problems!', {
+        before: allExistingProblems.length,
+        after: updatedProblems.length,
+        lost: allExistingProblems.length - updatedProblems.length,
+      })
+    }
+
     // Reorganize into banks by proficiency level
     const updatedBanks: ProblemBanks = {
       doesNotKnow: updatedProblems.filter((p) => p.proficiencyLevel === 'doesNotKnow'),
@@ -705,6 +728,15 @@ export async function updateProgressAfterSession(
       proficient: updatedProblems.filter((p) => p.proficiencyLevel === 'proficient'),
       mastered: updatedProblems.filter((p) => p.proficiencyLevel === 'mastered'),
     }
+
+    console.log('📊 PROGRESS UPDATE - New distribution:', {
+      doesNotKnow: updatedBanks.doesNotKnow.length,
+      emerging: updatedBanks.emerging.length,
+      approaching: updatedBanks.approaching.length,
+      proficient: updatedBanks.proficient.length,
+      mastered: updatedBanks.mastered.length,
+      total: updatedProblems.length,
+    })
 
     // Calculate new distribution
     const distribution = {

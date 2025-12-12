@@ -274,3 +274,5 @@ If you want to integrate Delta Math assignments directly into the app:
 - Lessons are aligned with **Common Core Standards**
 - Delta Math has **limited Geometry coverage** compared to other topics
 
+
+

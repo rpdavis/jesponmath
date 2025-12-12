@@ -222,3 +222,5 @@ console.log('📚 Lesson check temporarily disabled to prevent redirect loop')
 
 **Next Action**: Test the current fix with a real practice session!
 
+
+

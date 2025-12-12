@@ -1,6 +1,8 @@
 // Strategy Lesson Types
 // Defines structure for mini-lessons that teach math strategies
 
+import type { SubLevel } from './mathFluency'
+
 export type LessonId = 'making-5' | 'making-10' | 'bridging-to-10' | 'decomposing-ten-frames'
 
 export type PracticeType =
@@ -17,6 +19,7 @@ export interface StrategyLesson {
 
   // When to trigger this lesson
   requiredAfterSession?: number // e.g., 1 for Making 5, 6 for Making 10
+  requiredSubLevel?: SubLevel // ⭐ NEW: Trigger when student reaches specific sub-level
   prerequisites: LessonId[] // Other lessons that must be completed first
 
   // Lesson content

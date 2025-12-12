@@ -378,3 +378,5 @@ export function printSummary(): void {
   console.log('Average Session Duration:', `${stats.averageSessionDuration} minutes`)
   console.groupEnd()
 }
+
+

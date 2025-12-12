@@ -60,7 +60,7 @@ const making10Lesson: StrategyLesson = {
   id: 'making-10',
   title: 'Making 10: Partners of 10',
   operation: 'addition',
-  requiredAfterSession: 3, // 2 sessions after Making 5
+  requiredAfterSession: 6, // 2 sessions after Making 5
   prerequisites: ['making-5'],
 
   overview: {
@@ -114,7 +114,7 @@ const bridgingLesson: StrategyLesson = {
   id: 'bridging-to-10',
   title: 'Bridging to 10: Adding Past 10',
   operation: 'addition',
-  requiredAfterSession: 5, // Right before >10 problems appear
+  requiredSubLevel: 'addition_within_20', // ⭐ Show when student reaches Level 2 (>10 problems)
   prerequisites: ['making-10'],
 
   overview: {
@@ -166,7 +166,8 @@ const decomposingLesson: StrategyLesson = {
   id: 'decomposing-ten-frames',
   title: 'Decomposing with Ten Frames',
   operation: 'addition',
-  requiredAfterSession: 8, // 3 sessions after Bridging
+  requiredSubLevel: 'addition_within_20', // ⭐ Also on Level 2 (visual support for bridging)
+  requiredAfterSession: 8, // But later in the level (after some practice with bridging)
   prerequisites: ['bridging-to-10'],
 
   overview: {
@@ -437,23 +438,63 @@ export function getAllLessons(): StrategyLesson[] {
 export function getNextRequiredLesson(
   sessionNumber: number,
   completedLessonIds: string[],
+  currentSubLevel?: string, // ⭐ NEW: Check sub-level for better timing
 ): StrategyLesson | null {
+  console.log('🔍 LESSON CHECK:', {
+    sessionNumber,
+    currentSubLevel,
+    completedLessonIds,
+  })
+
   const lessons = getAllLessons()
 
   for (const lesson of lessons) {
+    console.log(`  Checking: ${lesson.id}`, {
+      requiredAfter: lesson.requiredAfterSession,
+      requiredSubLevel: lesson.requiredSubLevel,
+      alreadyCompleted: completedLessonIds.includes(lesson.id),
+      sessionMeetsReq: lesson.requiredAfterSession
+        ? sessionNumber >= lesson.requiredAfterSession
+        : 'N/A',
+      subLevelMatches: lesson.requiredSubLevel
+        ? currentSubLevel === lesson.requiredSubLevel
+        : 'N/A',
+    })
+
     // Skip if already completed
-    if (completedLessonIds.includes(lesson.id)) continue
+    if (completedLessonIds.includes(lesson.id)) {
+      console.log(`    → Skipped (already completed)`)
+      continue
+    }
 
     // Check if prerequisites are met
     const prereqsMet = lesson.prerequisites.every((prereq) => completedLessonIds.includes(prereq))
 
-    if (!prereqsMet) continue
+    if (!prereqsMet) {
+      console.log(`    → Skipped (prerequisites not met:`, lesson.prerequisites, ')')
+      continue
+    }
 
-    // Check if session requirement is met
+    // ⭐ PRIORITY 1: Check sub-level requirement (more specific)
+    if (lesson.requiredSubLevel && currentSubLevel) {
+      if (currentSubLevel === lesson.requiredSubLevel) {
+        console.log(`    → ✅ REQUIRED! (sub-level match: ${currentSubLevel})`)
+        return lesson
+      }
+      // If has sub-level requirement but doesn't match, skip
+      console.log(
+        `    → Skipped (waiting for sub-level: ${lesson.requiredSubLevel}, current: ${currentSubLevel})`,
+      )
+      continue
+    }
+
+    // ⭐ PRIORITY 2: Check session requirement (fallback)
     if (lesson.requiredAfterSession && sessionNumber >= lesson.requiredAfterSession) {
+      console.log(`    → ✅ REQUIRED! (session ${sessionNumber} >= ${lesson.requiredAfterSession})`)
       return lesson
     }
   }
 
+  console.log('  → No required lesson')
   return null
 }

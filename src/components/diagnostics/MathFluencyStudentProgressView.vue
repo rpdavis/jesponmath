@@ -5,7 +5,7 @@
       <button @click="router.push('/fluency/dashboard')" class="back-btn">
         ← Back to Dashboard
       </button>
-      
+
       <div class="student-header">
         <h1>{{ studentName }}</h1>
         <p class="current-operation">{{ currentOperationDisplay }}</p>
@@ -24,7 +24,24 @@
 
     <!-- Main Content -->
     <div v-else class="progress-content">
-      
+
+      <!-- Teacher Settings Card (if viewing as teacher) -->
+      <div v-if="isTeacher" class="settings-card">
+        <h3>⚙️ Practice Settings (Teacher Only)</h3>
+        <div class="setting-row">
+          <label class="setting-label">Daily Practice Limit:</label>
+          <select v-model.number="practiceLimit" @change="updatePracticeLimit" class="setting-select">
+            <option :value="1">1 session per day</option>
+            <option :value="2">2 sessions per day</option>
+            <option :value="3">3 sessions per day</option>
+            <option :value="999">Unlimited sessions</option>
+          </select>
+          <p class="setting-help">
+            Controls how many practice sessions this student can complete each day.
+          </p>
+        </div>
+      </div>
+
       <!-- Overall Progress Card -->
       <div class="progress-card">
         <h2>📊 Overall Progress</h2>
@@ -54,10 +71,10 @@
       <div class="progress-card">
         <h2>📈 Breakdown by Problem Type</h2>
         <p class="section-subtitle">How student performs on different types of {{ currentOperation }} problems</p>
-        
+
         <div class="problem-types-grid">
-          <div 
-            v-for="category in problemTypeBreakdown" 
+          <div
+            v-for="category in problemTypeBreakdown"
             :key="category.name"
             class="type-card"
             :class="category.statusClass"
@@ -68,8 +85,8 @@
             </div>
             <div class="type-stats">
               <div class="type-progress-bar">
-                <div 
-                  class="type-progress-fill" 
+                <div
+                  class="type-progress-fill"
                   :style="{ width: `${category.percentage}%` }"
                   :class="category.statusClass"
                 ></div>
@@ -91,10 +108,10 @@
       <div class="progress-card">
         <h2>📚 Strategy Lessons</h2>
         <p class="section-subtitle">Mini-lessons teaching problem-solving strategies</p>
-        
+
         <div class="lessons-grid">
-          <div 
-            v-for="lesson in lessonsStatus" 
+          <div
+            v-for="lesson in lessonsStatus"
             :key="lesson.id"
             class="lesson-card"
             :class="lesson.statusClass"
@@ -115,10 +132,10 @@
       <div class="progress-card">
         <h2>📄 Weekly Paper Assessments</h2>
         <p class="section-subtitle">Friday 1-minute fluency probes</p>
-        
+
         <div v-if="paperAssessments.length > 0" class="assessments-list">
-          <div 
-            v-for="assessment in paperAssessments" 
+          <div
+            v-for="assessment in paperAssessments"
             :key="assessment.id"
             class="assessment-row"
           >
@@ -141,10 +158,10 @@
       <div class="progress-card">
         <h2>🎯 Recent Practice Sessions</h2>
         <p class="section-subtitle">Last 10 daily practice sessions</p>
-        
+
         <div v-if="practiceSessions.length > 0" class="sessions-list">
-          <div 
-            v-for="session in practiceSessions" 
+          <div
+            v-for="session in practiceSessions"
             :key="session.id"
             class="session-row"
           >
@@ -174,7 +191,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import { getUserProfile } from '@/firebase/userServices'
-import { getFluencyProgress, getStudentPaperAssessments } from '@/services/mathFluencyServices'
+import { getFluencyProgress, getStudentPaperAssessments, updateDailyPracticeLimit } from '@/services/mathFluencyServices'
 import { getCompletedLessonIds, getLessonProgress } from '@/services/strategyLessonService'
 import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore'
 import { db } from '@/firebase/config'
@@ -186,12 +203,29 @@ const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 
+// Practice settings
+const practiceLimit = ref<1 | 2 | 3 | 999>(1)
+const isTeacher = computed(() => authStore.currentUser?.role === 'teacher' || authStore.currentUser?.role === 'admin')
+
 const studentUid = ref(route.params.studentUid as string)
 const studentName = ref('')
 const loading = ref(true)
 const progress = ref<any>(null)
 const currentOperation = ref<OperationType>('addition')
 const paperAssessments = ref<any[]>([])
+
+// Update practice limit function
+async function updatePracticeLimit() {
+  if (!studentUid.value) return
+
+  try {
+    await updateDailyPracticeLimit(studentUid.value, currentOperation.value, practiceLimit.value)
+    alert(`✅ Practice limit updated to ${practiceLimit.value === 999 ? 'unlimited' : practiceLimit.value + ' per day'}`)
+  } catch (error) {
+    console.error('Error updating practice limit:', error)
+    alert('Error updating setting. Please try again.')
+  }
+}
 const practiceSessions = ref<any[]>([])
 const completedLessons = ref<LessonId[]>([])
 
@@ -235,7 +269,7 @@ const overallProficiency = computed(() => {
 // Problem Type Breakdown
 const problemTypeBreakdown = computed(() => {
   if (!progress.value) return []
-  
+
   const allProblems: ProblemProgress[] = [
     ...(progress.value.problemBanks?.doesNotKnow || []),
     ...(progress.value.problemBanks?.emerging || []),
@@ -243,7 +277,7 @@ const problemTypeBreakdown = computed(() => {
     ...(progress.value.problemBanks?.proficient || []),
     ...(progress.value.problemBanks?.mastered || [])
   ]
-  
+
   return categorizeProblems(allProblems, currentOperation.value)
 })
 
@@ -254,14 +288,14 @@ const lessonsStatus = computed(() => {
     { id: 'making-10' as LessonId, title: 'Making 10', icon: '🔟', order: 2 },
     { id: 'decomposing-ten-frames' as LessonId, title: 'Decomposing with Ten Frames', icon: '🎯', order: 3 }
   ]
-  
+
   console.log('📚 Completed lessons check:', completedLessons.value)
-  
+
   return allLessons.map(lesson => {
     const isCompleted = completedLessons.value.includes(lesson.id)
-    
+
     console.log(`  ${lesson.id}: ${isCompleted ? 'COMPLETED' : 'not started'}`)
-    
+
     return {
       ...lesson,
       statusClass: isCompleted ? 'completed' : 'not-started',
@@ -287,7 +321,7 @@ function categorizeProblems(problems: ProblemProgress[], operation: OperationTyp
     // Simplified for other operations - just show overall
     return []
   }
-  
+
   // Addition categories based on sub-level structure
   const categories = {
     basic_2to5: {
@@ -327,22 +361,22 @@ function categorizeProblems(problems: ProblemProgress[], operation: OperationTyp
       icon: '🌉'
     }
   }
-  
+
   return Object.entries(categories).map(([key, cat]) => {
     const categoryProblems = problems.filter(cat.filter)
     const mastered = categoryProblems.filter(p => p.proficiencyLevel === 'mastered')
     const total = categoryProblems.length
     const percentage = total > 0 ? Math.round((mastered.length / total) * 100) : 0
-    
+
     // Get status class based on percentage
     let statusClass = 'needs-work'
     if (percentage >= 80) statusClass = 'proficient'
     else if (percentage >= 60) statusClass = 'approaching'
     else if (percentage >= 40) statusClass = 'emerging'
-    
+
     // Get example problems (first 3)
     const examples = categoryProblems.slice(0, 3).map(p => p.displayText || `${p.num1}+${p.num2}`)
-    
+
     return {
       name: cat.name,
       icon: cat.icon,
@@ -392,18 +426,18 @@ function viewFactBreakdown() {
 
 async function loadData() {
   loading.value = true
-  
+
   try {
     // Load student info
     const student = await getUserProfile(studentUid.value)
     if (student) {
       studentName.value = `${student.firstName} ${student.lastName}`
     }
-    
+
     // Determine current operation
     // Try all operations to find which one they're on
     const operations: OperationType[] = ['addition', 'subtraction', 'multiplication', 'division']
-    
+
     for (const op of operations) {
       const prog = await getFluencyProgress(studentUid.value, op)
       if (prog && !prog.completedOperation) {
@@ -416,20 +450,23 @@ async function loadData() {
         progress.value = prog
       }
     }
-    
+
     if (!progress.value) {
       console.log('No fluency progress found for student')
       loading.value = false
       return
     }
-    
+
+    // Load practice limit setting
+    practiceLimit.value = progress.value.dailyPracticeLimit || 1
+
     // Load completed lessons
     completedLessons.value = await getCompletedLessonIds(studentUid.value)
-    
+
     // Load paper assessments
     const paperData = await getStudentPaperAssessments(studentUid.value)
     paperAssessments.value = paperData.sort((a, b) => (b.weekNumber || 0) - (a.weekNumber || 0))
-    
+
     // Load recent practice sessions
     // Simplified query to avoid index requirement - filter in JS
     const sessionsQuery = query(
@@ -437,9 +474,9 @@ async function loadData() {
       where('studentUid', '==', studentUid.value),
       where('operation', '==', currentOperation.value)
     )
-    
+
     const sessionsSnapshot = await getDocs(sessionsQuery)
-    
+
     // Filter completed and sort in JavaScript (avoids complex index)
     const allSessions = sessionsSnapshot.docs
       .map(doc => ({ id: doc.id, ...doc.data() }))
@@ -462,7 +499,7 @@ async function loadData() {
       overallAccuracy: doc.data().overallAccuracy || 0,
       timeSpent: Math.round((doc.data().totalSessionTime || 0) / 60) // Convert to minutes
     }))
-    
+
   } catch (error) {
     console.error('Error loading student progress:', error)
   } finally {
@@ -480,6 +517,47 @@ onMounted(() => {
   max-width: 1400px;
   margin: 0 auto;
   padding: 2rem;
+}
+
+/* Practice Settings Card */
+.settings-card {
+  background: #f0e5f5;
+  border: 2px solid #8e44ad;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.settings-card h3 {
+  margin-top: 0;
+  color: #6c3483;
+  margin-bottom: 1rem;
+}
+
+.setting-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.setting-label {
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.setting-select {
+  padding: 0.75rem;
+  border: 2px solid #8e44ad;
+  border-radius: 8px;
+  font-size: 1rem;
+  background: white;
+  cursor: pointer;
+}
+
+.setting-help {
+  margin: 0;
+  color: #7f8c8d;
+  font-size: 0.95rem;
 }
 
 .page-header {

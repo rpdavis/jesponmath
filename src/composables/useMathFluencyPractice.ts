@@ -147,14 +147,40 @@ export function useMathFluencyPractice() {
 
       const today = await getTodaysPracticeSession(authStore.currentUser.uid, operation)
 
-      if (today && today.completed) {
+      // ⭐ Check daily practice limit before blocking
+      const dailyLimit = progress.value.dailyPracticeLimit || 1
+      const canPracticeMore = dailyLimit === 999 // 999 = unlimited
+
+      console.log('📊 Practice Limit Check:', {
+        dailyLimit,
+        hasCompletedToday: !!(today && today.completed),
+        canPracticeMore,
+      })
+
+      if (today && today.completed && !canPracticeMore) {
+        // Has completed AND limit is not unlimited
         completedToday.value = true
         todaysSession.value = today
       } else {
+        // Either hasn't completed, or limit allows more sessions
+        if (canPracticeMore && today && today.completed) {
+          console.log('🔄 Unlimited sessions enabled - allowing another practice')
+        }
+
         // ⭐ Check if debug mode is enabled for this student
-        debugModeActive.value = isDebugEnabled(authStore.currentUser.uid)
+        const studentUid = authStore.currentUser.uid
+        debugModeActive.value = isDebugEnabled(studentUid)
+        console.log('🔬 DEBUG MODE CHECK:', {
+          studentUid,
+          debugEnabled: debugModeActive.value,
+          debugEnabledStudents: import('@/utils/detailedDebugLogger').then((m) =>
+            m.getDebugEnabledStudents(),
+          ),
+        })
         if (debugModeActive.value) {
-          console.log('🔬 DEBUG MODE ACTIVE for this student')
+          console.log('🔬 ✅ DEBUG MODE ACTIVE for this student')
+        } else {
+          console.log('🔬 ❌ Debug mode NOT enabled for this student')
         }
 
         preparePracticeSession()
@@ -171,8 +197,16 @@ export function useMathFluencyPractice() {
     if (!progress.value || !authStore.currentUser) return
 
     // ⭐ Initialize detailed debug log if enabled
+    console.log('🔬 Prepare session - debug check:', {
+      debugModeActive: debugModeActive.value,
+      hasAuthUser: !!authStore.currentUser,
+      hasProgress: !!progress.value,
+    })
+
     if (debugModeActive.value) {
       const sessionNumber = (progress.value.totalPracticeDays || 0) + 1
+      console.log('🔬 Creating session log for session #', sessionNumber)
+
       currentDetailedLog.value = createSessionLog(
         authStore.currentUser.uid,
         authStore.currentUser.displayName || 'Unknown',
@@ -195,6 +229,13 @@ export function useMathFluencyPractice() {
         },
       )
       sessionStartTime.value = Date.now()
+
+      console.log('🔬 Session log created:', {
+        sessionId: currentDetailedLog.value?.sessionId,
+        sessionNumber: currentDetailedLog.value?.sessionNumber,
+      })
+    } else {
+      console.log('🔬 Debug mode not active, skipping session log creation')
     }
 
     const banks = progress.value.problemBanks
@@ -491,6 +532,56 @@ export function useMathFluencyPractice() {
 
         // ⭐ Save detailed log with final state
         if (currentDetailedLog.value && debugModeActive.value) {
+          // ⭐ POPULATE ROUND DATA from session object
+          const round2Data = session.value.round2_practice
+          const round3Data = session.value.round3_assessment
+
+          if (round2Data) {
+            const round2CorrectCount = Object.values(round2Data.results || {}).filter(
+              (r: any) => r.correct,
+            ).length
+            currentDetailedLog.value.round2.score = round2CorrectCount
+            currentDetailedLog.value.round2.total = Object.keys(round2Data.results || {}).length
+            currentDetailedLog.value.round2.percentage =
+              currentDetailedLog.value.round2.total > 0
+                ? Math.round(
+                    (currentDetailedLog.value.round2.score /
+                      currentDetailedLog.value.round2.total) *
+                      100,
+                  )
+                : 0
+            currentDetailedLog.value.round2.fastTrackMode =
+              debugModeActive.value &&
+              (progress.value?.subLevelProgress?.[progress.value.currentSubLevel || '']
+                ?.proficiencyPercentage || 0) >= 90
+
+            console.log('🔬 DEBUG: Populated round2 data', {
+              score: currentDetailedLog.value.round2.score,
+              total: currentDetailedLog.value.round2.total,
+            })
+          }
+
+          if (round3Data) {
+            const round3CorrectCount = Object.values(round3Data.results || {}).filter(
+              (r: any) => r.correct,
+            ).length
+            currentDetailedLog.value.round3.score = round3CorrectCount
+            currentDetailedLog.value.round3.total = Object.keys(round3Data.results || {}).length
+            currentDetailedLog.value.round3.percentage =
+              currentDetailedLog.value.round3.total > 0
+                ? Math.round(
+                    (currentDetailedLog.value.round3.score /
+                      currentDetailedLog.value.round3.total) *
+                      100,
+                  )
+                : 0
+
+            console.log('🔬 DEBUG: Populated round3 data', {
+              score: currentDetailedLog.value.round3.score,
+              total: currentDetailedLog.value.round3.total,
+            })
+          }
+
           // Reload progress to get updated state
           const updatedProgress = await getFluencyProgress(
             authStore.currentUser!.uid,
@@ -543,7 +634,17 @@ export function useMathFluencyPractice() {
                       : 'Needs Improvement',
             }
 
+            console.log('🔬 DEBUG: About to save session log', {
+              hasLog: !!currentDetailedLog.value,
+              diagnostic: `${currentDetailedLog.value.diagnostic.score}/${currentDetailedLog.value.diagnostic.total}`,
+              round2: `${currentDetailedLog.value.round2.score}/${currentDetailedLog.value.round2.total}`,
+              round3: `${currentDetailedLog.value.round3.score}/${currentDetailedLog.value.round3.total}`,
+              proficiencyChange: currentDetailedLog.value.endState.proficiencyChange,
+            })
+
+            console.log('🔬 Calling saveSessionLog now...')
             saveSessionLog(currentDetailedLog.value)
+            console.log('🔬 saveSessionLog completed')
           }
         }
       } catch (error) {
@@ -627,6 +728,10 @@ export function useMathFluencyPractice() {
     totalSessionTime,
     promotionsEarned,
     session,
+
+    // Debug
+    currentDetailedLog,
+    debugModeActive,
 
     // Computed
     currentOperation,

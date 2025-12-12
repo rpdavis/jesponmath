@@ -4,6 +4,25 @@
     <div class="dashboard-header">
       <h2>📊 Math Fluency Dashboard</h2>
       <p class="subtitle">Class-wide fluency monitoring and management</p>
+
+      <!-- Debug/Admin Tools (Small links at top) -->
+      <div class="debug-links">
+        <router-link to="/fluency/cpm-report" class="debug-link">
+          📊 CPM Report
+        </router-link>
+        <span class="link-separator">|</span>
+        <router-link to="/fluency/acceleration-simulator" class="debug-link">
+          🧪 Simulator
+        </router-link>
+        <span class="link-separator">|</span>
+        <router-link to="/fluency/debug-manager" class="debug-link">
+          🔬 Debug Mode
+        </router-link>
+        <span class="link-separator">|</span>
+        <router-link to="/fluency/reset-progress" class="debug-link warning-link">
+          🔄 Reset Progress
+        </router-link>
+      </div>
     </div>
 
     <!-- Quick Actions - MOVED TO TOP -->
@@ -41,7 +60,7 @@
     <!-- Class Overview Card -->
     <div class="overview-card">
       <h3>Class Overview - {{ capitalizeOperation(selectedOperation) }}</h3>
-      
+
       <div class="class-stats-grid">
         <div class="class-stat">
           <div class="stat-icon">🎓</div>
@@ -50,7 +69,7 @@
             <div class="stat-label">Total Students</div>
           </div>
         </div>
-        
+
         <div class="class-stat">
           <div class="stat-icon">📊</div>
           <div class="stat-content">
@@ -58,7 +77,7 @@
             <div class="stat-label">Avg Proficiency</div>
           </div>
         </div>
-        
+
         <div class="class-stat">
           <div class="stat-icon">✅</div>
           <div class="stat-content">
@@ -66,7 +85,7 @@
             <div class="stat-label">Ready for Next Op</div>
           </div>
         </div>
-        
+
         <div class="class-stat alert" v-if="classOverview.needsIntervention > 0">
           <div class="stat-icon">⚠️</div>
           <div class="stat-content">
@@ -82,9 +101,9 @@
       <div class="card-header">
         <h3>Student Progress</h3>
         <div class="header-actions">
-          <input 
-            v-model="searchQuery" 
-            type="text" 
+          <input
+            v-model="searchQuery"
+            type="text"
             placeholder="Search students..."
             class="search-input"
           />
@@ -107,20 +126,20 @@
           <div class="col-actions">Actions</div>
         </div>
 
-        <div 
-          v-for="student in filteredStudents" 
+        <div
+          v-for="student in filteredStudents"
           :key="student.studentUid"
           class="table-row"
-          :class="{ 
-            alert: student.hasData && student.proficiency < 50, 
+          :class="{
+            alert: student.hasData && student.proficiency < 50,
             success: student.readyForTest,
-            'no-data': !student.hasData 
+            'no-data': !student.hasData
           }"
         >
           <div class="col-name">
-            <router-link 
-              v-if="student.hasData" 
-              :to="`/fluency/student/${student.studentUid}`" 
+            <router-link
+              v-if="student.hasData"
+              :to="`/fluency/student/${student.studentUid}`"
               class="student-link"
             >
               <strong>{{ student.studentName }}</strong>
@@ -142,8 +161,8 @@
           <div class="col-proficiency">
             <div v-if="student.hasData && student.currentSubLevel" class="proficiency-container">
               <div class="proficiency-bar-mini">
-                <div 
-                  class="proficiency-fill-mini" 
+                <div
+                  class="proficiency-fill-mini"
                   :style="{ width: `${student.subLevelProficiency}%` }"
                   :class="getProficiencyClass(student.subLevelProficiency)"
                 ></div>
@@ -183,7 +202,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import { getStudentsByTeacher } from '@/firebase/userServices'
-import { 
+import {
   getClassFluencyOverview,
   addStudentToFluencyProgram,
   bulkAddStudentsToFluencyProgram,
@@ -225,15 +244,15 @@ const operations = [
 // Computed
 const filteredStudents = computed(() => {
   let filtered = [...classOverview.value.students]
-  
+
   // Search filter
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
-    filtered = filtered.filter(s => 
+    filtered = filtered.filter(s =>
       s.studentName.toLowerCase().includes(query)
     )
   }
-  
+
   // Sort
   if (sortBy.value === 'name') {
     filtered.sort((a, b) => a.studentName.localeCompare(b.studentName))
@@ -248,7 +267,7 @@ const filteredStudents = computed(() => {
       return bTime - aTime
     })
   }
-  
+
   return filtered
 })
 
@@ -271,31 +290,31 @@ watch(selectedOperation, async () => {
 
 async function loadData() {
   loading.value = true
-  
+
   try {
     // Load teacher's students
     if (authStore.currentUser?.uid) {
       students.value = await getStudentsByTeacher(authStore.currentUser.uid)
-      
+
       const studentUids = students.value.map(s => s.uid)
-      
+
       if (studentUids.length > 0) {
         // Load placement diagnostic assignments (batch if > 30 students due to Firestore 'in' limit)
         placementAssignments.value.clear()
-        
+
         // Batch studentUids into chunks of 30
         const batchSize = 30
         for (let i = 0; i < studentUids.length; i += batchSize) {
           const batch = studentUids.slice(i, i + batchSize)
-          
+
           const assignmentsQuery = query(
             collection(db, 'diagnosticAssignments'),
             where('diagnosticType', '==', 'math-fluency-placement'),
             where('studentUid', 'in', batch)
           )
-          
+
           const assignmentsSnapshot = await getDocs(assignmentsQuery)
-          
+
           assignmentsSnapshot.docs.forEach(doc => {
             const data = doc.data()
             placementAssignments.value.set(data.studentUid, {
@@ -305,28 +324,28 @@ async function loadData() {
             })
           })
         }
-        
+
         console.log('📋 Loaded placement assignments:', placementAssignments.value.size)
-        
+
         // Query all in-progress diagnostics for all operations
         const allInProgressQuery = query(
           collection(db, 'mathFluencyDiagnosticProgress'),
           where('inProgress', '==', true)
         )
-        
+
         const allInProgressSnapshot = await getDocs(allInProgressQuery)
-        
+
         // Group by operation
         const inProgressByOperation = new Map<OperationType, Map<string, any>>()
         operations.forEach(op => {
           inProgressByOperation.set(op.value, new Map())
         })
-        
+
         allInProgressSnapshot.docs.forEach(doc => {
           const data = doc.data()
           const op = data.operation as OperationType
           const studentUid = data.studentUid
-          
+
           if (inProgressByOperation.has(op)) {
             inProgressByOperation.get(op)!.set(studentUid, {
               answersCompleted: data.answersCompleted || 0,
@@ -335,7 +354,7 @@ async function loadData() {
             })
           }
         })
-        
+
         // Load overview for ALL operations
         for (const op of operations) {
           try {
@@ -348,14 +367,14 @@ async function loadData() {
             console.error(`Error loading ${op.value} data:`, error)
           }
         }
-        
+
         console.log('📊 Loaded data for all operations:', {
           addition: allOperationsData.value.get('addition'),
           subtraction: allOperationsData.value.get('subtraction'),
           multiplication: allOperationsData.value.get('multiplication'),
           division: allOperationsData.value.get('division')
         })
-        
+
         // Get data for currently selected operation
         const operationData = allOperationsData.value.get(selectedOperation.value)
         if (!operationData) {
@@ -363,20 +382,20 @@ async function loadData() {
           loading.value = false
           return
         }
-        
+
         const overview = operationData.overview
         const inProgressMap = operationData.inProgress
         // Create a student list that includes ALL students
         const allStudentData = students.value.map(student => {
           // Check if student has completed fluency data
           const fluencyData = overview.students.find((s: any) => s.studentUid === student.uid)
-          
+
           // Check if student has in-progress diagnostic
           const inProgress = inProgressMap.get(student.uid)
-          
+
           // Check if student has been assigned placement diagnostic
           const assignment = placementAssignments.value.get(student.uid)
-          
+
           if (fluencyData) {
             // Student has fluency data - extract sub-level info
             const currentSubLevel = fluencyData.currentSubLevel || null
@@ -386,7 +405,7 @@ async function loadData() {
             const readyForTest = currentSubLevel && fluencyData.subLevelProgress?.[currentSubLevel]
               ? fluencyData.subLevelProgress[currentSubLevel].readyForAssessment
               : false
-            
+
             return {
               studentUid: student.uid,
               studentName: `${student.lastName}, ${student.firstName}`,
@@ -442,7 +461,7 @@ async function loadData() {
             }
           }
         })
-        
+
         // Update overview with all students
         classOverview.value = {
           students: allStudentData,
@@ -451,19 +470,19 @@ async function loadData() {
           needsIntervention: overview.needsIntervention,
           highPerformers: overview.highPerformers
         }
-        
+
         const completedCount = allStudentData.filter(s => s.hasData).length
         const inProgressCount = allStudentData.filter(s => s.inProgress).length
         const notStartedCount = allStudentData.filter(s => !s.hasData && !s.inProgress).length
         const assignedCount = allStudentData.filter(s => s.hasAssignment).length
-        
+
         console.log('📊 Fluency Status:',
           completedCount, 'completed,',
           inProgressCount, 'in progress,',
           notStartedCount, 'not started,',
           assignedCount, 'assigned'
         )
-        
+
         // Debug: Log students with assignments
         const studentsWithAssignments = allStudentData.filter(s => s.hasAssignment)
         if (studentsWithAssignments.length > 0) {
@@ -524,23 +543,23 @@ async function addToProgram(studentUid: string) {
   try {
     const student = students.value.find(s => s.uid === studentUid)
     if (!student) return
-    
+
     // Check if already in program
     const alreadyIn = await isStudentInFluencyProgram(studentUid)
     if (alreadyIn) {
       alert(`${student.firstName} ${student.lastName} is already in the fluency program!`)
       return
     }
-    
+
     // Add to fluency program (starts at Addition Within 10)
     await addStudentToFluencyProgram(
       studentUid,
       `${student.firstName} ${student.lastName}`,
       authStore.currentUser?.uid || 'system'
     )
-    
+
     alert(`✅ ${student.firstName} ${student.lastName} added to fluency program!\n\nThey can now start daily practice.`)
-    
+
     // Reload data
     await loadData()
   } catch (error) {
@@ -551,22 +570,22 @@ async function addToProgram(studentUid: string) {
 
 async function removeFromProgram(studentUid: string) {
   console.log('🔍 Remove from program called:', { studentUid })
-  
+
   try {
     const student = students.value.find(s => s.uid === studentUid)
     if (!student) {
       console.error('❌ Student not found:', studentUid)
       return
     }
-    
+
     const confirmRemove = confirm(
       `Remove ${student.firstName} ${student.lastName} from fluency program?\n\n⚠️ This will delete all their progress data. This cannot be undone!`
     )
-    
+
     if (!confirmRemove) {
       return
     }
-    
+
     // Delete all fluency progress documents for this student
     const operations: OperationType[] = ['addition', 'subtraction', 'multiplication', 'division']
     for (const op of operations) {
@@ -579,9 +598,9 @@ async function removeFromProgram(studentUid: string) {
         console.log(`ℹ️ No ${op} progress found (expected)`)
       }
     }
-    
+
     alert(`✅ ${student.firstName} ${student.lastName} removed from fluency program`)
-    
+
     // Reload data
     await loadData()
   } catch (error) {
@@ -595,11 +614,11 @@ function getOperationCounts(operation: OperationType) {
   if (!opData) {
     return { total: students.value.length, started: 0, inProgress: 0 }
   }
-  
+
   const completed = opData.overview.students.length
   const inProgress = opData.inProgress.size
   const started = completed + inProgress
-  
+
   return {
     total: students.value.length,
     started,
@@ -629,6 +648,46 @@ function getOperationCounts(operation: OperationType) {
 .subtitle {
   color: #666;
   font-size: 0.95rem;
+}
+
+/* Debug Links */
+.debug-links {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+  justify-content: center;
+}
+
+.debug-link {
+  font-size: 0.85rem;
+  color: #8e44ad;
+  text-decoration: none;
+  padding: 0.25rem 0.75rem;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.debug-link:hover {
+  background: #f3e5f5;
+  color: #6c3483;
+  text-decoration: none;
+}
+
+.link-separator {
+  color: #ddd;
+  font-size: 0.75rem;
+}
+
+.debug-link.warning-link {
+  color: #e74c3c;
+}
+
+.debug-link.warning-link:hover {
+  background: #fee2e2;
+  color: #c0392b;
 }
 
 /* Operation Selector */

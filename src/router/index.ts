@@ -48,6 +48,7 @@ import StrategyLesson from '@/components/lessons/StrategyLesson.vue'
 import AccelerationSimulator from '@/views/AccelerationSimulator.vue'
 import DebugModeManager from '@/components/diagnostics/DebugModeManager.vue'
 import FluencyCPMReport from '@/components/diagnostics/FluencyCPMReport.vue'
+import FluencyProgressReset from '@/components/admin/FluencyProgressReset.vue'
 import Gradebook from '@/components/Gradebook.vue'
 import { authGuard, guestGuard, teacherGuard, adminGuard, studentGuard } from './guards'
 
@@ -204,16 +205,10 @@ const router = createRouter({
       beforeEnter: [authGuard, teacherGuard], // Teachers only - CPM reporting for IEPs
     },
     {
-      path: '/fluency/cpm-report',
-      name: 'fluency-cpm-report',
-      component: FluencyCPMReport,
-      beforeEnter: [authGuard, teacherGuard], // Teachers only - CPM reporting for IEPs
-    },
-    {
-      path: '/fluency/cpm-report',
-      name: 'fluency-cpm-report',
-      component: FluencyCPMReport,
-      beforeEnter: [authGuard, teacherGuard], // Teachers only - CPM tracking for IEP reporting
+      path: '/fluency/reset-progress',
+      name: 'fluency-reset-progress',
+      component: FluencyProgressReset,
+      beforeEnter: [authGuard, teacherGuard], // Teachers only - reset student progress for testing
     },
     {
       path: '/fluency/teacher-view/:studentUid',
