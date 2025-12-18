@@ -154,3 +154,5 @@ Consider centralizing these related functions as well:
 - Component-level data collection logic is preserved
 
 
+
+

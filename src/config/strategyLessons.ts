@@ -481,14 +481,21 @@ export function getNextRequiredLesson(
         console.log(`    → ✅ REQUIRED! (sub-level match: ${currentSubLevel})`)
         return lesson
       }
-      // If has sub-level requirement but doesn't match, skip
+      // If has sub-level requirement but doesn't match, check if lesson also has session requirement as fallback
+      if (lesson.requiredAfterSession && sessionNumber >= lesson.requiredAfterSession) {
+        console.log(
+          `    → ✅ REQUIRED! (sub-level mismatch, but session requirement met: ${sessionNumber} >= ${lesson.requiredAfterSession})`,
+        )
+        return lesson
+      }
+      // If sub-level doesn't match and session requirement not met (or doesn't exist), skip
       console.log(
-        `    → Skipped (waiting for sub-level: ${lesson.requiredSubLevel}, current: ${currentSubLevel})`,
+        `    → Skipped (waiting for sub-level: ${lesson.requiredSubLevel}, current: ${currentSubLevel}${lesson.requiredAfterSession ? `, or session ${lesson.requiredAfterSession}` : ''})`,
       )
       continue
     }
 
-    // ⭐ PRIORITY 2: Check session requirement (fallback)
+    // ⭐ PRIORITY 2: Check session requirement (fallback for lessons without sub-level requirement)
     if (lesson.requiredAfterSession && sessionNumber >= lesson.requiredAfterSession) {
       console.log(`    → ✅ REQUIRED! (session ${sessionNumber} >= ${lesson.requiredAfterSession})`)
       return lesson

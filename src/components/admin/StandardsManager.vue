@@ -19,7 +19,7 @@
           </option>
         </select>
       </div>
-      
+
       <div class="filter-group">
         <label>Category:</label>
         <select v-model="selectedCategory" @change="loadStandards" class="filter-select">
@@ -29,13 +29,13 @@
           </option>
         </select>
       </div>
-      
+
       <div class="filter-group">
         <label>Search:</label>
-        <input 
-          v-model="searchTerm" 
+        <input
+          v-model="searchTerm"
           @input="loadStandards"
-          type="text" 
+          type="text"
           placeholder="Search by name, code, or description..."
           class="search-input"
         >
@@ -58,7 +58,7 @@
           ➕ Create Custom Standard
         </button>
       </div>
-      
+
       <div v-else class="standards-grid">
         <div v-for="standard in customStandards" :key="standard.id" class="standard-card">
           <div class="standard-header">
@@ -71,43 +71,43 @@
               <button @click="deleteStandard(standard)" class="delete-button">🗑️</button>
             </div>
           </div>
-          
+
           <div class="standard-details">
             <div class="detail-row">
               <span class="label">Grade:</span>
               <span class="value">{{ getGradeLabel(standard.grade) }}</span>
             </div>
-            
+
             <div class="detail-row" v-if="standard.category">
               <span class="label">Category:</span>
               <span class="value">{{ standard.category }}</span>
             </div>
-            
+
             <div class="detail-row" v-if="standard.appCategory">
               <span class="label">App Category:</span>
               <span class="value app-category">{{ standard.appCategory }}</span>
             </div>
-            
+
             <div class="detail-row" v-if="standard.maxScore">
               <span class="label">Max Score:</span>
               <span class="value max-score">{{ standard.maxScore }} points</span>
             </div>
-            
+
             <div class="detail-row" v-if="standard.ccssAlignment">
               <span class="label">CCSS Alignment:</span>
               <span class="value ccss-code">{{ standard.ccssAlignment }}</span>
             </div>
-            
+
             <div class="detail-row" v-if="standard.aeriesAssignmentName">
               <span class="label">Aeries Assignment:</span>
               <span class="value aeries-name">{{ standard.aeriesAssignmentName }}</span>
             </div>
-            
+
             <div class="detail-row" v-if="standard.description">
               <span class="label">Description:</span>
               <span class="value description">{{ standard.description }}</span>
             </div>
-            
+
             <div class="detail-row">
               <span class="label">Usage:</span>
               <span class="value">{{ standard.usageCount || 0 }} assessments</span>
@@ -124,32 +124,32 @@
           <h2>{{ editingStandard ? '✏️ Edit Standard' : '➕ Create Custom Standard' }}</h2>
           <button @click="closeModal" class="close-button">✕</button>
         </div>
-        
+
         <form @submit.prevent="saveStandard" class="standard-form">
           <!-- Basic Information -->
           <div class="form-section">
             <h3>📋 Basic Information</h3>
-            
+
             <div class="form-row">
               <div class="form-group">
                 <label for="standardName">Standard Name *</label>
-                <input 
+                <input
                   id="standardName"
-                  v-model="standardForm.name" 
-                  type="text" 
-                  required 
+                  v-model="standardForm.name"
+                  type="text"
+                  required
                   class="form-input"
                   placeholder="e.g., Fraction Operations Mastery"
                 >
               </div>
-              
+
               <div class="form-group">
                 <label for="standardCode">Standard Code *</label>
-                <input 
+                <input
                   id="standardCode"
-                  v-model="standardForm.code" 
-                  type="text" 
-                  required 
+                  v-model="standardForm.code"
+                  type="text"
+                  required
                   class="form-input"
                   placeholder="e.g., FOM-7.1"
                 >
@@ -159,14 +159,14 @@
                 </small>
               </div>
             </div>
-            
+
             <div class="form-row">
               <div class="form-group">
                 <label for="standardGrade">Grade Level *</label>
-                <select 
+                <select
                   id="standardGrade"
-                  v-model="standardForm.grade" 
-                  required 
+                  v-model="standardForm.grade"
+                  required
                   class="form-select"
                   @change="loadCCSSForGrade"
                 >
@@ -176,12 +176,12 @@
                   </option>
                 </select>
               </div>
-              
+
               <div class="form-group">
                 <label for="standardCategory">Category</label>
-                <select 
+                <select
                   id="standardCategory"
-                  v-model="standardForm.category" 
+                  v-model="standardForm.category"
                   class="form-select"
                 >
                   <option value="">Select Category</option>
@@ -191,15 +191,15 @@
                 </select>
               </div>
             </div>
-            
+
             <!-- App Category Section -->
             <div class="form-row">
               <div class="form-group">
                 <label for="appCategory">App Category</label>
                 <div class="app-category-input">
-                  <select 
+                  <select
                     id="appCategory"
-                    v-model="standardForm.appCategory" 
+                    v-model="standardForm.appCategory"
                     class="form-select"
                   >
                     <option value="">Select App Category</option>
@@ -215,12 +215,12 @@
                   Custom categories specific to your application needs
                 </small>
               </div>
-              
+
               <div class="form-group">
                 <label for="maxScore">Max Score</label>
-                <input 
+                <input
                   id="maxScore"
-                  v-model.number="standardForm.maxScore" 
+                  v-model.number="standardForm.maxScore"
                   type="number"
                   min="1"
                   max="999"
@@ -233,31 +233,48 @@
                 </small>
               </div>
             </div>
-            
+
+            <!-- Allow Extra Credit -->
+            <div class="form-row" v-if="standardForm.maxScore && standardForm.maxScore > 0">
+              <div class="form-group">
+                <label class="checkbox-label">
+                  <input
+                    type="checkbox"
+                    v-model="standardForm.allowExtraCredit"
+                    class="form-checkbox"
+                  />
+                  <span>Allow Extra Credit</span>
+                </label>
+                <small class="form-help">
+                  Allow scores above maxScore (e.g., 7/5 = 140%). If disabled (default), both numerator and denominator are capped at maxScore (e.g., 7 correct with maxScore=5 shows as 5/5 = 100%)
+                </small>
+              </div>
+            </div>
+
             <!-- Scoring Method Section -->
             <div class="form-row">
               <div class="form-group scoring-method-group">
                 <label>Scoring Method</label>
                 <div class="radio-group">
                   <label class="radio-option">
-                    <input 
-                      type="radio" 
-                      v-model="standardForm.scoringMethod" 
+                    <input
+                      type="radio"
+                      v-model="standardForm.scoringMethod"
                       value="additive"
                       name="scoringMethod"
                     >
                     <span class="radio-label">
-                      <strong>Additive</strong> - All attempts count, max score caps denominator
+                      <strong>Additive</strong> - All attempts count, max score caps both numerator and denominator
                     </span>
                     <small class="radio-help">
-                      Current behavior: 5 correct out of 10 attempts with maxScore=5 shows 5/5
+                      Default behavior: 7 correct out of 10 attempts with maxScore=5 shows 5/5 (100%). Enable "Allow Extra Credit" to show 7/5 (140%)
                     </small>
                   </label>
-                  
+
                   <label class="radio-option">
-                    <input 
-                      type="radio" 
-                      v-model="standardForm.scoringMethod" 
+                    <input
+                      type="radio"
+                      v-model="standardForm.scoringMethod"
                       value="keepTop"
                       name="scoringMethod"
                     >
@@ -268,11 +285,11 @@
                       Takes highest scoring attempts up to maxScore limit
                     </small>
                   </label>
-                  
+
                   <label class="radio-option">
-                    <input 
-                      type="radio" 
-                      v-model="standardForm.scoringMethod" 
+                    <input
+                      type="radio"
+                      v-model="standardForm.scoringMethod"
                       value="average"
                       name="scoringMethod"
                     >
@@ -294,20 +311,20 @@
           <!-- CCSS Alignment -->
           <div class="form-section">
             <h3>🎯 Common Core Alignment (Optional)</h3>
-            
+
             <div class="form-group">
               <label for="ccssAlignment">CCSS Standard</label>
               <div class="ccss-search">
-                <input 
+                <input
                   v-model="ccssSearchTerm"
-                  type="text" 
+                  type="text"
                   placeholder="Search CCSS standards..."
                   class="form-input"
                   @input="searchCCSSStandards"
                 >
                 <div v-if="ccssSearchResults.length > 0" class="ccss-results">
-                  <div 
-                    v-for="ccss in ccssSearchResults" 
+                  <div
+                    v-for="ccss in ccssSearchResults"
                     :key="ccss.code"
                     @click="selectCCSS(ccss)"
                     class="ccss-option"
@@ -319,7 +336,7 @@
                   </div>
                 </div>
               </div>
-              
+
               <div v-if="standardForm.ccssAlignment" class="selected-ccss">
                 <strong>Selected CCSS:</strong> {{ standardForm.ccssAlignment }}
                 <button type="button" @click="clearCCSS" class="clear-button">✕</button>
@@ -330,13 +347,13 @@
           <!-- Aeries Integration -->
           <div class="form-section">
             <h3>📤 Aeries Integration (Optional)</h3>
-            
+
             <div class="form-group">
               <label for="aeriesAssignmentName">Aeries Assignment Name</label>
-              <input 
+              <input
                 id="aeriesAssignmentName"
-                v-model="standardForm.aeriesAssignmentName" 
-                type="text" 
+                v-model="standardForm.aeriesAssignmentName"
+                type="text"
                 class="form-input"
                 placeholder="e.g., ESA1 (for 7.q1.ESA1)"
               >
@@ -349,12 +366,12 @@
           <!-- Description -->
           <div class="form-section">
             <h3>📝 Description (Optional)</h3>
-            
+
             <div class="form-group">
               <label for="standardDescription">Description</label>
-              <textarea 
+              <textarea
                 id="standardDescription"
-                v-model="standardForm.description" 
+                v-model="standardForm.description"
                 class="form-textarea"
                 rows="3"
                 placeholder="Detailed description of what this standard covers..."
@@ -382,44 +399,44 @@
           <h2>➕ Add App Category</h2>
           <button @click="closeAddCategoryModal" class="close-button">✕</button>
         </div>
-        
+
         <form @submit.prevent="createAppCategory" class="category-form">
           <div class="form-group">
             <label for="categoryName">Category Name *</label>
-            <input 
+            <input
               id="categoryName"
-              v-model="categoryForm.name" 
-              type="text" 
-              required 
+              v-model="categoryForm.name"
+              type="text"
+              required
               class="form-input"
               placeholder="e.g., IEP Goals, District Standards"
               maxlength="50"
             >
           </div>
-          
+
           <div class="form-group">
             <label for="categoryDescription">Description</label>
-            <textarea 
+            <textarea
               id="categoryDescription"
-              v-model="categoryForm.description" 
+              v-model="categoryForm.description"
               class="form-textarea"
               rows="2"
               placeholder="Optional description of this category..."
               maxlength="200"
             ></textarea>
           </div>
-          
+
           <div class="form-group">
             <label for="categoryColor">Color (Optional)</label>
             <div class="color-input-group">
-              <input 
+              <input
                 id="categoryColor"
-                v-model="categoryForm.color" 
+                v-model="categoryForm.color"
                 type="color"
                 class="color-input"
               >
-              <input 
-                v-model="categoryForm.color" 
+              <input
+                v-model="categoryForm.color"
                 type="text"
                 class="color-text-input"
                 placeholder="#FF5733"
@@ -427,7 +444,7 @@
               >
             </div>
           </div>
-          
+
           <div class="form-actions">
             <button type="button" @click="closeAddCategoryModal" class="cancel-button">
               Cancel
@@ -444,7 +461,7 @@
     <div v-if="successMessage" class="success-message">
       {{ successMessage }}
     </div>
-    
+
     <div v-if="errorMessage" class="error-message">
       {{ errorMessage }}
     </div>
@@ -506,6 +523,7 @@ const standardForm = ref({
   appCategory: '',
   maxScore: undefined as number | undefined,
   scoringMethod: 'additive' as 'keepTop' | 'average' | 'additive',
+  allowExtraCredit: false,
   description: '',
   ccssAlignment: '',
   aeriesAssignmentName: '',
@@ -524,10 +542,10 @@ const categoryForm = ref({
 const loadStandards = async () => {
   try {
     loading.value = true;
-    
+
     if (searchTerm.value || selectedGrade.value || selectedCategory.value) {
       customStandards.value = await searchCustomStandards(searchTerm.value);
-      
+
       // Client-side filtering for grade and category
       if (selectedGrade.value) {
         customStandards.value = customStandards.value.filter(s => s.grade === selectedGrade.value);
@@ -538,7 +556,7 @@ const loadStandards = async () => {
     } else {
       customStandards.value = await getAllCustomStandards();
     }
-    
+
   } catch (error: any) {
     console.error('Error loading standards:', error);
     errorMessage.value = error.message || 'Failed to load standards';
@@ -559,16 +577,17 @@ const editStandard = (standard: CustomStandard) => {
     appCategory: standard.appCategory || '',
     maxScore: standard.maxScore,
     scoringMethod: standard.scoringMethod || 'additive',
+    allowExtraCredit: standard.allowExtraCredit || false,
     description: standard.description || '',
     ccssAlignment: standard.ccssAlignment || '',
     aeriesAssignmentName: standard.aeriesAssignmentName || '',
     createdBy: standard.createdBy,
     isActive: standard.isActive
   };
-  
+
   console.log('📝 Editing standard - description:', standard.description);
   console.log('📝 Form description set to:', standardForm.value.description);
-  
+
   // Load CCSS for this grade
   if (standard.grade) {
     loadCCSSForGrade();
@@ -579,7 +598,7 @@ const deleteStandard = async (standard: CustomStandard) => {
   if (!confirm(`Are you sure you want to delete "${standard.name}"? This action cannot be undone.`)) {
     return;
   }
-  
+
   try {
     await deleteCustomStandard(standard.id);
     successMessage.value = 'Standard deleted successfully!';
@@ -595,7 +614,7 @@ const deleteStandard = async (standard: CustomStandard) => {
 const saveStandard = async () => {
   try {
     saving.value = true;
-    
+
     // Validate form
     const errors = validateCustomStandard(standardForm.value);
     if (errors.length > 0) {
@@ -603,7 +622,7 @@ const saveStandard = async () => {
       setTimeout(() => { errorMessage.value = ''; }, 5000);
       return;
     }
-    
+
     // Check code availability
     if (!editingStandard.value) {
       const isAvailable = await isStandardCodeAvailable(standardForm.value.code);
@@ -620,7 +639,7 @@ const saveStandard = async () => {
         return;
       }
     }
-    
+
     if (editingStandard.value) {
       // Update existing standard
       await updateCustomStandard(editingStandard.value.id, {
@@ -631,12 +650,13 @@ const saveStandard = async () => {
         appCategory: standardForm.value.appCategory || undefined,
         maxScore: standardForm.value.maxScore,
         scoringMethod: standardForm.value.scoringMethod,
+        allowExtraCredit: standardForm.value.allowExtraCredit || false,
         description: standardForm.value.description || undefined,
         ccssAlignment: standardForm.value.ccssAlignment || undefined,
         aeriesAssignmentName: standardForm.value.aeriesAssignmentName || undefined,
         isActive: standardForm.value.isActive
       });
-      
+
       successMessage.value = 'Standard updated successfully!';
     } else {
       // Create new standard
@@ -648,20 +668,21 @@ const saveStandard = async () => {
         appCategory: standardForm.value.appCategory || undefined,
         maxScore: standardForm.value.maxScore,
         scoringMethod: standardForm.value.scoringMethod,
+        allowExtraCredit: standardForm.value.allowExtraCredit || false,
         description: standardForm.value.description || undefined,
         ccssAlignment: standardForm.value.ccssAlignment || undefined,
         aeriesAssignmentName: standardForm.value.aeriesAssignmentName || undefined,
         createdBy: authStore.currentUser?.uid || 'system',
         isActive: true
       });
-      
+
       successMessage.value = 'Standard created successfully!';
     }
-    
+
     setTimeout(() => { successMessage.value = ''; }, 3000);
     closeModal();
     await loadStandards();
-    
+
   } catch (error: any) {
     console.error('Error saving standard:', error);
     errorMessage.value = error.message || 'Failed to save standard';
@@ -682,6 +703,7 @@ const closeModal = () => {
     appCategory: '',
     maxScore: undefined,
     scoringMethod: 'additive',
+    allowExtraCredit: false,
     description: '',
     ccssAlignment: '',
     aeriesAssignmentName: '',
@@ -748,7 +770,7 @@ const loadAppCategories = async () => {
 const createAppCategory = async () => {
   try {
     savingCategory.value = true;
-    
+
     // Validate form
     const errors = validateAppCategory(categoryForm.value);
     if (errors.length > 0) {
@@ -756,7 +778,7 @@ const createAppCategory = async () => {
       setTimeout(() => { errorMessage.value = ''; }, 5000);
       return;
     }
-    
+
     // Check name availability
     const isAvailable = await isCategoryNameAvailable(categoryForm.value.name);
     if (!isAvailable) {
@@ -764,7 +786,7 @@ const createAppCategory = async () => {
       setTimeout(() => { errorMessage.value = ''; }, 5000);
       return;
     }
-    
+
     // Create category
     await createAppCategoryService({
       name: categoryForm.value.name,
@@ -773,20 +795,20 @@ const createAppCategory = async () => {
       createdBy: authStore.currentUser?.uid || '',
       isActive: true
     });
-    
+
     successMessage.value = 'App category created successfully!';
     setTimeout(() => { successMessage.value = ''; }, 3000);
-    
+
     // Reset form and reload categories
     categoryForm.value = {
       name: '',
       description: '',
       color: '#3B82F6'
     };
-    
+
     closeAddCategoryModal();
     await loadAppCategories();
-    
+
   } catch (error: any) {
     console.error('Error creating app category:', error);
     errorMessage.value = error.message || 'Failed to create app category';

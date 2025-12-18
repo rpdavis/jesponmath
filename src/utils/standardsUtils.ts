@@ -39,11 +39,11 @@ export interface QuestionAttempt {
  *    - Denominator is total number of attempts
  *    - Use case: "Overall performance across all attempts"
  *
- * 3. **additive** (default): Counts all attempts, no filtering
- *    - All correct answers count toward numerator
- *    - All attempts count toward denominator
- *    - maxScore is NOT used to filter attempts (unlike keepTop)
- *    - Use case: "Total correct out of total attempted"
+ * 3. **additive** (default): Counts all attempts, both capped at maxScore
+ *    - Numerator (correct) is capped at maxScore unless allowExtraCredit is true
+ *    - Denominator is capped at maxScore if set, otherwise uses total attempts
+ *    - Does NOT filter attempts (unlike keepTop) - all attempts count
+ *    - Use case: "Total correct out of total attempted, capped at max possible"
  *
  * @param questionAttempts - Array of question attempts with isCorrect and score
  * @param customStandard - Custom standard metadata (contains maxScore and scoringMethod)
@@ -92,11 +92,18 @@ export function calculateStandardScore(
     correct = Math.round((percentage / 100) * questionAttempts.length)
     total = questionAttempts.length
   } else {
-    // Additive (default): All attempts count, no filtering
+    // Additive (default): All attempts count, both numerator and denominator capped at maxScore
     // IMPORTANT: Unlike keepTop, this does NOT sort or slice attempts
-    // Every attempt counts - both in numerator (if correct) and denominator
-    correct = questionAttempts.filter((attempt) => attempt.isCorrect).length
-    total = questionAttempts.length
+    // By default, both correct and total are capped at maxScore (no extra credit)
+    const rawCorrect = questionAttempts.filter((attempt) => attempt.isCorrect).length
+    const allowExtraCredit = customStandard?.allowExtraCredit || false
+
+    // Cap numerator at maxScore unless extra credit is allowed
+    correct =
+      maxScore && maxScore > 0 && !allowExtraCredit ? Math.min(rawCorrect, maxScore) : rawCorrect
+
+    // Cap denominator at maxScore if set
+    total = maxScore && maxScore > 0 ? maxScore : questionAttempts.length
     percentage = total > 0 ? Math.round((correct / total) * 100) : 0
   }
 

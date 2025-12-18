@@ -2,57 +2,75 @@
 // Custom standards and Common Core State Standards (CCSS) integration
 
 export interface CustomStandard {
-  id: string; // Auto-generated document ID
-  name: string; // Custom name (e.g., "Fraction Operations Mastery")
-  code: string; // Short code (e.g., "FOM-7.1")
-  grade: string; // Grade level (K, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
-  description?: string; // Optional detailed description
-  ccssAlignment?: string; // Optional CCSS standard this aligns to
-  category?: 'Number & Operations' | 'Algebra' | 'Geometry' | 'Measurement' | 'Data Analysis' | 'Problem Solving' | 'Other';
-  appCategory?: string; // Custom app-specific category (user-defined)
-  maxScore?: number; // Maximum score/points for this standard (1-999)
-  scoringMethod?: 'keepTop' | 'average' | 'additive'; // How to calculate scores for this standard
-  
+  id: string // Auto-generated document ID
+  name: string // Custom name (e.g., "Fraction Operations Mastery")
+  code: string // Short code (e.g., "FOM-7.1")
+  grade: string // Grade level (K, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
+  description?: string // Optional detailed description
+  ccssAlignment?: string // Optional CCSS standard this aligns to
+  category?:
+    | 'Number & Operations'
+    | 'Algebra'
+    | 'Geometry'
+    | 'Measurement'
+    | 'Data Analysis'
+    | 'Problem Solving'
+    | 'Other'
+  appCategory?: string // Custom app-specific category (user-defined)
+  maxScore?: number // Maximum score/points for this standard (1-999)
+  scoringMethod?: 'keepTop' | 'average' | 'additive' // How to calculate scores for this standard
+  allowExtraCredit?: boolean // Allow scores above maxScore (default: false)
+
   // Aeries Integration
-  aeriesAssignmentName?: string; // Assignment name in Aeries (e.g., "ESA1" for "7.q1.ESA1")
-  
+  aeriesAssignmentName?: string // Assignment name in Aeries (e.g., "ESA1" for "7.q1.ESA1")
+
   // Metadata
-  createdBy: string; // Teacher/admin UID who created
-  isActive: boolean; // Whether this standard is available for use
-  createdAt: any; // Timestamp
-  updatedAt: any; // Timestamp
-  
+  createdBy: string // Teacher/admin UID who created
+  isActive: boolean // Whether this standard is available for use
+  createdAt: any // Timestamp
+  updatedAt: any // Timestamp
+
   // Usage tracking
-  usageCount?: number; // How many assessments use this standard
-  lastUsed?: any; // Timestamp of last use
+  usageCount?: number // How many assessments use this standard
+  lastUsed?: any // Timestamp of last use
 }
 
 export interface CCSSStandard {
-  code: string; // Official CCSS code (e.g., "7.NS.A.1")
-  grade: string; // Grade level
-  domain: string; // Math domain (e.g., "Number System")
-  cluster: string; // Cluster within domain
-  title: string; // Short title
-  description: string; // Full standard description
-  category: 'Number & Operations' | 'Algebra' | 'Geometry' | 'Measurement' | 'Data Analysis' | 'Statistics & Probability' | 'Reading' | 'Writing' | 'Language' | 'Speaking & Listening';
+  code: string // Official CCSS code (e.g., "7.NS.A.1")
+  grade: string // Grade level
+  domain: string // Math domain (e.g., "Number System")
+  cluster: string // Cluster within domain
+  title: string // Short title
+  description: string // Full standard description
+  category:
+    | 'Number & Operations'
+    | 'Algebra'
+    | 'Geometry'
+    | 'Measurement'
+    | 'Data Analysis'
+    | 'Statistics & Probability'
+    | 'Reading'
+    | 'Writing'
+    | 'Language'
+    | 'Speaking & Listening'
 }
 
 export interface StandardSelection {
-  type: 'custom' | 'ccss';
-  standardId: string; // Either custom standard ID or CCSS code
-  standard: CustomStandard | CCSSStandard;
+  type: 'custom' | 'ccss'
+  standardId: string // Either custom standard ID or CCSS code
+  standard: CustomStandard | CCSSStandard
 }
 
 export interface AppCategory {
-  id: string; // Auto-generated document ID
-  name: string; // Category name (e.g., "IEP Goals", "District Standards")
-  description?: string; // Optional description
-  color?: string; // Optional color code for UI
-  createdBy: string; // User who created this category
-  isActive: boolean; // Whether this category is available for use
-  createdAt: any; // Timestamp
-  updatedAt: any; // Timestamp
-  usageCount?: number; // How many standards use this category
+  id: string // Auto-generated document ID
+  name: string // Category name (e.g., "IEP Goals", "District Standards")
+  description?: string // Optional description
+  color?: string // Optional color code for UI
+  createdBy: string // User who created this category
+  isActive: boolean // Whether this category is available for use
+  createdAt: any // Timestamp
+  updatedAt: any // Timestamp
+  usageCount?: number // How many standards use this category
 }
 
 // Grade levels for dropdown
@@ -69,8 +87,8 @@ export const GRADE_LEVELS = [
   { value: '9', label: '9th Grade' },
   { value: '10', label: '10th Grade' },
   { value: '11', label: '11th Grade' },
-  { value: '12', label: '12th Grade' }
-] as const;
+  { value: '12', label: '12th Grade' },
+] as const
 
 // Standard categories
 export const STANDARD_CATEGORIES = [
@@ -81,5 +99,5 @@ export const STANDARD_CATEGORIES = [
   { value: 'Data Analysis', label: '📈 Data Analysis' },
   { value: 'Statistics & Probability', label: '🎲 Statistics & Probability' },
   { value: 'Problem Solving', label: '🧩 Problem Solving' },
-  { value: 'Other', label: '📚 Other' }
-] as const;
+  { value: 'Other', label: '📚 Other' },
+] as const
