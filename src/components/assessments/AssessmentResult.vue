@@ -4,7 +4,7 @@
       <div class="loading-spinner"></div>
       <p>Loading assessment result...</p>
     </div>
-    
+
     <div v-else-if="error" class="error">
       <h2>Error Loading Result</h2>
       <p>{{ error }}</p>
@@ -12,7 +12,7 @@
         ← Back to Assessments
       </button>
     </div>
-    
+
     <div v-else-if="result && assessment" class="result-content">
       <!-- Header -->
       <div class="result-header">
@@ -21,7 +21,7 @@
         </button>
         <h1>Assessment Result</h1>
       </div>
-      
+
       <!-- Assessment Info -->
       <div class="assessment-info">
         <h2>{{ assessment.title }}</h2>
@@ -33,14 +33,14 @@
           <span class="meta-item">📅 {{ formatDate(result.completedAt) }}</span>
         </div>
       </div>
-      
+
       <!-- Score Summary -->
       <div class="score-summary">
         <div class="score-card" :class="getScoreClass(result.percentage)">
           <div class="score-percentage">{{ result.percentage }}%</div>
           <div class="score-details">{{ result.score }} / {{ result.totalPoints }} points</div>
         </div>
-        
+
         <div class="score-stats">
           <div class="stat">
             <span class="stat-label">Questions Answered</span>
@@ -56,13 +56,13 @@
           </div>
         </div>
       </div>
-      
+
       <!-- Question Breakdown -->
       <div class="question-breakdown">
         <h3>Question Breakdown</h3>
         <div class="questions-list">
-          <div 
-            v-for="(response, index) in result.responses" 
+          <div
+            v-for="(response, index) in result.responses"
             :key="response.questionId"
             class="question-item"
             :class="{ 'correct': response.isCorrect, 'incorrect': !response.isCorrect }"
@@ -73,7 +73,7 @@
                 {{ response.isCorrect ? '✅ Correct' : '❌ Incorrect' }}
                 <span v-if="response.manuallyAdjusted" class="adjustment-badge">Manually Adjusted</span>
               </span>
-              
+
               <!-- Points Display/Edit -->
               <div class="points-section">
                 <!-- Teacher/Admin View - With Edit Capability -->
@@ -82,8 +82,8 @@
                     <span class="question-points" :class="{ adjusted: response.manuallyAdjusted }">
                       {{ response.pointsEarned }} / {{ getQuestionPoints(response.questionId) }} pts
                     </span>
-                    
-                    <button 
+
+                    <button
                       @click="startEditingPoints(response.questionId, response.pointsEarned || 0)"
                       class="edit-points-btn"
                       title="Edit points for partial credit or corrections"
@@ -91,10 +91,10 @@
                       ✏️ Edit
                     </button>
                   </div>
-                  
+
                   <!-- Editing mode -->
                   <div v-else class="points-editing">
-                    <input 
+                    <input
                       v-model.number="editingValues[response.questionId]"
                       type="number"
                       :min="0"
@@ -103,9 +103,9 @@
                       class="points-input"
                     />
                     <span class="points-max">/ {{ getQuestionPoints(response.questionId) }} pts</span>
-                    
+
                     <div class="edit-actions">
-                      <button 
+                      <button
                         @click="savePointsEdit(response.questionId)"
                         :disabled="savingPoints[response.questionId]"
                         class="save-btn"
@@ -113,7 +113,7 @@
                       >
                         {{ savingPoints[response.questionId] ? '💾 Saving...' : '✅ Save' }}
                       </button>
-                      <button 
+                      <button
                         @click="cancelEditingPoints(response.questionId)"
                         class="cancel-btn"
                         title="Cancel"
@@ -123,7 +123,7 @@
                     </div>
                   </div>
                 </div>
-                
+
                 <!-- Student View - Read Only -->
                 <div v-else class="student-points-view">
                   <span class="question-points" :class="{ adjusted: response.manuallyAdjusted }">
@@ -135,26 +135,26 @@
                 </div>
               </div>
             </div>
-            
+
             <div class="question-content">
               <p class="question-text" v-html="renderLatexInText(getQuestionText(response.questionId))"></p>
               <div class="answer-section">
                 <div class="student-answer">
                   <strong>Your Answer:</strong> {{ getDisplayAnswer(response.questionId, response.studentAnswer) }}
                 </div>
-                
+
                 <!-- Enhanced correct answers display -->
                 <div class="correct-answers-section">
                   <div class="primary-answer">
                     <strong>Correct Answer:</strong> {{ getDisplayCorrectAnswer(response.questionId) }}
                   </div>
-                  
+
                   <!-- Show alternative answers if they exist -->
                   <div v-if="getAlternativeAnswers(response.questionId).length > 0" class="alternative-answers">
                     <strong>Also Acceptable:</strong>
                     <div class="alternatives-list">
-                      <span 
-                        v-for="alt in getAlternativeAnswers(response.questionId)" 
+                      <span
+                        v-for="alt in getAlternativeAnswers(response.questionId)"
                         :key="alt"
                         class="alternative-answer"
                       >
@@ -162,13 +162,13 @@
                       </span>
                     </div>
                   </div>
-                  
+
                   <!-- Show equivalent fractions if it's a fraction question -->
                   <div v-if="isEquivalentFractionsEnabled(response.questionId) && isFractionAnswer(response.questionId)" class="equivalent-fractions">
                     <strong>Equivalent Fractions:</strong>
                     <div class="equivalents-list">
-                      <span 
-                        v-for="equiv in getEquivalentFractions(response.questionId)" 
+                      <span
+                        v-for="equiv in getEquivalentFractions(response.questionId)"
                         :key="equiv"
                         class="equivalent-fraction"
                       >
@@ -182,20 +182,20 @@
           </div>
         </div>
       </div>
-      
+
       <!-- Uploaded Files Section -->
       <div v-if="result.uploadedFiles && result.uploadedFiles.length > 0" class="uploaded-files-section">
         <h3>Uploaded Files</h3>
         <div class="files-grid">
-          <div 
-            v-for="file in result.uploadedFiles" 
+          <div
+            v-for="file in result.uploadedFiles"
             :key="file.id"
             class="file-item"
           >
             <div class="file-preview">
-              <img 
-                v-if="file.fileType.startsWith('image/')" 
-                :src="file.uploadUrl" 
+              <img
+                v-if="file.fileType.startsWith('image/')"
+                :src="file.uploadUrl"
                 :alt="file.originalName"
                 class="file-thumbnail"
                 @click="openFile(file.uploadUrl)"
@@ -212,10 +212,10 @@
                   👁️ View
                 </button>
               </div>
-              
+
               <!-- Teacher-only photo replacement (separate section) -->
               <div v-if="authStore.userRole === 'teacher' || authStore.userRole === 'admin'" class="teacher-only-actions">
-                <button 
+                <button
                   v-if="file.fileType.startsWith('image/')"
                   @click="startPhotoReplacement(file)"
                   class="replace-photo-btn"
@@ -228,18 +228,18 @@
           </div>
         </div>
       </div>
-      
+
       <!-- Feedback Section -->
       <div v-if="result.feedback" class="feedback-section">
         <h3>Teacher Feedback</h3>
         <p class="feedback-text">{{ result.feedback }}</p>
       </div>
-      
+
       <!-- Actions -->
       <div class="result-actions">
-        <button 
-          v-if="canRetake" 
-          @click="retakeAssessment" 
+        <button
+          v-if="canRetake"
+          @click="retakeAssessment"
           class="retake-button"
         >
           🔄 Retake Assessment
@@ -257,18 +257,18 @@
           <h3>📷 Replace Student Photo</h3>
           <button @click="closePhotoReplacement" class="close-btn">×</button>
         </div>
-        
+
         <div class="modal-body">
           <div class="current-photo-section">
             <h4>Current Photo:</h4>
-            <img 
+            <img
               v-if="replacingFile"
-              :src="replacingFile.uploadUrl" 
+              :src="replacingFile.uploadUrl"
               :alt="replacingFile.originalName"
               class="current-photo-preview"
             >
           </div>
-          
+
           <div class="replacement-options">
             <h4>Replace with:</h4>
             <div class="replacement-buttons">
@@ -279,9 +279,9 @@
                 📁 Upload File
               </button>
             </div>
-            
+
             <!-- Hidden file input -->
-            <input 
+            <input
               ref="fileInput"
               type="file"
               accept="image/*"
@@ -289,7 +289,7 @@
               style="display: none;"
             >
           </div>
-          
+
           <!-- New photo preview -->
           <div v-if="newPhotoPreview" class="new-photo-section">
             <h4>New Photo:</h4>
@@ -369,28 +369,28 @@ const loadResultData = async () => {
   try {
     const assessmentId = route.params.assessmentId as string;
     const resultId = route.params.resultId as string;
-    
+
     if (!assessmentId || !resultId) {
       throw new Error('Missing assessment ID or result ID');
     }
-    
+
     // Load assessment result
     const resultDoc = await getDoc(doc(db, 'assessmentResults', resultId));
     if (!resultDoc.exists()) {
       throw new Error('Assessment result not found');
     }
-    
+
     result.value = {
       id: resultDoc.id,
       ...resultDoc.data()
     } as AssessmentResult;
-    
+
     // Load assessment details
     assessment.value = await getAssessment(assessmentId);
-    
+
     console.log('✅ Loaded assessment result:', result.value);
     console.log('✅ Loaded assessment:', assessment.value);
-    
+
   } catch (err: any) {
     console.error('❌ Error loading result:', err);
     error.value = err.message || 'Failed to load assessment result';
@@ -411,9 +411,9 @@ const getCorrectAnswer = (questionId: string): string => {
 
 const getDisplayAnswer = (questionId: string, studentAnswer: any): string => {
   const question = assessment.value?.questions?.find(q => q.id === questionId);
-  
+
   if (!question) return 'N/A';
-  
+
   // Handle different question types for display
   if (question.questionType === 'multiple-choice') {
     const answerIndex = parseInt(studentAnswer as string);
@@ -449,16 +449,24 @@ const getDisplayAnswer = (questionId: string, studentAnswer: any): string => {
       return (studentAnswer as string[]).join(', ');
     }
   }
-  
-  // For other question types, return as-is
-  return studentAnswer?.toString() || 'No answer';
+
+  // For other question types with prefix/suffix support
+  const answerText = studentAnswer?.toString() || 'No answer';
+  const prefix = question.answerPrefix || '';
+  const suffix = question.answerSuffix || '';
+
+  if (prefix || suffix) {
+    return `${prefix}${answerText}${suffix}`;
+  }
+
+  return answerText;
 };
 
 const getDisplayCorrectAnswer = (questionId: string): string => {
   const question = assessment.value?.questions?.find(q => q.id === questionId);
-  
+
   if (!question) return 'N/A';
-  
+
   // Handle different question types for display
   if (question.questionType === 'multiple-choice') {
     const answerIndex = parseInt(question.correctAnswer as string);
@@ -494,9 +502,17 @@ const getDisplayCorrectAnswer = (questionId: string): string => {
       return question.correctOrder.join(', ');
     }
   }
-  
-  // For other question types, return the correct answer as-is
-  return question.correctAnswer as string || 'N/A';
+
+  // For other question types, show prefix/suffix with correct answer
+  const answerText = question.correctAnswer as string || 'N/A';
+  const prefix = question.answerPrefix || '';
+  const suffix = question.answerSuffix || '';
+
+  if (prefix || suffix) {
+    return `${prefix}${answerText}${suffix}`;
+  }
+
+  return answerText;
 };
 
 const getQuestionPoints = (questionId: string): number => {
@@ -527,36 +543,36 @@ const isFractionAnswer = (questionId: string): boolean => {
 const getEquivalentFractions = (questionId: string): string[] => {
   const question = assessment.value?.questions?.find(q => q.id === questionId);
   const correctAnswer = question?.correctAnswer as string;
-  
+
   if (!correctAnswer || !correctAnswer.includes('/')) return [];
-  
+
   try {
     // Parse the fraction
     const [numStr, denStr] = correctAnswer.split('/');
     const num = parseInt(numStr.trim());
     const den = parseInt(denStr.trim());
-    
+
     if (isNaN(num) || isNaN(den) || den === 0) return [];
-    
+
     // Generate equivalent fractions
     const equivalents: string[] = [];
-    
+
     // Generate 4 equivalent fractions
     for (let i = 2; i <= 5; i++) {
       equivalents.push(`${num * i}/${den * i}`);
     }
-    
+
     // Also add simplified version if current isn't simplified
     const gcd = (a: number, b: number): number => b === 0 ? a : gcd(b, a % b);
     const commonDivisor = gcd(Math.abs(num), Math.abs(den));
-    
+
     if (commonDivisor > 1) {
       const simplified = `${num / commonDivisor}/${den / commonDivisor}`;
       if (simplified !== correctAnswer) {
         equivalents.unshift(simplified); // Add simplified version first
       }
     }
-    
+
     return equivalents;
   } catch (error) {
     console.error('Error generating equivalent fractions:', error);
@@ -567,7 +583,7 @@ const getEquivalentFractions = (questionId: string): string[] => {
 // Convert LaTeX markup to plain text for display
 const convertLatexToPlainText = (text: string): string => {
   if (!text) return '';
-  
+
   // Convert common LaTeX fractions to plain text
   let plainText = text
     .replace(/\$\\frac\{([^}]+)\}\{([^}]+)\}\$/g, '$1/$2') // \frac{a}{b} -> a/b
@@ -585,7 +601,7 @@ const convertLatexToPlainText = (text: string): string => {
     .replace(/\\\\/g, '') // Remove line breaks
     .replace(/[{}]/g, '') // Remove remaining braces
     .trim();
-  
+
   return plainText;
 };
 
@@ -598,11 +614,11 @@ const getScoreClass = (percentage: number): string => {
 
 const formatDate = (timestamp: any): string => {
   if (!timestamp) return 'N/A';
-  
+
   if (timestamp?.seconds) {
     return new Date(timestamp.seconds * 1000).toLocaleDateString();
   }
-  
+
   try {
     return new Date(timestamp).toLocaleDateString();
   } catch (error) {
@@ -640,19 +656,19 @@ const cancelEditingPoints = (questionId: string) => {
 
 const savePointsEdit = async (questionId: string) => {
   if (!result.value || !assessment.value) return;
-  
+
   const newPoints = editingValues.value[questionId];
   const maxPoints = getQuestionPoints(questionId);
-  
+
   // Validate points
   if (newPoints < 0 || newPoints > maxPoints) {
     alert(`Points must be between 0 and ${maxPoints}`);
     return;
   }
-  
+
   try {
     savingPoints.value[questionId] = true;
-    
+
     // Update the response in the result
     const responseIndex = result.value.responses?.findIndex(r => r.questionId === questionId);
     if (responseIndex !== undefined && responseIndex >= 0 && result.value.responses) {
@@ -662,7 +678,7 @@ const savePointsEdit = async (questionId: string) => {
       result.value.responses[responseIndex].adjustedBy = authStore.currentUser?.email || 'Unknown';
       result.value.responses[responseIndex].adjustedAt = new Date();
       result.value.responses[responseIndex].adjustmentReason = newPoints > oldPoints ? 'Partial credit given' : 'Points deducted';
-      
+
       // Update isCorrect based on new points - find the question to get max points
       const question = assessment.value?.questions?.find(q => q.id === questionId);
       if (question) {
@@ -670,14 +686,14 @@ const savePointsEdit = async (questionId: string) => {
         result.value.responses[responseIndex].isCorrect = newPoints >= question.points;
         console.log(`🔍 Updated isCorrect for question ${questionId}: ${newPoints}/${question.points} = ${result.value.responses[responseIndex].isCorrect}`);
       }
-      
+
       // Recalculate total score
       const totalEarned = result.value.responses.reduce((sum, r) => sum + (r.pointsEarned || 0), 0);
       const totalPossible = result.value.totalPoints || 0;
-      
+
       result.value.score = totalEarned;
       result.value.percentage = totalPossible > 0 ? Math.round((totalEarned / totalPossible) * 100) : 0;
-      
+
       // Update in Firestore
       const resultRef = doc(db, 'assessmentResults', result.value.id);
       await updateDoc(resultRef, {
@@ -687,14 +703,14 @@ const savePointsEdit = async (questionId: string) => {
         lastModified: new Date(),
         modifiedBy: authStore.currentUser?.email || 'Unknown'
       });
-      
+
       console.log(`✅ Updated points for question ${questionId}: ${oldPoints} → ${newPoints}`);
     }
-    
+
     // Exit editing mode
     editingPoints.value[questionId] = false;
     delete editingValues.value[questionId];
-    
+
   } catch (err) {
     console.error('Error updating points:', err);
     alert('Failed to update points. Please try again.');
@@ -711,7 +727,7 @@ const startPhotoReplacement = (file: any) => {
     alert('You do not have permission to replace photos.');
     return;
   }
-  
+
   replacingFile.value = file;
   showPhotoReplacement.value = true;
 };
@@ -739,17 +755,17 @@ const openFileUpload = () => {
 const handleFileSelection = (event: Event) => {
   const target = event.target as HTMLInputElement;
   const file = target.files?.[0];
-  
+
   if (file && file.type.startsWith('image/')) {
     newPhotoFile.value = file;
-    
+
     // Create preview URL
     const reader = new FileReader();
     reader.onload = (e) => {
       newPhotoPreview.value = e.target?.result as string;
     };
     reader.readAsDataURL(file);
-    
+
     showCameraCapture.value = false;
   } else {
     alert('Please select a valid image file.');
@@ -758,9 +774,9 @@ const handleFileSelection = (event: Event) => {
 
 const handlePhotoCaptured = (file: File) => {
   console.log('📷 Photo captured for replacement:', file.name, file.size);
-  
+
   newPhotoFile.value = file;
-  
+
   // Create preview URL from the file
   const reader = new FileReader();
   reader.onload = (e) => {
@@ -768,7 +784,7 @@ const handlePhotoCaptured = (file: File) => {
     console.log('📷 Photo preview created for replacement');
   };
   reader.readAsDataURL(file);
-  
+
   showCameraCapture.value = false;
   console.log('📷 Photo file ready for replacement:', file.name, file.size);
 };
@@ -783,33 +799,33 @@ const confirmPhotoReplacement = async () => {
     console.error('❌ Missing required data for photo replacement');
     return;
   }
-  
+
   try {
     replacingPhoto.value = true;
     console.log('🔄 Starting photo replacement process...');
     console.log('📋 Replacing file:', replacingFile.value);
     console.log('📁 New file:', newPhotoFile.value.name, newPhotoFile.value.size);
-    
+
     // Upload new photo to Firebase Storage
     const timestamp = Date.now();
     const fileName = `teacher_replacement_${timestamp}.jpg`;
     const studentId = result.value.studentUid;
     const storagePath = `assessment-uploads/${studentId}/${result.value.assessmentId}/${fileName}`;
     const photoRef = storageRef(storage, storagePath);
-    
+
     console.log('📤 Uploading to storage path:', storagePath);
     const uploadResult = await uploadBytes(photoRef, newPhotoFile.value);
     const downloadURL = await getDownloadURL(uploadResult.ref);
     console.log('✅ Upload successful. Download URL:', downloadURL);
-    
+
     // Update the file record in the assessment result
     if (result.value.uploadedFiles) {
       const fileIndex = result.value.uploadedFiles.findIndex(f => f.id === replacingFile.value.id);
       console.log('🔍 Found file at index:', fileIndex);
-      
+
       if (fileIndex >= 0) {
         console.log('📝 Updating file record...');
-        
+
         // Update the file record (keep the same structure as original)
         const updatedFile = {
           ...result.value.uploadedFiles[fileIndex],
@@ -818,10 +834,10 @@ const confirmPhotoReplacement = async () => {
           fileSize: newPhotoFile.value.size,
           fileType: newPhotoFile.value.type
         };
-        
+
         result.value.uploadedFiles[fileIndex] = updatedFile;
         console.log('📋 Updated file record:', updatedFile);
-        
+
         // Update in Firestore
         const resultRef = doc(db, 'assessmentResults', result.value.id);
         const updateData = {
@@ -829,11 +845,11 @@ const confirmPhotoReplacement = async () => {
           lastModified: new Date(),
           modifiedBy: authStore.currentUser?.email || 'Teacher'
         };
-        
+
         console.log('💾 Saving to Firestore...');
         await updateDoc(resultRef, updateData);
         console.log('✅ Firestore update successful');
-        
+
         // Try to delete the old file from storage (don't fail if this doesn't work)
         try {
           if (replacingFile.value.uploadUrl && replacingFile.value.uploadUrl.includes('firebase')) {
@@ -844,7 +860,7 @@ const confirmPhotoReplacement = async () => {
         } catch (deleteError) {
           console.warn('⚠️ Could not delete old photo (this is okay):', deleteError);
         }
-        
+
         console.log('✅ Photo replacement completed successfully');
         alert('Photo replaced successfully!');
         closePhotoReplacement();
@@ -1473,22 +1489,22 @@ onMounted(() => {
   .assessment-result {
     padding: 15px;
   }
-  
+
   .score-summary {
     grid-template-columns: 1fr;
     gap: 20px;
   }
-  
+
   .score-stats {
     grid-template-columns: 1fr;
   }
-  
+
   .question-header {
     flex-direction: column;
     gap: 10px;
     align-items: flex-start;
   }
-  
+
   .result-actions {
     flex-direction: column;
   }

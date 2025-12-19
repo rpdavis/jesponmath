@@ -1,0 +1,732 @@
+<template>
+  <div class="assessment-editor">
+    <!-- Compact Header -->
+    <div class="editor-header-compact">
+      <button @click="goBack" class="back-button-compact" type="button">
+        ← Back
+      </button>
+      <h1>{{ isEditing ? '✏️ Edit Assessment' : '📝 Create Assessment' }}</h1>
+    </div>
+
+    <!-- 2-Column Layout -->
+    <div class="editor-layout">
+      <!-- Main Content Area -->
+      <main class="editor-main">
+        <form @submit.prevent="saveAssessment" class="assessment-form-compact">
+
+          <!-- Basic Information (Always visible, compact) -->
+          <div class="form-section primary-section">
+            <AssessmentBasicInfoCompact
+              :assessment="assessment"
+              :selectedStandard="selectedStandard"
+              :selectedQuarter="selectedQuarter"
+              :noTimeLimit="noTimeLimit"
+              :assignDateInput="assignDateInput"
+              :dueDateInput="dueDateInput"
+              @update:standard="updateAssessmentStandard"
+              @category-change="onCategoryChange"
+              @toggle-time-limit="toggleTimeLimit"
+              @update:assignDate="updateAssignDate"
+              @update:dueDate="updateDueDate"
+              @update:selectedQuarter="selectedQuarter = $event"
+            />
+          </div>
+
+          <!-- Goal Connection (for PA only) -->
+          <CollapsibleSection
+            v-if="assessment.category === 'PA'"
+            title="Goal Connection"
+            icon="🎯"
+            :defaultExpanded="true"
+          >
+            <GoalConnection
+              :assessment="assessment"
+              :availableGoals="availableGoals"
+              @update:goalId="assessment.goalId = $event"
+            />
+          </CollapsibleSection>
+
+          <!-- Student Assignment -->
+          <div class="form-section students-section">
+            <AssessmentStudentAssignment
+              :assessment="assessment"
+              :availableStudents="availableStudents"
+              :loadingStudents="loadingStudents"
+              :assignmentMode="assignmentMode"
+              :selectedStudents="selectedStudents"
+              :selectedClasses="selectedClasses"
+              :selectedQuarter="selectedQuarter"
+              :studentSearchQuery="studentSearchQuery"
+              @update:assignmentMode="assignmentMode = $event"
+              @update:selectedStudents="selectedStudents = $event"
+              @update:selectedClasses="selectedClasses = $event"
+              @update:selectedQuarter="selectedQuarter = $event"
+              @update:studentSearchQuery="studentSearchQuery = $event"
+            />
+          </div>
+
+          <!-- Questions Section (Primary focus) -->
+          <div class="form-section questions-section">
+            <QuestionsList
+              :questions="assessment.questions"
+              :gradeLevel="assessment.gradeLevel"
+              :expandedQuestionIds="expandedQuestionIds"
+              @add-question="addQuestion"
+              @move-up="(index) => moveQuestionUp(assessment.questions[index].id)"
+              @move-down="(index) => moveQuestionDown(assessment.questions[index].id)"
+              @delete="(index) => deleteQuestion(assessment.questions[index].id)"
+              @duplicate="(index) => duplicateQuestion(assessment.questions[index].id)"
+              @toggle-expand="toggleQuestionExpanded"
+              @expand-all="expandAllQuestions"
+              @collapse-all="collapseAllQuestions"
+            />
+          </div>
+
+          <!-- Advanced Settings (Collapsed by default) -->
+          <CollapsibleSection
+            title="File Upload Settings"
+            icon="📎"
+            :subtitle="getFileSettingsSummary()"
+            :defaultExpanded="false"
+          >
+            <AssessmentFileSettings
+              :assessment="assessment"
+              @file-upload-toggle="onFileUploadToggle"
+            />
+          </CollapsibleSection>
+
+          <CollapsibleSection
+            title="Retake Settings"
+            icon="🔄"
+            :subtitle="getRetakeSettingsSummary()"
+            :defaultExpanded="false"
+          >
+            <AssessmentRetakeSettings
+              :assessment="assessment"
+            />
+          </CollapsibleSection>
+
+          <!-- Success/Error Messages -->
+          <Transition name="fade">
+            <div v-if="success" class="success-message">
+              ✅ {{ success }}
+            </div>
+          </Transition>
+          <Transition name="fade">
+            <div v-if="error" class="error-message">
+              ❌ {{ error }}
+            </div>
+          </Transition>
+        </form>
+      </main>
+
+      <!-- Sticky Sidebar -->
+      <EditorSidebar
+        :assessment="assessment"
+        :questionCount="questionCount"
+        :totalPoints="totalPoints"
+        :studentsCount="getSelectedStudentsCount()"
+        :saving="saving"
+        :isValid="isValid"
+        @save="saveAssessment"
+        @cancel="goBack"
+      />
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/authStore'
+import { usePermissions } from '@/composables/usePermissions'
+import { useAssessmentForm } from '@/composables/assessment/useAssessmentForm'
+import { useQuestionManagement } from '@/composables/assessment/useQuestionManagement'
+import { useStudentAssignment } from '@/composables/assessment/useStudentAssignment'
+import {
+  getAssessment,
+  createAssessment,
+  updateAssessment,
+  getAllGoals,
+  regradeAssessmentResults,
+} from '@/firebase/iepServices'
+import {
+  assignAssessmentToStudent,
+  unassignAssessmentFromStudent,
+  getAssessmentAssignments,
+} from '@/firebase/assignmentServices'
+
+// Alias for clarity
+const getCurrentlyAssignedStudents = getAssessmentAssignments
+import { serverTimestamp } from 'firebase/firestore'
+
+// Component imports
+import AssessmentBasicInfoCompact from './editor/AssessmentBasicInfoCompact.vue'
+import AssessmentFileSettings from './editor/AssessmentFileSettings.vue'
+import AssessmentRetakeSettings from './editor/AssessmentRetakeSettings.vue'
+import AssessmentStudentAssignment from './editor/AssessmentStudentAssignment.vue'
+import QuestionsList from './editor/QuestionsList.vue'
+import GoalConnection from './editor/GoalConnection.vue'
+import EditorSidebar from './editor/EditorSidebar.vue'
+import CollapsibleSection from './editor/CollapsibleSection.vue'
+
+import type { Goal, Assessment } from '@/types/iep'
+
+const route = useRoute()
+const router = useRouter()
+const authStore = useAuthStore()
+const permissions = usePermissions()
+
+// Form state using composables
+const {
+  assessment,
+  noTimeLimit,
+  selectedStandard,
+  assignDateInput,
+  dueDateInput,
+  updateTotalPoints,
+  toggleTimeLimit,
+  updateAssessmentStandard,
+  updateAssignDate,
+  updateDueDate,
+} = useAssessmentForm()
+
+// Question management - create a proper ref for the questions array
+const questionsRef = ref(assessment.value.questions)
+
+// Sync questionsRef with assessment.value.questions
+watch(questionsRef, (newQuestions) => {
+  assessment.value.questions = newQuestions
+}, { deep: true })
+
+const {
+  editingQuestionId,
+  expandedQuestionIds,
+  addQuestion,
+  duplicateQuestion,
+  deleteQuestion,
+  moveQuestionUp,
+  moveQuestionDown,
+  toggleQuestionExpanded,
+  expandAllQuestions,
+  collapseAllQuestions,
+} = useQuestionManagement(questionsRef)
+
+// Student assignment management
+const {
+  selectedStudents,
+  selectedQuarter,
+  assignmentMode,
+  selectedClasses,
+  studentSearchQuery,
+  loadingStudents,
+  availableStudents,
+  loadStudents,
+  getSelectedStudentsCount,
+} = useStudentAssignment()
+
+// UI state
+const saving = ref(false)
+const success = ref('')
+const error = ref('')
+const availableGoals = ref<Goal[]>([])
+
+// Computed
+const isEditing = computed(() => !!route.params.id)
+const assessmentId = computed(() => route.params.id as string)
+
+const questionCount = computed(() => questionsRef.value.length)
+const totalPoints = computed(() => {
+  return questionsRef.value.reduce((sum, q) => sum + (q.points || 0), 0)
+})
+
+const isValid = computed(() => {
+  return Boolean(
+    assessment.value.title &&
+    assessment.value.description &&
+    assessment.value.gradeLevel &&
+    assessment.value.category &&
+    questionCount.value > 0
+  )
+})
+
+// Helper function to detect current academic period
+const getAutoDetectedAcademicPeriod = (): string => {
+  const now = new Date()
+  const month = now.getMonth() + 1 // 1-12
+
+  if (month >= 8 && month <= 10) return 'q1' // Aug-Oct
+  if (month >= 11 || month === 1) return 'q2' // Nov-Jan
+  if (month >= 2 && month <= 4) return 'q3' // Feb-Apr
+  if (month >= 5 && month <= 7) return 'q4' // May-Jul
+
+  return 'q1' // Default
+}
+
+// Methods
+const goBack = () => {
+  router.push('/assessments');
+};
+
+const onCategoryChange = () => {
+  if (assessment.value.category === 'PA') {
+    loadGoals();
+  }
+};
+
+const onFileUploadToggle = () => {
+  if (!assessment.value.allowFileUpload) {
+    assessment.value.requireFileUpload = false;
+    assessment.value.requireMultiplePages = false;
+  }
+};
+
+// Helper methods for sidebar summaries
+const getFileSettingsSummary = () => {
+  if (!assessment.value.allowFileUpload) return 'Disabled'
+  if (assessment.value.requireMultiplePages) {
+    return `${assessment.value.requiredPageCount} pages required`
+  }
+  return assessment.value.requireFileUpload ? 'Required' : 'Optional'
+}
+
+const getRetakeSettingsSummary = () => {
+  if (!assessment.value.allowRetakes) return 'No retakes'
+  const max = assessment.value.maxRetakes === 0 ? 'Unlimited' : assessment.value.maxRetakes
+  return `${max} retake(s)`
+}
+
+const loadGoals = async () => {
+  try {
+    availableGoals.value = await getAllGoals()
+  } catch (err) {
+    console.error('Error loading goals:', err)
+    availableGoals.value = []
+  }
+}
+
+const loadAssessment = async () => {
+  if (!isEditing.value) return;
+
+  try {
+    const loadedAssessment = await getAssessment(assessmentId.value);
+
+    if (!loadedAssessment) {
+      throw new Error('Assessment not found');
+    }
+
+    // Populate form
+    Object.assign(assessment.value, loadedAssessment);
+
+    // Sync questions ref with loaded data
+    questionsRef.value = loadedAssessment.questions;
+
+    // Set time limit state
+    noTimeLimit.value = !loadedAssessment.timeLimit;
+
+    // Set selected standard
+    if (loadedAssessment.standard) {
+      selectedStandard.value = loadedAssessment.standard;
+    }
+
+    // Load assigned students if editing
+    // This will be handled by AssessmentStudentAssignment component
+
+    console.log('✅ Loaded assessment for editing:', loadedAssessment.title);
+  } catch (err: any) {
+    console.error('❌ Error loading assessment:', err);
+    error.value = 'Failed to load assessment: ' + err.message;
+  }
+};
+
+const saveAssessment = async () => {
+  saving.value = true
+  success.value = ''
+  error.value = ''
+
+  try {
+    // Validation
+    if (!assessment.value.title || !assessment.value.description) {
+      throw new Error('Please fill in all required fields')
+    }
+
+    if (assessment.value.questions.length === 0) {
+      throw new Error('Please add at least one question')
+    }
+
+    // Update total points
+    updateTotalPoints()
+
+    // Determine students to assign based on assignment mode
+    let studentsToAssign: string[] = []
+    if (assignmentMode.value === 'template') {
+      studentsToAssign = []
+    } else if (assignmentMode.value === 'all') {
+      studentsToAssign = availableStudents.value.map((s) => s.uid)
+    } else {
+      studentsToAssign = selectedStudents.value
+    }
+
+    // Prepare assessment data with academic period
+    const assessmentData = {
+      ...assessment.value,
+      createdBy: authStore.currentUser?.uid || 'system',
+      updatedAt: serverTimestamp(),
+      // Set academic period on the assessment
+      academicPeriod:
+        selectedQuarter.value === 'auto'
+          ? getAutoDetectedAcademicPeriod()
+          : selectedQuarter.value === 'all'
+            ? 'all'
+            : selectedQuarter.value,
+    }
+
+    // Remove any student-specific fields from template
+    delete (assessmentData as any).studentSeisId
+    delete (assessmentData as any).studentUid
+
+    console.log(
+      `📅 Saving assessment with academicPeriod: ${assessmentData.academicPeriod}`,
+    )
+
+    if (isEditing.value) {
+      // EDITING MODE: Update the assessment template and manage student assignments
+      console.log('✏️ EDITING MODE: Updating assessment template')
+
+      await updateAssessment(assessmentId.value, assessmentData)
+
+      // Manage student assignments
+      const currentlyAssigned = await getCurrentlyAssignedStudents(assessmentId.value)
+      const currentlyAssignedUids = currentlyAssigned.map((s) => s.studentUid)
+
+      // Students to add (in studentsToAssign but not currently assigned)
+      const studentsToAdd = studentsToAssign.filter(
+        (uid) => !currentlyAssignedUids.includes(uid),
+      )
+
+      // Students to remove (currently assigned but not in studentsToAssign)
+      const studentsToRemove = currentlyAssignedUids.filter(
+        (uid) => !studentsToAssign.includes(uid),
+      )
+
+      // Add new assignments
+      for (const studentUid of studentsToAdd) {
+        await assignAssessmentToStudent(
+          assessmentId.value,
+          studentUid,
+          authStore.currentUser?.uid || 'system',
+        )
+      }
+
+      // Remove old assignments
+      for (const studentUid of studentsToRemove) {
+        await unassignAssessmentFromStudent(assessmentId.value, studentUid)
+      }
+
+      console.log(`✅ Added ${studentsToAdd.length}, removed ${studentsToRemove.length} assignments`)
+
+      // Regrade existing results if questions changed
+      try {
+        const regradedCount = await regradeAssessmentResults(
+          assessmentId.value,
+          assessmentData as Assessment,
+        )
+        if (regradedCount > 0) {
+          success.value = `Assessment updated and assigned to ${studentsToAssign.length} students! ${regradedCount} result(s) were regraded.`
+        } else {
+          success.value = `Assessment updated and assigned to ${studentsToAssign.length} students!`
+        }
+      } catch (regradeError) {
+        console.warn('⚠️ Could not regrade results:', regradeError)
+        success.value = `Assessment updated and assigned to ${studentsToAssign.length} students!`
+      }
+    } else {
+      // CREATION MODE: Create one assessment template and assign to students
+      console.log('➕ CREATION MODE: Creating assessment template')
+
+      const newId = await createAssessment(assessmentData)
+      console.log('✅ Created assessment template:', newId)
+
+      // Assign to selected students
+      for (const studentUid of studentsToAssign) {
+        await assignAssessmentToStudent(
+          newId,
+          studentUid,
+          authStore.currentUser?.uid || 'system',
+        )
+      }
+
+      console.log(`✅ Assigned to ${studentsToAssign.length} students`)
+
+      success.value = `Assessment created and assigned to ${studentsToAssign.length} students!`
+
+      // Redirect to edit page after short delay
+      setTimeout(() => {
+        router.push(`/assessment/edit/${newId}`)
+      }, 1500)
+    }
+  } catch (err: any) {
+    console.error('❌ Error saving assessment:', err)
+    error.value = err.message || 'Failed to save assessment'
+  } finally {
+    saving.value = false
+  }
+}
+
+// Watch for category changes to load goals
+watch(
+  () => assessment.value.category,
+  (newCategory) => {
+    if (newCategory === 'PA') {
+      loadGoals()
+    }
+  },
+)
+
+// Load assessment data on mount if editing
+onMounted(async () => {
+  // Load students first
+  await loadStudents()
+
+  if (isEditing.value) {
+    await loadAssessment()
+
+    // Load currently assigned students
+    try {
+      const currentlyAssigned = await getCurrentlyAssignedStudents(assessmentId.value)
+      selectedStudents.value = currentlyAssigned.map((s) => s.studentUid)
+
+      // Set assignment mode based on loaded data
+      if (selectedStudents.value.length === 0) {
+        assignmentMode.value = 'template'
+      } else if (selectedStudents.value.length === availableStudents.value.length) {
+        assignmentMode.value = 'all'
+      } else {
+        assignmentMode.value = 'individual'
+      }
+
+      console.log(
+        `✅ Loaded ${selectedStudents.value.length} assigned students in ${assignmentMode.value} mode`,
+      )
+    } catch (err) {
+      console.error('❌ Error loading assigned students:', err)
+    }
+  }
+
+  // Load goals if this is a progress assessment
+  if (assessment.value.category === 'PA') {
+    loadGoals()
+  }
+})
+</script>
+
+<style scoped>
+.assessment-editor {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 1.5rem;
+  padding-bottom: 3rem;
+}
+
+/* Compact Header */
+.editor-header-compact {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.editor-header-compact h1 {
+  font-size: 1.75rem;
+  color: #1f2937;
+  margin: 0;
+  font-weight: 700;
+}
+
+.back-button-compact {
+  padding: 0.5rem 1rem;
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 0.875rem;
+  transition: all 0.2s;
+}
+
+.back-button-compact:hover {
+  background: #e5e7eb;
+  border-color: #9ca3af;
+}
+
+/* 2-Column Layout */
+.editor-layout {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.editor-main {
+  min-width: 0; /* Prevent grid blowout */
+}
+
+.assessment-form-compact {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* Messages moved to inline with transitions */
+
+.success-message,
+.error-message {
+  padding: 1rem 1.25rem;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 0.9375rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.success-message {
+  background: #d1fae5;
+  color: #065f46;
+  border-left: 4px solid #10b981;
+}
+
+.error-message {
+  background: #fee2e2;
+  color: #991b1b;
+  border-left: 4px solid #ef4444;
+}
+
+/* Fade transition */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+/* Color-coded sections */
+:deep(.form-section) {
+  background: white;
+  padding: 1.25rem;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+:deep(.primary-section) {
+  border-left: 4px solid #3b82f6;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.08);
+}
+
+:deep(.students-section) {
+  border-left: 4px solid #8b5cf6;
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.08);
+}
+
+:deep(.questions-section) {
+  border-left: 4px solid #10b981;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.08);
+}
+
+:deep(.form-section h2) {
+  font-size: 1.25rem;
+  color: #1f2937;
+  margin: 0 0 1rem 0;
+  padding-bottom: 0.625rem;
+  border-bottom: 1px solid #e5e7eb;
+  font-weight: 600;
+}
+
+:deep(.form-group) {
+  margin-bottom: 1rem;
+}
+
+:deep(.form-group label) {
+  display: block;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 0.375rem;
+  font-size: 0.875rem;
+}
+
+:deep(.form-input),
+:deep(.form-select),
+:deep(.form-textarea) {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.9375rem;
+  transition: all 0.2s;
+}
+
+:deep(.form-input:focus),
+:deep(.form-select:focus),
+:deep(.form-textarea:focus) {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+:deep(.form-row) {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+:deep(.form-help) {
+  display: block;
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin-top: 0.25rem;
+}
+
+:deep(.checkbox-label) {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .editor-layout {
+    grid-template-columns: 1fr 250px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .editor-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .assessment-editor {
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .editor-header-compact h1 {
+    font-size: 1.25rem;
+  }
+
+  :deep(.form-row) {
+    grid-template-columns: 1fr;
+  }
+
+  .assessment-form-compact {
+    gap: 1rem;
+  }
+}
+</style>

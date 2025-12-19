@@ -40,10 +40,10 @@
 
       <div class="filter-group search-group">
         <label>Search:</label>
-        <input 
-          type="text" 
-          v-model="searchQuery" 
-          placeholder="Search goals or assessments..." 
+        <input
+          type="text"
+          v-model="searchQuery"
+          placeholder="Search goals or assessments..."
           @input="filterData"
         />
       </div>
@@ -80,8 +80,8 @@
 
           <!-- Active Assessments for this Goal -->
           <div class="goal-actions">
-            <button 
-              @click="generateAssessmentsForGoal(item.goal.id, item.goal.goalTitle)" 
+            <button
+              @click="generateAssessmentsForGoal(item.goal.id, item.goal.goalTitle)"
               class="btn btn-sm btn-generate"
               title="Generate 3 assessments with 5 questions each"
             >
@@ -118,47 +118,47 @@
                   </td>
                   <td class="actions-cell">
                     <div class="action-buttons">
-                      <button 
-                        @click="editAssessment(assessment)" 
+                      <button
+                        @click="editAssessment(assessment)"
                         class="btn-icon btn-edit"
                         title="Edit Assessment"
                       >
                         ✏️
                       </button>
-                      <button 
-                        @click="viewResults(assessment.id, item.student.uid)" 
+                      <button
+                        @click="viewResults(assessment.id, item.student.uid)"
                         class="btn-icon btn-view"
                         title="View Results"
                         :disabled="!hasResults(assessment.id, item.student.uid)"
                       >
                         📊
                       </button>
-                      <button 
+                      <button
                         v-if="!isAssigned(assessment.id, item.student.uid)"
-                        @click="assignToStudent(assessment.id, item.student.uid)" 
+                        @click="assignToStudent(assessment.id, item.student.uid)"
                         class="btn-icon btn-assign"
                         title="Assign to Student"
                       >
                         ➕
                       </button>
-                      <button 
+                      <button
                         v-else
-                        @click="unassignFromStudent(assessment.id, item.student.uid)" 
+                        @click="unassignFromStudent(assessment.id, item.student.uid)"
                         class="btn-icon btn-unassign"
                         title="Unassign from Student"
                       >
                         ➖
                       </button>
-                      <button 
+                      <button
                         v-if="authStore.isAdmin && isAssigned(assessment.id, item.student.uid)"
-                        @click="openTeacherFixModal(assessment.id, item.student.uid)" 
+                        @click="openTeacherFixModal(assessment.id, item.student.uid)"
                         class="btn-icon btn-fix"
                         title="Fix Teacher Assignment"
                       >
                         🔧
                       </button>
-                      <button 
-                        @click="deleteAssessment(assessment.id)" 
+                      <button
+                        @click="deleteAssessment(assessment.id)"
                         class="btn-icon btn-delete"
                         title="Delete Assessment"
                       >
@@ -208,7 +208,7 @@
             This assessment was assigned by the wrong teacher. Select the correct teacher below.
             <strong>Note:</strong> This will update the assignment record but will not affect any completed assessment results.
           </p>
-          
+
           <div class="form-group">
             <label>Current Teacher:</label>
             <div class="current-teacher">
@@ -230,8 +230,8 @@
           <button @click="closeTeacherFixModal" class="btn btn-secondary" :disabled="fixing">
             Cancel
           </button>
-          <button 
-            @click="fixTeacherAssignment" 
+          <button
+            @click="fixTeacherAssignment"
             class="btn btn-primary"
             :disabled="!selectedTeacherUid || fixing || selectedTeacherUid === fixingAssignment.currentTeacherUid"
           >
@@ -248,19 +248,19 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import { getAllStudents, getStudentsByTeacher } from '@/firebase/userServices'
-import { 
-  getAllGoals, 
+import {
+  getAllGoals,
   getGoalsByTeacher,
-  assignAssessmentToGoal as assignAssessmentService 
+  assignAssessmentToGoal as assignAssessmentService
 } from '@/firebase/goalServices'
-import { 
-  getAllAssessments, 
+import {
+  getAllAssessments,
   deleteAssessment as deleteAssessmentService,
   getAssessmentResultsByStudent,
   createAssessment
 } from '@/firebase/iepServices'
-import { 
-  getStudentAssignments, 
+import {
+  getStudentAssignments,
   assignAssessmentToStudent,
   unassignAssessmentFromStudent,
   updateAssignmentTeacher,
@@ -301,7 +301,7 @@ const searchQuery = ref('')
 const loadData = async () => {
   try {
     loading.value = true
-    
+
     if (!authStore.currentUser) return
 
     // Load based on role
@@ -326,13 +326,13 @@ const loadData = async () => {
     for (const student of students.value) {
       const studentAssessments = await getStudentAssignments(student.uid)
       assignments.value[student.uid] = studentAssessments.map(a => a.assessmentId)
-      
+
       // Store assignment details (including assignedBy)
       for (const assignment of studentAssessments) {
         const key = `${assignment.assessmentId}-${student.uid}`
         assignmentDetails.value[key] = assignment
       }
-      
+
       // Load results for this student
       try {
         const studentResults = await getAssessmentResultsByStudent(student.uid)
@@ -386,7 +386,7 @@ const filteredData = computed(() => {
 
   // For each student, find their goals
   for (const student of filteredStudents) {
-    const studentGoals = goals.value.filter(g => 
+    const studentGoals = goals.value.filter(g =>
       g.assignedStudents?.includes(student.uid) || g.studentUid === student.uid
     )
 
@@ -405,7 +405,7 @@ const filteredData = computed(() => {
         const query = searchQuery.value.toLowerCase()
         const matchesGoal = goal.goalTitle.toLowerCase().includes(query) ||
                            goal.areaOfNeed.toLowerCase().includes(query)
-        const matchesAssessment = goalAssessments.some(a => 
+        const matchesAssessment = goalAssessments.some(a =>
           a.title.toLowerCase().includes(query) ||
           a.description?.toLowerCase().includes(query)
         )
@@ -483,11 +483,11 @@ const getAttemptCount = (assessmentId: string, studentUid: string): number => {
 
 const getAssignmentStatus = (assessmentId: string, studentUid: string): string => {
   if (!isAssigned(assessmentId, studentUid)) return 'not-assigned'
-  
+
   // Check if student has completed this assessment
   const studentResults = results.value[studentUid] || []
   const hasCompleted = studentResults.some(r => r.assessmentId === assessmentId)
-  
+
   return hasCompleted ? 'completed' : 'assigned'
 }
 
@@ -500,16 +500,16 @@ const getAssignmentStatusText = (assessmentId: string, studentUid: string): stri
 
 const assignToStudent = async (assessmentId: string, studentUid: string) => {
   if (!authStore.currentUser) return
-  
+
   try {
     await assignAssessmentToStudent(assessmentId, studentUid, authStore.currentUser.uid)
-    
+
     // Update local state
     if (!assignments.value[studentUid]) {
       assignments.value[studentUid] = []
     }
     assignments.value[studentUid].push(assessmentId)
-    
+
   } catch (error) {
     console.error('Error assigning assessment:', error)
     alert('Error assigning assessment. Please try again.')
@@ -518,15 +518,15 @@ const assignToStudent = async (assessmentId: string, studentUid: string) => {
 
 const unassignFromStudent = async (assessmentId: string, studentUid: string) => {
   if (!confirm('Are you sure you want to unassign this assessment from the student?')) return
-  
+
   try {
     await unassignAssessmentFromStudent(studentUid, assessmentId)
-    
+
     // Update local state
     if (assignments.value[studentUid]) {
       assignments.value[studentUid] = assignments.value[studentUid].filter(id => id !== assessmentId)
     }
-    
+
   } catch (error) {
     console.error('Error unassigning assessment:', error)
     alert('Error unassigning assessment. Please try again.')
@@ -541,37 +541,37 @@ const viewResults = (assessmentId: string, studentUid: string) => {
   // Find the latest result for this assessment and student
   const studentResults = results.value[studentUid] || []
   const assessmentResults = studentResults.filter(r => r.assessmentId === assessmentId)
-  
+
   if (assessmentResults.length === 0) {
     alert('No results found for this assessment.')
     return
   }
-  
+
   // Get the most recent result
   const latestResult = assessmentResults.sort((a, b) => {
     const aTime = a.completedAt?.seconds || 0
     const bTime = b.completedAt?.seconds || 0
     return bTime - aTime
   })[0]
-  
+
   // Navigate to result detail page
   router.push(`/assessment/${assessmentId}/results/${latestResult.id}`)
 }
 
 const deleteAssessment = async (assessmentId: string) => {
   if (!confirm('Are you sure you want to delete this assessment? This will also remove all assignments and results. This action cannot be undone.')) return
-  
+
   try {
     await deleteAssessmentService(assessmentId)
-    
+
     // Update local state - remove from assessments array
     assessments.value = assessments.value.filter(a => a.id !== assessmentId)
-    
+
     // Remove from all student assignments
     for (const studentUid in assignments.value) {
       assignments.value[studentUid] = assignments.value[studentUid].filter(id => id !== assessmentId)
     }
-    
+
     alert('✅ Assessment deleted successfully')
   } catch (error) {
     console.error('Error deleting assessment:', error)
@@ -599,7 +599,7 @@ const openTeacherFixModal = async (assessmentId: string, studentUid: string) => 
   try {
     // Get the current assignment to find the assignedBy teacher
     const assignment = await getAssignment(assessmentId, studentUid)
-    
+
     if (!assignment) {
       alert('Assignment not found. This assessment may not be assigned to this student.')
       return
@@ -626,7 +626,7 @@ const closeTeacherFixModal = () => {
 
 const fixTeacherAssignment = async () => {
   if (!fixingAssignment.value || !selectedTeacherUid.value) return
-  
+
   if (selectedTeacherUid.value === fixingAssignment.value.currentTeacherUid) {
     alert('Please select a different teacher.')
     return
@@ -638,7 +638,7 @@ const fixTeacherAssignment = async () => {
 
   try {
     fixing.value = true
-    
+
     await updateAssignmentTeacher(
       fixingAssignment.value.assessmentId,
       fixingAssignment.value.studentUid,
@@ -665,30 +665,30 @@ const fixTeacherAssignment = async () => {
 const generateAssessmentsForGoal = async (goalId: string, goalTitle: string) => {
   const goal = goals.value.find(g => g.id === goalId)
   if (!goal) return
-  
+
   if (!confirm(`Generate 3 Progress Assessments (5 questions each with answers) for "${goalTitle}"?\n\nEach assessment will have 5 questions worth 1 point each (5 points total).`)) {
     return
   }
-  
+
   try {
     generating.value = true
-    
+
     // Determine subject area
     const subject = getSubjectArea(goal)
-    
+
     // Generate 3 assessments with variations
     const assessmentTitles = [
       `${goalTitle} - Check #1`,
       `${goalTitle} - Check #2`,
       `${goalTitle} - Check #3`
     ]
-    
+
     const createdAssessments: string[] = []
-    
+
     for (let i = 0; i < 3; i++) {
       // Generate questions based on goal
       const questions = await generateQuestionsForGoal(goal, i + 1)
-      
+
       const assessmentData = {
         title: assessmentTitles[i],
         description: generateAssessmentDescription(goal, subject),
@@ -708,12 +708,12 @@ const generateAssessmentsForGoal = async (goalId: string, goalTitle: string) => 
         retakeMode: 'separate' as const,
         retakeInstructions: ''
       }
-      
+
       const assessmentId = await createAssessment(assessmentData)
       await assignAssessmentService(goalId, assessmentId)
       createdAssessments.push(assessmentId)
     }
-    
+
     alert(`✅ Successfully created ${createdAssessments.length} assessments with 5 questions each!\n\nEach assessment has:\n• 5 questions with answers\n• 5 points total (1 point per question)\n\nYou can now assign them to students or edit the questions.`)
     await loadData()
   } catch (error) {
@@ -729,19 +729,19 @@ const getSubjectArea = (goal: Goal): 'math' | 'ela' | 'other' => {
   const areaLower = goal.areaOfNeed.toLowerCase()
   const titleLower = goal.goalTitle.toLowerCase()
   const textLower = goal.goalText.toLowerCase()
-  
+
   // Math keywords
   const mathKeywords = ['math', 'multiplication', 'division', 'addition', 'subtraction', 'fraction', 'decimal', 'equation', 'algebra', 'geometry', 'number', 'calculation', 'computation']
   if (mathKeywords.some(keyword => areaLower.includes(keyword) || titleLower.includes(keyword) || textLower.includes(keyword))) {
     return 'math'
   }
-  
+
   // ELA keywords
   const elaKeywords = ['reading', 'writing', 'comprehension', 'vocabulary', 'grammar', 'spelling', 'decoding', 'fluency', 'phonics', 'essay', 'paragraph', 'text', 'literacy', 'language']
   if (elaKeywords.some(keyword => areaLower.includes(keyword) || titleLower.includes(keyword) || textLower.includes(keyword))) {
     return 'ela'
   }
-  
+
   return 'other'
 }
 
@@ -749,7 +749,7 @@ const getSubjectArea = (goal: Goal): 'math' | 'ela' | 'other' => {
 const generateAssessmentDescription = (goal: Goal, subject: 'math' | 'ela' | 'other'): string => {
   const goalText = goal.goalText.toLowerCase()
   const areaOfNeed = goal.areaOfNeed
-  
+
   if (subject === 'math') {
     if (goalText.includes('multiplication') || goalText.includes('division')) {
       return 'This assessment measures multiplication and division fluency with multi-digit numbers.'
@@ -769,28 +769,109 @@ const generateAssessmentDescription = (goal: Goal, subject: 'math' | 'ela' | 'ot
     }
     return `This assessment measures skills in ${areaOfNeed}.`
   }
-  
+
   return `This assessment measures progress toward the IEP goal in ${areaOfNeed}.`
+}
+
+// Helper: Generate short description for question based on goal
+const generateQuestionDescription = (goal: Goal, questionData: any): string | undefined => {
+  const goalText = goal.goalText.toLowerCase()
+
+  // For math problems, include what skill is being assessed
+  if (goalText.includes('add') || goalText.includes('addition')) {
+    return 'Addition problem'
+  } else if (goalText.includes('subtract') || goalText.includes('subtraction')) {
+    return 'Subtraction problem'
+  } else if (goalText.includes('multiply') || goalText.includes('multiplication')) {
+    return 'Multiplication problem'
+  } else if (goalText.includes('divide') || goalText.includes('division')) {
+    return 'Division problem'
+  } else if (goalText.includes('fraction')) {
+    return 'Fraction problem'
+  } else if (goalText.includes('decimal')) {
+    return 'Decimal problem'
+  } else if (goalText.includes('word problem')) {
+    return 'Word problem - show your work'
+  } else if (goalText.includes('expression')) {
+    return 'Expression problem'
+  } else if (goalText.includes('equation')) {
+    return 'Equation problem'
+  }
+
+  return questionData.explanation
+}
+
+// Helper: Detect answer prefix from answer (e.g., "x=" from "x=10")
+const detectAnswerPrefix = (answer: string): string | undefined => {
+  if (!answer) return undefined
+
+  const answerStr = answer.toString()
+
+  // Check for common prefixes
+  if (/^[a-z]\s*=/i.test(answerStr)) {
+    // Extract "x=" from "x=10"
+    const match = answerStr.match(/^([a-z]\s*=)/i)
+    return match ? match[1] : undefined
+  } else if (answerStr.startsWith('$') && answerStr.length > 1) {
+    // Money prefix
+    return '$'
+  }
+
+  return undefined
+}
+
+// Helper: Detect answer suffix from answer and question
+const detectAnswerSuffix = (answer: string, question: string): string | undefined => {
+  if (!answer || !question) return undefined
+
+  const answerStr = answer.toString().toLowerCase()
+  const questionLower = question.toLowerCase()
+
+  // Check for units in the answer
+  const units = ['apples', 'oranges', 'feet', 'inches', 'cm', 'meters', 'miles', 'pounds', 'kg', 'hours', 'minutes', 'seconds', 'dollars', 'cents', 'students', 'books', 'pages']
+
+  for (const unit of units) {
+    if (answerStr.includes(unit)) {
+      // Extract unit from answer
+      const match = answerStr.match(new RegExp(`\\d+\\s*(${unit})`))
+      return match ? match[1] : undefined
+    }
+  }
+
+  // Check if question mentions units
+  for (const unit of units) {
+    if (questionLower.includes(unit)) {
+      return unit
+    }
+  }
+
+  return undefined
 }
 
 // Generate questions for goal using the new service
 const generateQuestionsForGoal = async (goal: Goal, assessmentNumber: number): Promise<AssessmentQuestion[]> => {
   const questions: AssessmentQuestion[] = []
   const questionCount = 5
-  
+
   for (let i = 0; i < questionCount; i++) {
     const questionData = await generateQuestionForGoal(goal, i + 1, { method: 'hybrid' })
+
+    // Generate short description based on goal and question
+    const shortDescription = generateQuestionDescription(goal, questionData)
+
     questions.push({
       id: `q${i + 1}`,
       questionType: 'short-answer',
       questionText: questionData.question,
       points: 1,
       correctAnswer: questionData.answer,
-      explanation: questionData.explanation || 'Show your work and explain your reasoning.',
+      explanation: shortDescription || questionData.explanation || 'Show your work and explain your reasoning.',
+      answerPrefix: detectAnswerPrefix(questionData.answer),
+      answerSuffix: detectAnswerSuffix(questionData.answer, questionData.question),
       requiresPhoto: questionData.requiresPhoto !== false
     })
   }
-  
+
   return questions
 }
 
@@ -1189,19 +1270,19 @@ onMounted(() => {
   .filters-bar {
     flex-direction: column;
   }
-  
+
   .filter-group {
     min-width: 100%;
   }
-  
+
   .action-buttons {
     flex-wrap: wrap;
   }
-  
+
   .compact-table {
     font-size: 0.75rem;
   }
-  
+
   .compact-table th,
   .compact-table td {
     padding: 0.5rem;

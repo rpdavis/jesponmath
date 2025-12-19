@@ -265,11 +265,15 @@
 
               <!-- Short Answer -->
               <div v-else-if="currentQuestion.questionType === 'short-answer'" class="answer-input">
-                <RichTextAnswerInput
-                  :key="currentQuestion.id"
-                  v-model="answers[currentQuestion.id] as string"
-                  placeholder="Enter your answer..."
-                />
+                <div class="answer-with-prefix-suffix">
+                  <span v-if="currentQuestion.answerPrefix" class="answer-prefix">{{ currentQuestion.answerPrefix }}</span>
+                  <RichTextAnswerInput
+                    :key="currentQuestion.id"
+                    v-model="answers[currentQuestion.id] as string"
+                    :placeholder="currentQuestion.answerSuffix ? `Enter answer (${currentQuestion.answerSuffix} will be added)` : 'Enter your answer...'"
+                  />
+                  <span v-if="currentQuestion.answerSuffix" class="answer-suffix">{{ currentQuestion.answerSuffix }}</span>
+                </div>
               </div>
 
               <!-- Algebra Tiles -->
@@ -3067,5 +3071,28 @@ onMounted(() => {
   margin: 0;
   color: #004085;
   font-weight: 500;
+}
+
+.answer-with-prefix-suffix {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.answer-prefix,
+.answer-suffix {
+  font-weight: 600;
+  color: #1e40af;
+  font-size: 1.1rem;
+  padding: 0.5rem 0.75rem;
+  background: #eff6ff;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.answer-with-prefix-suffix :deep(.rich-text-answer) {
+  flex: 1;
+  min-width: 200px;
 }
 </style>

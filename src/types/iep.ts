@@ -138,6 +138,9 @@ export interface AssessmentQuestion {
   acceptableAnswers?: string[] // Alternative acceptable answers for short-answer
   acceptEquivalentFractions?: boolean // Accept all equivalent fractions (e.g., 1/2 = 2/4 = 3/6)
   correctFractionAnswers?: (FractionAnswer | string)[] // Support multiple equivalent fraction answers
+  // Answer prefix/suffix (for standardizing answers)
+  answerPrefix?: string // Text to show before answer (e.g., "x=" for "x=10")
+  answerSuffix?: string // Text to show after answer (e.g., "apples" for "4 apples")
   // For matching questions
   matchingPairs?: { left: string; right: string }[]
   leftItems?: string[] // Items to match from
