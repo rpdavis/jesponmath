@@ -250,7 +250,16 @@ const loadAssessment = async () => {
     const assigned = await getAssessmentAssignments(assessmentId.value)
     selectedStudents.value = assigned.map((s) => s.studentUid)
 
-    console.log('✅ Loaded assessment for editing')
+    // Set assignment mode based on loaded students
+    if (selectedStudents.value.length === 0) {
+      assignmentMode.value = 'template'
+    } else if (selectedStudents.value.length === availableStudents.value.length && availableStudents.value.length > 0) {
+      assignmentMode.value = 'all'
+    } else {
+      assignmentMode.value = 'individual'
+    }
+
+    console.log(`✅ Loaded assessment with ${selectedStudents.value.length} assigned students, mode: ${assignmentMode.value}`)
   } catch (err: any) {
     console.error('❌ Error loading:', err)
     saveState.error.value = 'Failed to load: ' + err.message

@@ -786,3 +786,7 @@ console.log('🔬 Detailed Debug Logger loaded. Type printDebugCommands() for us
 
 
 
+
+
+
+
