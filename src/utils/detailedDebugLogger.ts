@@ -386,26 +386,88 @@ export async function saveSessionLog(log: DetailedSessionLog): Promise<void> {
     return // Debug mode not enabled for this student
   }
 
+  // ⭐ PREVENT DUPLICATES
+  if (savedSessionIds.has(log.sessionId)) {
+    console.log('⚠️ Session already saved, skipping duplicate:', log.sessionId)
+    return
+  }
+
+  savedSessionIds.add(log.sessionId)
+
   // Keep in memory
   const studentLogs = detailedLogs.get(log.studentUid) || []
   studentLogs.push(log)
   detailedLogs.set(log.studentUid, studentLogs)
 
   // ⭐ SAVE TO FIRESTORE for teacher access
+  console.log('💾 Attempting to save to Firestore (ONCE)...', {
+    studentUid: log.studentUid,
+    sessionId: log.sessionId,
+    sessionNumber: log.sessionNumber,
+  })
+
   try {
     const { addDoc, collection, Timestamp } = await import('firebase/firestore')
     const { db } = await import('@/firebase/config')
 
-    await addDoc(collection(db, 'fluencyDebugLogs'), {
-      ...log,
+    // ⭐ Create Firestore-safe version (no circular refs, convert Dates)
+    const firestoreLog = {
+      studentUid: log.studentUid,
+      studentName: log.studentName,
+      sessionId: log.sessionId,
+      sessionNumber: log.sessionNumber,
+      operation: log.operation,
+      currentSubLevel: log.currentSubLevel,
+
+      // Simplified session data (just scores, not full problem arrays)
+      diagnostic: {
+        score: log.diagnostic.score,
+        total: log.diagnostic.total,
+        percentage: log.diagnostic.percentage,
+      },
+      round1: {
+        skipped: log.round1.skipped,
+        problemsTargeted: log.round1.problemsTargeted,
+      },
+      round2: {
+        score: log.round2.score,
+        total: log.round2.total,
+        percentage: log.round2.percentage,
+        fastTrackMode: log.round2.fastTrackMode,
+      },
+      round3: {
+        score: log.round3.score,
+        total: log.round3.total,
+        percentage: log.round3.percentage,
+      },
+
+      startState: log.startState,
+      endState: log.endState,
+      advancement: log.advancement,
+      summary: log.summary,
+      issues: log.issues || [], // ⭐ Include issues array (empty if none)
+
       timestamp: Timestamp.now(),
       createdAt: Timestamp.now(),
-    })
+    }
 
-    console.log('💾 Saved log to Firestore')
+    const docRef = await addDoc(collection(db, 'fluencyDebugLogs'), firestoreLog)
+
+    console.log('✅ Saved log to Firestore successfully!', {
+      docId: docRef.id,
+      sessionNumber: log.sessionNumber,
+    })
   } catch (error) {
-    console.error('Error saving log to Firestore:', error)
-    // Don't fail - keep the in-memory log at least
+    console.error('❌ ERROR saving log to Firestore:', error)
+    console.error('Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown',
+      code: (error as any)?.code,
+      log: {
+        studentUid: log.studentUid,
+        sessionNumber: log.sessionNumber,
+      },
+    })
+    throw error // Re-throw so caller knows it failed
   }
 
   // Print detailed summary
@@ -783,10 +845,3 @@ export function printDebugCommands(): void {
 
 // Auto-print commands on import
 console.log('🔬 Detailed Debug Logger loaded. Type printDebugCommands() for usage.')
-
-
-
-
-
-
-

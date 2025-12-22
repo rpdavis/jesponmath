@@ -268,12 +268,7 @@ export function useMathFluencyRounds(
     round2TimeRemaining.value = 15
 
     clearRound2Timer()
-    round2TimerInterval.value = window.setInterval(() => {
-      round2TimeRemaining.value--
-      if (round2TimeRemaining.value <= 0) {
-        submitRound2Answer(finishRound2)
-      }
-    }, 1000)
+    // NOTE: Timer removed - component handles timing now
 
     await nextTick()
     round2Input.value?.focus()
@@ -282,7 +277,7 @@ export function useMathFluencyRounds(
   async function submitRound2Answer(finishRound2: () => void) {
     if (!currentRound2Problem.value) return
 
-    clearRound2Timer()
+    // NOTE: Timer clearing removed - component handles timing now
 
     const responseTime = Date.now() - round2StartTime.value
     const isCorrect =
@@ -297,6 +292,7 @@ export function useMathFluencyRounds(
     }
 
     const problemId = currentRound2Problem.value.problemId
+
     if (!round2Results.value[problemId]) {
       round2Results.value[problemId] = {
         attempts: 0,
@@ -334,6 +330,7 @@ export function useMathFluencyRounds(
     responseTime: number,
     isCorrect: boolean,
   ) {
+    // ✅ PRIMARY HANDLER: Component emits correct isCorrect value from user input
     await updateProblemInProgress(authStore.currentUser!.uid, currentOperation.value, problemId, {
       correct: isCorrect,
       responseTime,
@@ -356,9 +353,6 @@ export function useMathFluencyRounds(
     if (isCorrect) {
       round2Correct.value++
     }
-
-    // Note: Component manages its own progression through problems array
-    // Stack management is handled separately for internal tracking
   }
 
   function finishRound2(startRound3: () => void) {

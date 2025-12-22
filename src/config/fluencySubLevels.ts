@@ -564,11 +564,9 @@ export function getNextSubLevel(currentSubLevel: SubLevel): SubLevel | null {
   const currentConfig = getSubLevelConfig(currentSubLevel)
   if (!currentConfig) return null
 
-  const nextConfig = SUB_LEVEL_CONFIGS.find(
-    (config) =>
-      config.operation === currentConfig.operation &&
-      config.operationOrder === currentConfig.operationOrder + 1,
-  )
+  // Advance by GLOBAL order (not operation order) to properly progress through all levels
+  // Example: addition_mixed (order 3) → subtraction_within_10 (order 4)
+  const nextConfig = SUB_LEVEL_CONFIGS.find((config) => config.order === currentConfig.order + 1)
 
   return nextConfig ? nextConfig.id : null
 }

@@ -370,8 +370,8 @@ service cloud.firestore {
       // Teachers and admins can read all logs
       allow read: if isTeacher() || isAdmin();
       
-      // Only admins can delete
-      allow delete: if isAdmin();
+      // Teachers and admins can delete (for clearing duplicates/testing)
+      allow delete: if isTeacher() || isAdmin();
     }
     
     // Fluency Debug Settings - tracks which students have debug enabled

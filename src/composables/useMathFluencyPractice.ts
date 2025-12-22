@@ -407,7 +407,16 @@ export function useMathFluencyPractice() {
     console.log('🔢 Warmup numbers:', warmupNumbers.value)
   }
 
+  const sessionFinishing = ref(false) // ⭐ Guard against multiple calls
+
   async function finishSession() {
+    // ⭐ PREVENT INFINITE LOOP
+    if (sessionFinishing.value) {
+      console.log('⚠️ Session already finishing, skipping duplicate call')
+      return
+    }
+    sessionFinishing.value = true
+
     totalSessionTime.value = Date.now() - sessionStartTime.value
 
     const completionRate =
@@ -536,9 +545,29 @@ export function useMathFluencyPractice() {
           const round2Data = session.value.round2_practice
           const round3Data = session.value.round3_assessment
 
+          console.log('🔬 DEBUG: Populating round data', {
+            hasRound2: !!round2Data,
+            hasRound3: !!round3Data,
+            round2Results: Object.keys(round2Data?.results || {}).length,
+            round3Results: Object.keys(round3Data?.results || {}).length,
+          })
+
           if (round2Data) {
+            // Log what's actually in results
+            console.log('🔍 Round 2 results structure:', {
+              totalResults: Object.keys(round2Data.results || {}).length,
+              firstFewResults: Object.entries(round2Data.results || {})
+                .slice(0, 3)
+                .map(([id, r]: [string, any]) => ({
+                  problemId: id,
+                  correct: r.correct,
+                  attempts: r.totalAttempts,
+                  hasCorrectField: 'correct' in r,
+                })),
+            })
+
             const round2CorrectCount = Object.values(round2Data.results || {}).filter(
-              (r: any) => r.correct,
+              (r: any) => r.correct === true, // ⭐ Strict check
             ).length
             currentDetailedLog.value.round2.score = round2CorrectCount
             currentDetailedLog.value.round2.total = Object.keys(round2Data.results || {}).length
@@ -558,6 +587,13 @@ export function useMathFluencyPractice() {
             console.log('🔬 DEBUG: Populated round2 data', {
               score: currentDetailedLog.value.round2.score,
               total: currentDetailedLog.value.round2.total,
+              correctCount: round2CorrectCount,
+              resultsWithCorrectTrue: Object.values(round2Data.results || {}).filter(
+                (r: any) => r.correct === true,
+              ).length,
+              resultsWithCorrectFalse: Object.values(round2Data.results || {}).filter(
+                (r: any) => r.correct === false,
+              ).length,
             })
           }
 
@@ -643,8 +679,12 @@ export function useMathFluencyPractice() {
             })
 
             console.log('🔬 Calling saveSessionLog now...')
-            saveSessionLog(currentDetailedLog.value)
-            console.log('🔬 saveSessionLog completed')
+            try {
+              await saveSessionLog(currentDetailedLog.value)
+              console.log('🔬 saveSessionLog completed successfully')
+            } catch (saveError) {
+              console.error('🔬 ERROR in saveSessionLog:', saveError)
+            }
           }
         }
       } catch (error) {
@@ -686,6 +726,7 @@ export function useMathFluencyPractice() {
     }
 
     sessionComplete.value = true
+    // Don't reset sessionFinishing - want to prevent any future calls
   }
 
   async function loadProgressSilently() {

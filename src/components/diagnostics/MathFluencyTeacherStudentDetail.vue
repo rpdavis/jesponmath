@@ -8,6 +8,11 @@
           Currently practicing: <strong>{{ currentOperation }}</strong>
         </p>
       </div>
+      <div class="header-controls">
+        <button @click="editMode = !editMode" class="toggle-edit-btn" :class="{ active: editMode }">
+          {{ editMode ? '✓ Done Editing' : '✏️ Edit Proficiency' }}
+        </button>
+      </div>
     </div>
 
     <!-- Legend -->
@@ -36,11 +41,17 @@
             <span class="stat mastered">{{ getOperationStats('addition').mastered }} mastered</span>
             <span class="stat total">{{ getOperationStats('addition').total }} practiced</span>
           </div>
+          <div v-if="editMode && additionProgress" class="fast-track-control">
+            <label>
+              <input type="checkbox" v-model="additionProgress.isFastTrack" @change="saveFastTrack('addition')" />
+              <span>🚀 Fast-track Mode</span>
+            </label>
+          </div>
         </div>
         <div v-if="additionFacts.length === 0" class="no-data-message">
           Student hasn't started addition yet
         </div>
-        <div class="facts-grid">
+        <div class="facts-grid" :class="{ 'edit-mode': editMode }">
           <div
             v-for="fact in additionFacts"
             :key="fact.problemId"
@@ -51,6 +62,16 @@
             <div class="fact-text">{{ fact.displayText }}</div>
             <div class="fact-icon">{{ fact.icon }}</div>
             <div v-if="fact.accuracy !== null" class="fact-accuracy">{{ fact.accuracy }}%</div>
+            <select v-if="editMode"
+                    v-model="fact.proficiencyLevel"
+                    @change="updateProficiencyLevel('addition', fact)"
+                    class="proficiency-dropdown">
+              <option value="doesNotKnow">! Doesn't Know</option>
+              <option value="emerging">○ Emerging</option>
+              <option value="approaching">◐ Approaching</option>
+              <option value="proficient">● Proficient</option>
+              <option value="mastered">✓ Mastered</option>
+            </select>
           </div>
         </div>
       </div>
@@ -60,16 +81,20 @@
         <div class="operation-header" :class="{ current: currentOperation === 'Subtraction' }">
           <h2>➖ Subtraction (0-20)</h2>
           <div class="operation-stats">
-            <span class="stat mastered"
-              >{{ getOperationStats('subtraction').mastered }} mastered</span
-            >
+            <span class="stat mastered">{{ getOperationStats('subtraction').mastered }} mastered</span>
             <span class="stat total">{{ getOperationStats('subtraction').total }} practiced</span>
+          </div>
+          <div v-if="editMode && subtractionProgress" class="fast-track-control">
+            <label>
+              <input type="checkbox" v-model="subtractionProgress.isFastTrack" @change="saveFastTrack('subtraction')" />
+              <span>🚀 Fast-track Mode</span>
+            </label>
           </div>
         </div>
         <div v-if="subtractionFacts.length === 0" class="no-data-message">
           Student hasn't started subtraction yet
         </div>
-        <div class="facts-grid">
+        <div class="facts-grid" :class="{ 'edit-mode': editMode }">
           <div
             v-for="fact in subtractionFacts"
             :key="fact.problemId"
@@ -80,6 +105,16 @@
             <div class="fact-text">{{ fact.displayText }}</div>
             <div class="fact-icon">{{ fact.icon }}</div>
             <div v-if="fact.accuracy !== null" class="fact-accuracy">{{ fact.accuracy }}%</div>
+            <select v-if="editMode"
+                    v-model="fact.proficiencyLevel"
+                    @change="updateProficiencyLevel('subtraction', fact)"
+                    class="proficiency-dropdown">
+              <option value="doesNotKnow">! Doesn't Know</option>
+              <option value="emerging">○ Emerging</option>
+              <option value="approaching">◐ Approaching</option>
+              <option value="proficient">● Proficient</option>
+              <option value="mastered">✓ Mastered</option>
+            </select>
           </div>
         </div>
       </div>
@@ -89,18 +124,20 @@
         <div class="operation-header" :class="{ current: currentOperation === 'Multiplication' }">
           <h2>✖️ Multiplication (0-12)</h2>
           <div class="operation-stats">
-            <span class="stat mastered"
-              >{{ getOperationStats('multiplication').mastered }} mastered</span
-            >
-            <span class="stat total"
-              >{{ getOperationStats('multiplication').total }} practiced</span
-            >
+            <span class="stat mastered">{{ getOperationStats('multiplication').mastered }} mastered</span>
+            <span class="stat total">{{ getOperationStats('multiplication').total }} practiced</span>
+          </div>
+          <div v-if="editMode && multiplicationProgress" class="fast-track-control">
+            <label>
+              <input type="checkbox" v-model="multiplicationProgress.isFastTrack" @change="saveFastTrack('multiplication')" />
+              <span>🚀 Fast-track Mode</span>
+            </label>
           </div>
         </div>
         <div v-if="multiplicationFacts.length === 0" class="no-data-message">
           Student hasn't started multiplication yet
         </div>
-        <div class="facts-grid">
+        <div class="facts-grid" :class="{ 'edit-mode': editMode }">
           <div
             v-for="fact in multiplicationFacts"
             :key="fact.problemId"
@@ -111,6 +148,16 @@
             <div class="fact-text">{{ fact.displayText }}</div>
             <div class="fact-icon">{{ fact.icon }}</div>
             <div v-if="fact.accuracy !== null" class="fact-accuracy">{{ fact.accuracy }}%</div>
+            <select v-if="editMode"
+                    v-model="fact.proficiencyLevel"
+                    @change="updateProficiencyLevel('multiplication', fact)"
+                    class="proficiency-dropdown">
+              <option value="doesNotKnow">! Doesn't Know</option>
+              <option value="emerging">○ Emerging</option>
+              <option value="approaching">◐ Approaching</option>
+              <option value="proficient">● Proficient</option>
+              <option value="mastered">✓ Mastered</option>
+            </select>
           </div>
         </div>
       </div>
@@ -123,11 +170,17 @@
             <span class="stat mastered">{{ getOperationStats('division').mastered }} mastered</span>
             <span class="stat total">{{ getOperationStats('division').total }} practiced</span>
           </div>
+          <div v-if="editMode && divisionProgress" class="fast-track-control">
+            <label>
+              <input type="checkbox" v-model="divisionProgress.isFastTrack" @change="saveFastTrack('division')" />
+              <span>🚀 Fast-track Mode</span>
+            </label>
+          </div>
         </div>
         <div v-if="divisionFacts.length === 0" class="no-data-message">
           Student hasn't started division yet
         </div>
-        <div class="facts-grid">
+        <div class="facts-grid" :class="{ 'edit-mode': editMode }">
           <div
             v-for="fact in divisionFacts"
             :key="fact.problemId"
@@ -138,6 +191,16 @@
             <div class="fact-text">{{ fact.displayText }}</div>
             <div class="fact-icon">{{ fact.icon }}</div>
             <div v-if="fact.accuracy !== null" class="fact-accuracy">{{ fact.accuracy }}%</div>
+            <select v-if="editMode"
+                    v-model="fact.proficiencyLevel"
+                    @change="updateProficiencyLevel('division', fact)"
+                    class="proficiency-dropdown">
+              <option value="doesNotKnow">! Doesn't Know</option>
+              <option value="emerging">○ Emerging</option>
+              <option value="approaching">◐ Approaching</option>
+              <option value="proficient">● Proficient</option>
+              <option value="mastered">✓ Mastered</option>
+            </select>
           </div>
         </div>
       </div>
@@ -164,6 +227,7 @@ const currentOperation = ref('')
 const loading = ref(true)
 
 // Progress for all operations
+const editMode = ref(false)
 const additionProgress = ref<any>(null)
 const subtractionProgress = ref<any>(null)
 const multiplicationProgress = ref<any>(null)
@@ -217,6 +281,7 @@ function buildFactList(operation: OperationType, progressData: any) {
 
     return {
       problemId: problem.problemId,
+      proficiencyLevel: problem.proficiencyLevel, // For edit mode dropdown
       displayText: problem.displayText || `${problem.num1} + ${problem.num2}`,
       statusClass,
       icon,
@@ -244,6 +309,171 @@ function getOperationStats(operation: OperationType) {
   return {
     mastered: facts.filter((f) => f.statusClass === 'mastered').length,
     total: facts.length,
+  }
+}
+
+// Update proficiency level for a specific fact
+async function updateProficiencyLevel(operation: OperationType, fact: any) {
+  try {
+    const progressData = operation === 'addition' ? additionProgress.value
+      : operation === 'subtraction' ? subtractionProgress.value
+      : operation === 'multiplication' ? multiplicationProgress.value
+      : divisionProgress.value
+
+    if (!progressData) return
+
+    const { doc, updateDoc } = await import('firebase/firestore')
+    const { db } = await import('@/firebase/config')
+
+    // Find the problem in the banks
+    let problemFound = false
+    const banks = progressData.problemBanks
+    const newLevel = fact.proficiencyLevel
+
+    // Remove from all banks
+    for (const bankName of ['doesNotKnow', 'emerging', 'approaching', 'proficient', 'mastered']) {
+      const index = banks[bankName]?.findIndex((p: any) => p.problemId === fact.problemId)
+      if (index !== undefined && index >= 0) {
+        const [problem] = banks[bankName].splice(index, 1)
+
+        // Update proficiency level
+        problem.proficiencyLevel = newLevel
+
+        // Set realistic counters to match the level
+        const { Timestamp } = await import('firebase/firestore')
+        const now = Timestamp.fromDate(new Date())
+
+        if (newLevel === 'mastered') {
+          problem.totalAttempts = 5
+          problem.correctAttempts = 5
+          problem.last5Attempts = Array(5).fill(null).map(() => ({
+            date: now,
+            correct: true,
+            responseTime: 2500,
+            source: 'manual-override'
+          }))
+          problem.averageResponseTime = 2500
+        } else if (newLevel === 'proficient') {
+          problem.totalAttempts = 5
+          problem.correctAttempts = 4
+          problem.last5Attempts = [
+            { date: now, correct: true, responseTime: 4000, source: 'manual-override' },
+            { date: now, correct: true, responseTime: 4500, source: 'manual-override' },
+            { date: now, correct: true, responseTime: 5000, source: 'manual-override' },
+            { date: now, correct: true, responseTime: 5500, source: 'manual-override' },
+            { date: now, correct: false, responseTime: 6000, source: 'manual-override' }
+          ]
+          problem.averageResponseTime = 5000
+        } else if (newLevel === 'approaching') {
+          problem.totalAttempts = 5
+          problem.correctAttempts = 3
+          problem.last5Attempts = [
+            { date: now, correct: true, responseTime: 6000, source: 'manual-override' },
+            { date: now, correct: true, responseTime: 7000, source: 'manual-override' },
+            { date: now, correct: true, responseTime: 8000, source: 'manual-override' },
+            { date: now, correct: false, responseTime: 9000, source: 'manual-override' },
+            { date: now, correct: false, responseTime: 10000, source: 'manual-override' }
+          ]
+          problem.averageResponseTime = 8000
+        } else if (newLevel === 'emerging') {
+          problem.totalAttempts = 5
+          problem.correctAttempts = 2
+          problem.last5Attempts = [
+            { date: now, correct: true, responseTime: 8000, source: 'manual-override' },
+            { date: now, correct: true, responseTime: 9000, source: 'manual-override' },
+            { date: now, correct: false, responseTime: 10000, source: 'manual-override' },
+            { date: now, correct: false, responseTime: 11000, source: 'manual-override' },
+            { date: now, correct: false, responseTime: 12000, source: 'manual-override' }
+          ]
+          problem.averageResponseTime = 10000
+        } else if (newLevel === 'doesNotKnow') {
+          problem.totalAttempts = 5
+          problem.correctAttempts = 0
+          problem.last5Attempts = Array(5).fill(null).map(() => ({
+            date: now,
+            correct: false,
+            responseTime: 15000,
+            source: 'manual-override'
+          }))
+          problem.averageResponseTime = 15000
+        }
+
+        problem.proficiencyCalculation = {
+          correctOutOfLast5: problem.correctAttempts,
+          averageTimeOfLast5: problem.averageResponseTime,
+          last5Trend: 'stable',
+          confidenceLevel: 'high'
+        }
+
+        // Add to new bank
+        if (!banks[newLevel]) banks[newLevel] = []
+        banks[newLevel].push(problem)
+        problemFound = true
+        break
+      }
+    }
+
+    if (!problemFound) {
+      console.error('Problem not found in banks:', fact.problemId)
+      return
+    }
+
+    // Recalculate distribution
+    const distribution = {
+      doesNotKnow: banks.doesNotKnow?.length || 0,
+      emerging: banks.emerging?.length || 0,
+      approaching: banks.approaching?.length || 0,
+      proficient: banks.proficient?.length || 0,
+      mastered: banks.mastered?.length || 0,
+      total: (banks.doesNotKnow?.length || 0) + (banks.emerging?.length || 0) +
+             (banks.approaching?.length || 0) + (banks.proficient?.length || 0) +
+             (banks.mastered?.length || 0)
+    }
+
+    const proficiency = distribution.total > 0
+      ? Math.round(((distribution.approaching + distribution.proficient + distribution.mastered) / distribution.total) * 100)
+      : 0
+
+    // Save to Firestore
+    const docId = `${studentUid.value}_${operation}`
+    const docRef = doc(db, 'mathFluencyProgress', docId)
+
+    await updateDoc(docRef, {
+      problemBanks: banks,
+      proficiencyDistribution: distribution,
+      proficiencyPercentage: proficiency
+    })
+
+    console.log(`✅ Updated ${fact.displayText} to ${newLevel}, new proficiency: ${proficiency}%`)
+  } catch (error) {
+    console.error('Error updating proficiency:', error)
+    alert(`Error updating proficiency: ${error instanceof Error ? error.message : 'Unknown error'}`)
+  }
+}
+
+// Save fast-track mode
+async function saveFastTrack(operation: OperationType) {
+  try {
+    const progressData = operation === 'addition' ? additionProgress.value
+      : operation === 'subtraction' ? subtractionProgress.value
+      : operation === 'multiplication' ? multiplicationProgress.value
+      : divisionProgress.value
+
+    if (!progressData) return
+
+    const { doc, updateDoc } = await import('firebase/firestore')
+    const { db } = await import('@/firebase/config')
+
+    const docId = `${studentUid.value}_${operation}`
+    const docRef = doc(db, 'mathFluencyProgress', docId)
+
+    await updateDoc(docRef, {
+      isFastTrack: progressData.isFastTrack || false
+    })
+
+    console.log(`✅ ${operation} fast-track mode: ${progressData.isFastTrack ? 'ON' : 'OFF'}`)
+  } catch (error) {
+    console.error('Error saving fast-track:', error)
   }
 }
 
@@ -594,5 +824,74 @@ onMounted(() => {
   to {
     transform: rotate(360deg);
   }
+}
+/* Edit Mode Controls */
+.header-controls {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.toggle-edit-btn {
+  padding: 0.75rem 1.5rem;
+  background: #3498db;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.toggle-edit-btn.active {
+  background: #27ae60;
+}
+
+.toggle-edit-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.fast-track-control {
+  margin-top: 0.5rem;
+}
+
+.fast-track-control label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.fast-track-control input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.facts-grid.edit-mode {
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+}
+
+.proficiency-dropdown {
+  width: 100%;
+  padding: 0.25rem;
+  margin-top: 0.25rem;
+  border: 2px solid #3498db;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  background: white;
+  cursor: pointer;
+}
+
+.proficiency-dropdown:focus {
+  outline: none;
+  border-color: #2980b9;
+  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+}
+
+.fact-cell {
+  position: relative;
 }
 </style>

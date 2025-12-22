@@ -116,7 +116,7 @@
 
     <!-- ROUND 3: Quick Assessment -->
     <MathFluencyRound3Assessment
-      v-if="practiceStarted && currentRound === 3"
+      v-if="practiceStarted && currentRound === 3 && !sessionComplete"
       :problems="round3Problems"
       :time-per-problem="10"
       @answer="handleRound3Answer"
@@ -359,6 +359,13 @@ function handleDiagnosticCompleteWithStorage() {
   }
 
   // ⭐ POPULATE DETAILED DEBUG LOG - Diagnostic Round
+  console.log('🔬 DEBUG: Diagnostic complete, checking if should populate', {
+    hasLog: !!currentDetailedLog.value,
+    debugActive: debugModeActive.value,
+    diagnosticCorrect: diagnosticCorrect.value,
+    diagnosticTotal: diagnosticTotal.value
+  })
+
   if (currentDetailedLog.value && debugModeActive.value) {
     currentDetailedLog.value.diagnostic.score = diagnosticCorrect.value
     currentDetailedLog.value.diagnostic.total = diagnosticTotal.value
@@ -366,10 +373,14 @@ function handleDiagnosticCompleteWithStorage() {
       ? Math.round((diagnosticCorrect.value / diagnosticTotal.value) * 100)
       : 0
 
-    console.log('🔬 DEBUG: Populated diagnostic data', {
+    console.log('✅ DEBUG: Populated diagnostic data', {
       score: currentDetailedLog.value.diagnostic.score,
       total: currentDetailedLog.value.diagnostic.total,
       percentage: currentDetailedLog.value.diagnostic.percentage
+    })
+  } else {
+    console.log('❌ DEBUG: Skipped diagnostic population', {
+      reason: !currentDetailedLog.value ? 'No log object' : 'Debug not active'
     })
   }
 }

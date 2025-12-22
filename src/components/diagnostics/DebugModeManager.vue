@@ -43,21 +43,27 @@
     </div>
 
     <div class="enabled-students card" v-if="debugEnabledStudents.length > 0">
-      <h3>Students with Debug Mode Enabled ({{ debugEnabledStudents.length }})</h3>
+      <div class="card-header-with-action">
+        <h3>Students with Debug Mode Enabled ({{ debugEnabledStudents.length }})</h3>
+        <button @click="clearAllLogs" class="btn-danger-small">
+          🗑️ Clear All Logs
+        </button>
+      </div>
 
       <div class="student-list">
         <div v-for="uid in debugEnabledStudents" :key="uid" class="student-card">
           <div class="student-info">
             <strong>{{ getStudentName(uid) }}</strong>
             <span class="badge badge-debug">🔬 Debugging</span>
+            <div class="uid-display">UID: {{ uid }}</div>
           </div>
 
           <div class="student-actions">
             <button @click="viewLogs(uid)" class="btn-view">
-              View Logs ({{ getLogCount(uid) }})
+              View Logs
             </button>
-            <button @click="analyzeStudent(uid)" class="btn-analyze">
-              Analyze
+            <button @click="checkLogsInFirestore(uid)" class="btn-check">
+              Check DB
             </button>
             <button @click="exportStudent(uid)" class="btn-export">
               Export CSV
@@ -155,10 +161,10 @@ downloadDetailedCSV(csv, 'student-sessions.csv')
                   <span>Advanced:</span>
                   <span class="success">✅ {{ log.advancement.previousSubLevel }} → {{ log.advancement.newSubLevel }}</span>
                 </div>
-                <div class="log-row" v-if="log.issues.length > 0">
-                  <span>Issues:</span>
-                  <span class="warning">⚠️ {{ log.issues.length }} issue(s)</span>
-                </div>
+              <div class="log-row" v-if="log.issues && log.issues.length > 0">
+                <span>Issues:</span>
+                <span class="warning">⚠️ {{ log.issues.length }} issue(s)</span>
+              </div>
               </div>
             </div>
           </div>
@@ -188,7 +194,7 @@ import {
   exportProblemDetailsToCSV,
   downloadDetailedCSV,
 } from '@/utils/detailedDebugLogger'
-import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore'
+import { collection, query, where, getDocs, orderBy, limit, deleteDoc } from 'firebase/firestore'
 import { db } from '@/firebase/config'
 
 const authStore = useAuthStore()
@@ -250,6 +256,73 @@ function getStudentName(uid: string): string {
   return student ? `${student.lastName}, ${student.firstName}` : uid
 }
 
+async function checkLogsInFirestore(uid: string) {
+  try {
+    const q = query(
+      collection(db, 'fluencyDebugLogs'),
+      where('studentUid', '==', uid)
+    )
+    const snapshot = await getDocs(q)
+
+    console.group('🔍 FIRESTORE CHECK for', getStudentName(uid))
+    console.log('UID:', uid)
+    console.log('Total logs in Firestore:', snapshot.size)
+
+    if (snapshot.size > 0) {
+      console.log('Sessions:')
+      snapshot.docs.forEach(doc => {
+        const data = doc.data()
+        console.log(`  Session ${data.sessionNumber}: ${data.diagnostic?.score}/${data.diagnostic?.total} diagnostic`)
+      })
+    } else {
+      console.log('❌ No logs found in Firestore for this student')
+    }
+
+    console.groupEnd()
+
+    alert(`Found ${snapshot.size} logs in Firestore for ${getStudentName(uid)}.\n\nCheck console for details.`)
+  } catch (error) {
+    console.error('Error checking Firestore:', error)
+    alert(`Error: ${error}`)
+  }
+}
+
+async function clearAllLogs() {
+  if (!confirm('⚠️ Delete ALL debug logs from Firestore?\n\nThis will delete logs for all students.\n\nThis cannot be undone!')) {
+    return
+  }
+
+  if (!confirm('FINAL CONFIRMATION:\n\nThis will delete potentially 1000+ log documents.\n\nAre you absolutely sure?')) {
+    return
+  }
+
+  try {
+    console.log('🗑️ Deleting all logs...')
+
+    // Get all logs
+    const snapshot = await getDocs(collection(db, 'fluencyDebugLogs'))
+    console.log(`Found ${snapshot.size} logs to delete`)
+
+    let deleted = 0
+
+    // Delete in small batches to avoid timeout
+    for (const doc of snapshot.docs) {
+      await deleteDoc(doc.ref)
+      deleted++
+      if (deleted % 100 === 0) {
+        console.log(`Deleted ${deleted} / ${snapshot.size}...`)
+      }
+    }
+
+    console.log('✅ All logs deleted!')
+    alert(`✅ Deleted ${deleted} debug logs from Firestore`)
+
+  } catch (error) {
+    console.error('Error deleting logs:', error)
+    alert(`Error: ${error}`)
+  }
+}
+
 async function getLogCount(uid: string): Promise<number> {
   try {
     const q = query(
@@ -268,11 +341,28 @@ async function viewLogs(uid: string) {
 
   // Load logs from Firestore (without orderBy to avoid index requirement)
   try {
+    console.group('📂 LOADING LOGS for', getStudentName(uid))
+    console.log('Query UID:', uid)
+
     const q = query(
       collection(db, 'fluencyDebugLogs'),
       where('studentUid', '==', uid)
     )
+
+    console.log('Executing query...')
     const snapshot = await getDocs(q)
+    console.log('Query returned:', snapshot.size, 'documents')
+
+    // Log first few docs to see structure
+    snapshot.docs.slice(0, 3).forEach((doc, i) => {
+      const data = doc.data()
+      console.log(`  Doc ${i+1}:`, {
+        id: doc.id,
+        studentUid: data.studentUid,
+        sessionNumber: data.sessionNumber,
+        hasTimestamp: !!data.timestamp
+      })
+    })
 
     // Sort in JavaScript instead of Firestore
     viewingLogs.value = snapshot.docs
@@ -288,9 +378,11 @@ async function viewLogs(uid: string) {
       })
       .slice(0, 20) as any[] // Limit to 20 most recent
 
-    console.log(`📂 Loaded ${viewingLogs.value.length} logs from Firestore`)
+    console.log(`✅ Loaded ${viewingLogs.value.length} logs, displaying in modal`)
+    console.groupEnd()
   } catch (error) {
-    console.error('Error loading logs:', error)
+    console.error('❌ Error loading logs:', error)
+    console.groupEnd()
     viewingLogs.value = []
   }
 
@@ -449,8 +541,14 @@ function exportViewingLogs() {
 
 .student-info {
   display: flex;
-  align-items: center;
-  gap: 1rem;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.uid-display {
+  font-size: 0.85rem;
+  color: #7f8c8d;
+  font-family: monospace;
 }
 
 .student-actions {
@@ -459,9 +557,18 @@ function exportViewingLogs() {
   flex-wrap: wrap;
 }
 
-.btn-view, .btn-analyze, .btn-export, .btn-disable {
+.btn-view, .btn-analyze, .btn-export, .btn-disable, .btn-check {
   padding: 0.5rem 1rem;
   font-size: 0.9rem;
+}
+
+.btn-check {
+  background: #9b59b6;
+  color: white;
+}
+
+.btn-check:hover {
+  background: #8e44ad;
 }
 
 .btn-view {

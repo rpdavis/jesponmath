@@ -2,7 +2,7 @@
   <div class="round-section round-3">
     <div class="round-header-bar">
       <h3>Round 3: Quick Check</h3>
-      <p>{{ currentIndex + 1 }}/{{ problems.length }} problems</p>
+      <p>{{ Math.min(currentIndex + 1, problems.length) }}/{{ problems.length }} problems</p>
     </div>
 
     <div class="assessment-question">
