@@ -345,13 +345,14 @@ const handleSaveAsTemplate = async (templateData?: any) => {
 
     console.log('✅ Template saved with ID:', templateId)
 
-    alert('✅ Template saved successfully! You can find it in Goal Template Management.')
+    alert(`✅ Template saved successfully!\n\nTemplate Name: ${templateData.name}\n\nYou can find it in Goal Template Management (/admin/templates) and use it to generate future assessments.`)
 
-    // Optionally navigate to template management
-    router.push('/admin/templates')
+    // DON'T navigate away - stay on current page
+    // User can continue working with the current goal
+    // router.push('/admin/templates')  // REMOVED - keeps modal open
   } catch (error) {
     console.error('Error saving template:', error)
-    alert('Failed to save template. Please try again.')
+    alert(`❌ Failed to save template.\n\nError: ${error instanceof Error ? error.message : 'Unknown error'}\n\nPlease try again or contact support.`)
   }
 }
 

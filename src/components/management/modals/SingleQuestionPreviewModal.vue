@@ -87,8 +87,12 @@
 
               <!-- Template Form Section -->
               <div class="template-section">
+                <div class="alert alert-info" style="margin-bottom: 1rem; padding: 0.75rem; border-radius: 6px; background: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460;">
+                  ℹ️ <strong>Optional:</strong> Save this question pattern as a reusable template for future assessments. 
+                  If you just want to use this question now, click "Approve & Generate" below.
+                </div>
                 <div class="template-section-header" @click="showTemplateFields = !showTemplateFields">
-                  <h6>📄 Template Information</h6>
+                  <h6>📄 Template Information (Optional)</h6>
                   <span class="toggle-icon">{{ showTemplateFields ? '▼' : '▶' }}</span>
                 </div>
                 <div v-if="showTemplateFields" class="template-form">
@@ -265,13 +269,14 @@
               Cancel
             </button>
             <button
+              v-if="showTemplateFields"
               type="button"
               class="proofread-btn save-template-btn"
               @click="handleSaveTemplate"
               :disabled="!question || isGenerating"
-              title="Save question pattern as a reusable template"
+              title="Save this question pattern as a reusable template (does not close dialog)"
             >
-              📄 Save as New Template
+              💾 Save as Template
             </button>
             <button
               type="button"
@@ -440,16 +445,26 @@ const prefillTemplateForm = () => {
     isActive: true,
   }
 
-  // Auto-expand template fields so user sees the example question
-  showTemplateFields.value = true
+  // DON'T auto-expand template fields - let user decide if they want to save as template
+  // showTemplateFields.value = true  // REMOVED - keeps template section collapsed by default
 }
 
 const handleSaveTemplate = () => {
   if (!localQuestion.value) return
 
-  // Validate required example question fields
-  if (!templateFormData.value.exampleQuestion || !templateFormData.value.exampleAnswer) {
-    alert('⚠️ Please fill in the Example Question Text and Example Correct Answer fields. These are required for accurate question generation.')
+  // Validate required fields
+  if (!templateFormData.value.name?.trim()) {
+    alert('⚠️ Please enter a Template Name.')
+    return
+  }
+
+  if (!templateFormData.value.exampleQuestion?.trim() || !templateFormData.value.exampleAnswer?.trim()) {
+    alert('⚠️ Please fill in the Example Question Text and Example Correct Answer fields. These are the most important parts of the template!')
+    return
+  }
+
+  if (!templateFormData.value.goalTitleTemplate?.trim() || !templateFormData.value.goalTextTemplate?.trim()) {
+    alert('⚠️ Please fill in the Goal Title Template and Goal Text Template fields.')
     return
   }
 
@@ -464,6 +479,9 @@ const handleSaveTemplate = () => {
   if (!cleanData.exampleExplanation) delete cleanData.exampleExplanation
 
   emit('save-template', cleanData)
+  
+  // DON'T close modal - let parent handle success/error feedback
+  // User can continue editing or close manually
 }
 </script>
 

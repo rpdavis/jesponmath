@@ -5,8 +5,9 @@
       v-model="inputValue"
       @input="handleInput"
       class="text-editor"
+      :class="{ 'compact': compact }"
       :placeholder="placeholder"
-      rows="3"
+      :rows="compact ? 1 : 3"
     ></textarea>
   </div>
 </template>
@@ -17,6 +18,7 @@ import { computed } from 'vue';
 interface Props {
   modelValue?: string;
   placeholder?: string;
+  compact?: boolean; // New prop for compact mode (used with prefix/suffix)
 }
 
 interface Emits {
@@ -25,7 +27,8 @@ interface Emits {
 
 const props = withDefaults(defineProps<Props>(), {
   modelValue: '',
-  placeholder: 'Enter your answer...'
+  placeholder: 'Enter your answer...',
+  compact: false
 });
 
 const emit = defineEmits<Emits>();
@@ -68,6 +71,16 @@ const handleInput = () => {
   background: white;
   resize: vertical;
   font-family: inherit;
+}
+
+/* Compact mode for use with prefix/suffix */
+.text-editor.compact {
+  min-height: 48px;
+  max-height: 48px;
+  padding: 12px 15px;
+  resize: none;
+  overflow: hidden;
+  line-height: 1.4;
 }
 
 .text-editor:focus {

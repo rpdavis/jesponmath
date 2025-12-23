@@ -177,11 +177,14 @@ export const createAssessment = async (
   assessmentData: Omit<Assessment, 'id' | 'createdAt' | 'updatedAt'>,
 ) => {
   try {
-    const docRef = await addDoc(collection(db, 'assessments'), {
+    // Remove undefined values before saving (Firestore doesn't allow undefined)
+    const cleanedData = removeUndefined({
       ...assessmentData,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     })
+    
+    const docRef = await addDoc(collection(db, 'assessments'), cleanedData)
     return docRef.id
   } catch (error) {
     console.error('Error creating assessment:', error)
@@ -225,11 +228,14 @@ export const updateAssessment = async (
   assessmentData: Partial<Omit<Assessment, 'id' | 'createdAt' | 'updatedAt'>>,
 ) => {
   try {
-    const docRef = doc(db, 'assessments', assessmentId)
-    await updateDoc(docRef, {
+    // Remove undefined values before updating (Firestore doesn't allow undefined)
+    const cleanedData = removeUndefined({
       ...assessmentData,
       updatedAt: serverTimestamp(),
     })
+    
+    const docRef = doc(db, 'assessments', assessmentId)
+    await updateDoc(docRef, cleanedData)
   } catch (error) {
     console.error('Error updating assessment:', error)
     throw error
@@ -260,7 +266,10 @@ export const duplicateAssessment = async (
     // Remove the original ID to let Firestore generate a new one
     delete (duplicatedData as any).id
 
-    const docRef = await addDoc(collection(db, 'assessments'), duplicatedData)
+    // Remove undefined values before saving
+    const cleanedData = removeUndefined(duplicatedData)
+
+    const docRef = await addDoc(collection(db, 'assessments'), cleanedData)
     console.log('✅ Assessment duplicated successfully with ID:', docRef.id)
 
     return docRef.id

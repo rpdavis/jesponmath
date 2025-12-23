@@ -172,6 +172,30 @@ export function useAssessmentGeneration(
     return `This assessment measures progress toward the IEP goal: ${goal.goalTitle}.`
   }
 
+  // Helper: Generate assessment instructions based on goal
+  const generateAssessmentInstructions = (goal: Goal, subject: string): string => {
+    const goalText = goal.goalText.toLowerCase()
+
+    // Use the goal text to create specific instructions
+    if (subject === 'math') {
+      if (goalText.includes('word problem') || goalText.includes('real-world')) {
+        return 'Read each problem carefully. Show all your work and explain your reasoning.'
+      }
+      if (goalText.includes('equation')) {
+        return 'Solve each equation. Show your work step by step. Check your answers by substituting back into the original equation.'
+      }
+      if (goalText.includes('expression')) {
+        return 'Simplify each expression completely. Show all steps in your work.'
+      }
+      if (goalText.includes('fraction') || goalText.includes('decimal')) {
+        return 'Simplify your answers. Show all work. You may use a calculator for decimal operations.'
+      }
+    }
+
+    // Default - use goal-specific language
+    return `Demonstrate your understanding of ${goal.areaOfNeed.toLowerCase()}. Show all work for full credit.`
+  }
+
   const detectQuestionType = (questionText: string): 'short-answer' | 'algebra-tiles' => {
     const text = questionText.toLowerCase()
     const algebraTilePatterns = [
@@ -252,6 +276,8 @@ export function useAssessmentGeneration(
             correctAnswer: questionData.answer?.trim() || questionData.answer,
             acceptableAnswers: altAnswers,
             acceptableAnswersString: altAnswers.join(', '),
+            answerPrefix: questionData.answerPrefix || '',
+            answerSuffix: questionData.answerSuffix || '',
             _source: questionData.source,
             _aiError: questionData.aiError,
           } as PreviewQuestion)
@@ -285,6 +311,8 @@ export function useAssessmentGeneration(
             correctAnswer: questionData.answer?.trim() || questionData.answer,
             acceptableAnswers: altAnswers,
             acceptableAnswersString: altAnswers.join(', '),
+            answerPrefix: questionData.answerPrefix || '',
+            answerSuffix: questionData.answerSuffix || '',
             _source: questionData.source,
             _aiError: questionData.aiError,
           } as PreviewQuestion)
@@ -292,10 +320,11 @@ export function useAssessmentGeneration(
       }
 
       const subject = getSubjectArea ? getSubjectArea(goal) : 'other'
+
       assessments.push({
         title: `${goal.goalTitle} - Check #${i}`,
         description: generateAssessmentDescription(goal, subject),
-        instructions: 'Complete all questions to the best of your ability.',
+        instructions: generateAssessmentInstructions(goal, subject),
         questions: questions,
         totalPoints: questions.reduce((sum, q) => sum + q.points, 0),
       })
@@ -592,12 +621,3 @@ export function useAssessmentGeneration(
     cancelConfirmationPreview,
   }
 }
-
-
-
-
-
-
-
-
-

@@ -16,6 +16,8 @@ import type { Goal } from '@/types/iep'
 export interface QuestionResult {
   question: string
   answer: string
+  answerPrefix?: string // Prefix like "x=" or "$"
+  answerSuffix?: string // Suffix like " hours" or " dollars"
   alternativeAnswers?: string[] // Alternative acceptable answers for short-answer questions
   explanation?: string
   requiresPhoto?: boolean
@@ -171,6 +173,8 @@ async function generateWithOpenAI(
     return {
       question: cleanQuestionText(parsed.question || 'Error generating question'),
       answer: (parsed.answer || 'N/A').trim(),
+      answerPrefix: parsed.answerPrefix || '',
+      answerSuffix: parsed.answerSuffix || '',
       alternativeAnswers: parsed.alternativeAnswers || parseAlternativesFromAnswer(parsed.answer),
       explanation: parsed.explanation
         ? parsed.explanation.trim().replace(/^\n+/, '').replace(/\n+$/, '')
@@ -352,38 +356,43 @@ async function generateWithGoogle(
 
 /**
  * Helper function to extract alternatives from answer if not provided
+ * Only includes CORRECT alternative formats, not incorrect variations
  */
 function parseAlternativesFromAnswer(answer: string): string[] {
   if (!answer) return []
 
   const alternatives: string[] = [answer.trim()]
 
-  // If answer is a number, add common variations
+  // If answer is a number, add common CORRECT variations
   const numMatch = answer.match(/(-?\d+\.?\d*)/)
   if (numMatch) {
     const num = numMatch[1]
     const numValue = parseFloat(num)
 
-    // Add variations
+    // Add decimal variations (always correct)
     alternatives.push(num) // "6"
-    if (numValue > 0) {
-      alternatives.push(`-${num}`) // "-6" if positive
-      alternatives.push(`+${num}`) // "+6"
-    }
-    alternatives.push(`x=${num}`) // "x=6"
     alternatives.push(`${num}.0`) // "6.0"
     if (!num.includes('.')) {
       alternatives.push(`${num}.00`) // "6.00"
     }
 
-    // If answer contains "x=" or variable, add variations
+    // Only add positive prefix if the number is positive
+    if (numValue > 0) {
+      alternatives.push(`+${num}`) // "+6" (only for positive numbers)
+    }
+
+    // Add variable format if answer doesn't already have it
+    if (!answer.includes('=')) {
+      alternatives.push(`x=${num}`) // "x=6"
+      alternatives.push(`X=${num}`) // "X=6" (capital)
+    }
+
+    // If answer contains "x=" or variable, add just the value
     if (answer.includes('=')) {
       const parts = answer.split('=')
       if (parts.length === 2) {
         const value = parts[1].trim()
         alternatives.push(value) // Just the value
-        alternatives.push(`x=${value}`) // x=value
-        alternatives.push(`X=${value}`) // X=value
       }
     }
   }
@@ -402,14 +411,36 @@ function buildPrompt(
   templateReference?: QuestionResult,
   difficulty: 'easy' | 'medium' | 'hard' = 'medium',
 ): string {
+  // Generate variety instructions based on question number
+  // 20 names per question for maximum variety - includes actual students + diverse, readable names
+  const varietyInstructions = `
+
+CRITICAL: ENSURE VARIETY - Question #${questionNumber}
+${questionNumber === 1 ? '- Use the first student name from this list: [Rose, Maria, Jesus, Aisha, Jaime, Kenji, Samantha, Aaliyah, Caiden, Mateo, Jayden, Aubree, Lucas, Sofia, Emma, Liam, Noah, Zara, Andre, Kai]' : ''}
+${questionNumber === 2 ? '- Use the second student name from this list: [Antoinette, Jamal, Israel, Gus, Victor, Diego, Liliana, Mika, Annabella, Carlos, Kevin, EJ, Kaylani, Mia, Elijah, Amara, Adrian, Leah, Dante, Nadia]' : ''}
+${questionNumber === 3 ? '- Use the third student name from this list: [Lexee, Fatima, Kwame, Jose, Josue, Zyphier, Daniel, Darnell, Michael, Esperanza, Aubrey, Carter, Matteo, Grace, Isaiah, Layla, Marco, Ruby, Ben, Zoe]' : ''}
+${questionNumber === 4 ? '- Use the fourth student name from this list: [Alonzo, Omar, Mikah, Xiomara, Olivia, Raj, Marcos, Lakisha, Steven, Hiroshi, Iker, William, Jazmine, Aria, Ethan, Camila, Rashid, Lily, Marcus, Yuki]' : ''}
+${questionNumber === 5 ? '- Use the fifth student name from this list: [Dylan, Amara, Lyra, Hassan, Maya, Rosa, Tucker, Chen, Elizabeth, Isaiah, Maria, Amy, Omar, Ava, Jackson, Sofia, Ahmed, Chloe, Jordan, Keisha]' : ''}
+- Change the item being purchased (examples: video game, skateboard, scooter, bike, headphones, tablet, books, art supplies)
+- Vary the dollar amounts significantly (make the total cost between $45-120, saved amount between $15-50, hourly rate between $5-15)
+- IMPORTANT: Calculate a DIFFERENT final answer - vary your numbers so the answer is NOT the same as previous questions
+- Use different scenarios (babysitting, mowing lawns, walking dogs, tutoring, washing cars, selling crafts)
+- Make each question UNIQUE with different numbers that lead to different answers`
+
   const templateSection = templateReference
     ? `
 
-TEMPLATE REFERENCE (use as a style guide, but generate a DIFFERENT question):
+TEMPLATE REFERENCE (use as a style guide, but generate a COMPLETELY DIFFERENT question):
 Question: ${templateReference.question}
 Answer: ${templateReference.answer}
 ${templateReference.explanation ? `Explanation: ${templateReference.explanation}` : ''}
-Note: Generate a similar question but with different numbers/scenarios. Keep the same format and structure.`
+
+⚠️ CRITICAL VARIETY REQUIREMENTS:
+- Use DIFFERENT student names (see variety instructions above for this question number)
+- Use DIFFERENT items/scenarios
+- Use DIFFERENT numbers (vary costs, savings, hourly rates)
+- Calculate to ensure a DIFFERENT answer than the template
+- Do NOT copy the template question - create a NEW question in the same style`
     : ''
 
   const assessmentMethod = goal.assessmentMethod || 'app'
@@ -431,6 +462,7 @@ Question Number: ${questionNumber}
 Assessment Method: ${assessmentMethod.toUpperCase()}
 
 ${assessmentMethodGuidance}
+${varietyInstructions}
 
 Requirements:
 1. The question must directly assess the skill described in the goal
@@ -439,6 +471,7 @@ Requirements:
 4. Make the question clear and appropriate for the student's grade level
 5. Provide a complete answer with explanation
 6. Consider the assessment method when deciding if photo uploads are needed
+7. ⚠️ CRITICAL: Each question must be UNIQUE - vary names, numbers, scenarios, and final answers
 
 DIFFICULTY LEVEL: ${difficulty.toUpperCase()}
 ${
@@ -450,17 +483,30 @@ ${
 }
 
 IMPORTANT FOR SHORT-ANSWER MATH QUESTIONS:
-- The answer must be a simple number or simple expression (e.g., "6", "-6", "x=6", "42")
-- Include alternative acceptable answers that students might provide
-- Examples: If answer is 6, alternatives might be: "6", "-6", "x=6", "+6", "6.0"
+- The answer must be a simple number or simple expression (e.g., "6", "x=6", "42")
+- Include alternative acceptable answers that students might provide (different formats of the SAME answer)
+- DO NOT include incorrect answers (e.g., don't include "-6" if the answer is "6")
+- Examples of CORRECT alternatives for answer "6": ["6", "6.0", "6.00", "+6", "x=6", "X=6"]
+- Examples of CORRECT alternatives for answer "5 hours": ["5 hours", "5", "5.0", "five hours"]
 - Format alternatives as an array of strings
 - Keep answers simple - avoid complex explanations in the answer field
+
+ANSWER AFFIXES (Prefix/Suffix):
+- If the answer needs a prefix (like "x="), include it: "answerPrefix": "x="
+- If the answer needs a suffix (like "hours", "dollars", "feet"), include it: "answerSuffix": " hours"
+- Examples:
+  * For "x=6": "answer": "6", "answerPrefix": "x="
+  * For "5 hours": "answer": "5", "answerSuffix": " hours"
+  * For "$42": "answer": "42", "answerPrefix": "$"
+- This helps students know the expected format and enables flexible grading
 
 Return your response as JSON with this exact format:
 {
   "question": "The full question text here",
   "answer": "6",  // Simple answer: just the number or simple expression
-  "alternativeAnswers": ["6", "-6", "x=6", "+6"],  // Alternative formats students might use (optional)
+  "answerPrefix": "x=",  // Optional: prefix like "x=" or "$" (empty string if none)
+  "answerSuffix": " hours",  // Optional: suffix like " hours", " dollars", " feet" (empty string if none)
+  "alternativeAnswers": ["6", "6.0", "+6", "x=6"],  // Only CORRECT alternative formats
   "explanation": "Optional explanation of the solution",
   "requiresPhoto": true or false
 }
@@ -475,17 +521,32 @@ Example for a multi-step math goal:
 {
   "question": "Carter scored 14 and 12 points in his first two basketball games. He scored twice as many points in his third game as the first two games combined.\\n\\n1) Write a numerical expression representing this problem\\n2) Calculate the answer\\n3) Show your work",
   "answer": "52",
-  "alternativeAnswers": ["52", "52 points", "fifty-two"],
+  "answerPrefix": "",
+  "answerSuffix": " points",
+  "alternativeAnswers": ["52", "52 points", "52.0", "fifty-two", "52.00"],
   "explanation": "First add the points from the first two games: 14 + 12 = 26. Then multiply by 2: 26 × 2 = 52.",
   "requiresPhoto": true
 }
 
-Example for a simple math question:
+Example for a simple equation:
 {
   "question": "Solve for x: 2x + 4 = 16",
   "answer": "6",
-  "alternativeAnswers": ["6", "-6", "x=6", "+6", "6.0"],
+  "answerPrefix": "x=",
+  "answerSuffix": "",
+  "alternativeAnswers": ["6", "6.0", "x=6", "X=6"],
   "explanation": "Subtract 4 from both sides: 2x = 12. Divide by 2: x = 6.",
+  "requiresPhoto": false
+}
+
+Example for a money problem:
+{
+  "question": "Maria has $35.50. She buys a book for $12.75. How much money does she have left?",
+  "answer": "22.75",
+  "answerPrefix": "$",
+  "answerSuffix": "",
+  "alternativeAnswers": ["22.75", "$22.75", "22.8", "$22.8"],
+  "explanation": "Subtract the cost from the total: $35.50 - $12.75 = $22.75",
   "requiresPhoto": false
 }${templateSection}
 

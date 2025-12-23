@@ -244,7 +244,7 @@ export function useGoalManagement() {
         createdBy: authStore.currentUser!.uid,
         questions: [],
         totalPoints: 0,
-        instructions: 'Complete all questions to the best of your ability.',
+        instructions: `Show your understanding of ${assessmentData.description || 'the material'}. Complete all questions and show your work.`,
         accommodations: [],
       }
 
@@ -427,14 +427,3 @@ export function useGoalManagement() {
     createAssessmentForGoal,
   }
 }
-
-
-
-
-
-
-
-
-
-
-

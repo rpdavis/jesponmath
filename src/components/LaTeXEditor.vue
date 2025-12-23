@@ -75,6 +75,7 @@
           <ul>
             <li><code>$x^2$</code> → inline math</li>
             <li><code>$$x^2$$</code> → display math</li>
+            <li><code>\$5.00</code> → dollar sign ($5.00)</li>
             <li><code>\frac{a}{b}</code> → fractions</li>
             <li><code>x^{2n}</code> → superscripts</li>
             <li><code>x_{i}</code> → subscripts</li>
@@ -129,6 +130,7 @@ const dropdownStyle = ref({})
 
 // Common LaTeX symbols for toolbar
 const commonSymbols = [
+  { name: 'dollar', latex: '\\$', display: '$', description: 'Dollar sign' },
   { name: 'fraction', latex: '\\frac{}{}', display: '½', description: 'Fraction' },
   { name: 'superscript', latex: '^{}', display: 'x²', description: 'Superscript' },
   { name: 'subscript', latex: '_{}', display: 'x₁', description: 'Subscript' },
@@ -385,37 +387,139 @@ const updateDropdownPosition = () => {
   })
 }
 
+type Segment =
+  | { type: 'math'; raw: string; display: boolean }
+  | { type: 'text'; raw: string }
+
+/**
+ * Splits text into math and text segments
+ */
+function splitMath(text: string): Segment[] {
+  const segs: Segment[] = []
+  let i = 0
+  let buf = ''
+
+  const pushText = () => {
+    if (buf) segs.push({ type: 'text', raw: buf })
+    buf = ''
+  }
+
+  const readMath = (display: boolean): { raw: string; endIndex: number } | null => {
+    let start = i
+    let braceDepth = 0
+    let escaped = false
+
+    while (i < text.length) {
+      const ch = text[i]
+
+      if (escaped) {
+        escaped = false
+        i++
+        continue
+      }
+
+      if (ch === '\\') {
+        escaped = true
+        i++
+        continue
+      }
+
+      if (ch === '{') {
+        braceDepth++
+        i++
+        continue
+      }
+
+      if (ch === '}') {
+        if (braceDepth > 0) braceDepth--
+        i++
+        continue
+      }
+
+      if (braceDepth === 0 && ch === '$') {
+        if (display) {
+          if (text[i + 1] === '$') {
+            const raw = text.slice(start, i)
+            i += 2
+            return { raw, endIndex: i }
+          }
+        } else {
+          const raw = text.slice(start, i)
+          i += 1
+          return { raw, endIndex: i }
+        }
+      }
+
+      i++
+    }
+
+    i = start
+    return null
+  }
+
+  while (i < text.length) {
+    const ch = text[i]
+
+    if (ch === '$') {
+      const isDisplay = text[i + 1] === '$'
+
+      pushText()
+
+      i += isDisplay ? 2 : 1
+
+      const math = readMath(isDisplay)
+      if (math) {
+        segs.push({ type: 'math', raw: math.raw, display: isDisplay })
+        continue
+      }
+
+      buf += isDisplay ? '$$' : '$'
+      i += isDisplay ? 2 : 1
+      continue
+    }
+
+    buf += ch
+    i++
+  }
+
+  pushText()
+  return segs
+}
+
+/**
+ * Normalizes dollar signs for KaTeX
+ */
+function normalizeForKatex(text: string): Segment[] {
+  return splitMath(text).map(seg => {
+    if (seg.type === 'text') {
+      return { ...seg, raw: seg.raw.replace(/\\\$/g, '$') }
+    }
+    // math-mode: Leave as-is, let KaTeX handle it
+    return seg
+  })
+}
+
 const renderLatexInText = (text: string): string => {
   if (!text) return ''
   
   try {
-    // Replace display math ($$...$$)
-    let result = text.replace(/\$\$([^$]+)\$\$/g, (match, latex) => {
+    const segments = normalizeForKatex(text)
+    
+    return segments.map(seg => {
+      if (seg.type === 'text') {
+        return seg.raw
+      }
+      
       try {
-        return katex.renderToString(latex.trim(), { 
-          displayMode: true, 
+        return katex.renderToString(seg.raw, {
+          displayMode: seg.display,
           throwOnError: false,
           strict: false
         })
       } catch {
-        return match
+        return seg.display ? `$$${seg.raw}$$` : `$${seg.raw}$`
       }
-    })
-    
-    // Replace inline math ($...$)
-    result = result.replace(/\$([^$]+)\$/g, (match, latex) => {
-      try {
-        return katex.renderToString(latex.trim(), { 
-          displayMode: false, 
-          throwOnError: false,
-          strict: false
-        })
-      } catch {
-        return match
-      }
-    })
-    
-    return result
+    }).join('')
   } catch (error) {
     console.warn('LaTeX rendering error:', error)
     return text

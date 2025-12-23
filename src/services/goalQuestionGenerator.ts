@@ -14,8 +14,9 @@
  * - KaTeX math rendering support
  */
 
-import type { Goal } from '@/types/iep'
+import type { Goal, GoalTemplate } from '@/types/iep'
 import { generateQuestionWithAI } from './aiQuestionGenerator'
+import { getActiveTemplates, incrementTemplateUsage } from '@/firebase/templateServices'
 
 /**
  * Helper function to format math expressions for KaTeX
@@ -31,6 +32,8 @@ function formatMath(expression: string, displayMode: boolean = false): string {
 export interface QuestionResult {
   question: string
   answer: string
+  answerPrefix?: string // Prefix like "x=" or "$"
+  answerSuffix?: string // Suffix like " hours" or " dollars"
   alternativeAnswers?: string[] // Alternative acceptable answers for short-answer questions
   explanation?: string
   requiresPhoto?: boolean
@@ -902,13 +905,187 @@ function gcd(a: number, b: number): number {
 }
 
 /**
+ * Find best matching saved template for a goal
+ * Returns null if no good match found
+ */
+async function findMatchingTemplate(goal: Goal): Promise<GoalTemplate | null> {
+  try {
+    // Get all active templates
+    const templates = await getActiveTemplates()
+    
+    if (templates.length === 0) {
+      return null
+    }
+
+    const goalText = goal.goalText.toLowerCase()
+    const goalTitle = (goal.goalTitle || '').toLowerCase()
+    const areaOfNeed = (goal.areaOfNeed || '').toLowerCase()
+    
+    // Score each template based on how well it matches the goal
+    const scoredTemplates = templates.map(template => {
+      let score = 0
+      
+      // Match on area of need (high weight)
+      if (template.areaOfNeed.toLowerCase() === areaOfNeed) {
+        score += 10
+      } else if (areaOfNeed.includes(template.areaOfNeed.toLowerCase())) {
+        score += 5
+      }
+      
+      // Match on topic (high weight)
+      if (template.topic) {
+        const topic = template.topic.toLowerCase()
+        if (goalText.includes(topic) || goalTitle.includes(topic)) {
+          score += 15
+        }
+      }
+      
+      // Match on subject
+      const detection = detectGoalCharacteristics(goal)
+      if (template.subject === detection.subject) {
+        score += 5
+      }
+      
+      // Match on grade level
+      if (template.defaultGradeLevel && goal.gradeLevel) {
+        if (template.defaultGradeLevel === goal.gradeLevel) {
+          score += 3
+        } else if (Math.abs(template.defaultGradeLevel - goal.gradeLevel) <= 1) {
+          score += 1 // Close grade level
+        }
+      }
+      
+      // Match on assessment method
+      if (template.assessmentMethod === goal.assessmentMethod) {
+        score += 2
+      }
+      
+      // Bonus: Has example question (more useful template)
+      if (template.exampleQuestion && template.exampleAnswer) {
+        score += 5
+      }
+      
+      return { template, score }
+    })
+    
+    // Sort by score descending
+    scoredTemplates.sort((a, b) => b.score - a.score)
+    
+    // Return best match if score is high enough (threshold: 15)
+    const bestMatch = scoredTemplates[0]
+    if (bestMatch && bestMatch.score >= 15) {
+      console.log(`✨ Found matching template: "${bestMatch.template.name}" (score: ${bestMatch.score})`)
+      
+      // Increment usage count
+      await incrementTemplateUsage(bestMatch.template.id)
+      
+      return bestMatch.template
+    }
+    
+    console.log(`📋 No matching template found (best score: ${bestMatch?.score || 0}). Using coded templates.`)
+    return null
+  } catch (error) {
+    console.error('Error finding matching template:', error)
+    return null // Fall back to coded templates on error
+  }
+}
+
+/**
+ * Generate question from saved template
+ */
+function generateQuestionFromTemplate(
+  template: GoalTemplate,
+  goal: Goal,
+  questionNumber: number,
+): QuestionResult | null {
+  if (!template.exampleQuestion || !template.exampleAnswer) {
+    console.warn('Template missing example question/answer, cannot generate')
+    return null
+  }
+  
+  // Use the example question as a base, with slight variations
+  const variations = [
+    template.exampleQuestion, // Use exact example for first question
+    template.exampleQuestion, // Repeat for consistency (AI will add variation later)
+    template.exampleQuestion,
+    template.exampleQuestion,
+    template.exampleQuestion,
+  ]
+  
+  const question = variations[questionNumber % variations.length]
+  
+  // Parse alternative answers
+  const alternativeAnswers: string[] = []
+  if (template.exampleAlternativeAnswers) {
+    alternativeAnswers.push(
+      ...template.exampleAlternativeAnswers
+        .split(',')
+        .map(a => a.trim())
+        .filter(a => a.length > 0)
+    )
+  }
+  
+  return {
+    question,
+    answer: template.exampleAnswer,
+    alternativeAnswers,
+    explanation: template.exampleExplanation,
+    requiresPhoto: template.assessmentMethod === 'paper' || template.assessmentMethod === 'hybrid',
+    source: 'template',
+  }
+}
+
+/**
  * Main function: Generate question for a goal
+ * NEW: Checks for saved templates first, falls back to coded templates
  */
 export async function generateQuestionForGoal(
   goal: Goal,
   questionNumber: number,
   config: GeneratorConfig = { method: 'hybrid' },
 ): Promise<QuestionResult> {
+  // STEP 1: Try to find a matching saved template
+  const savedTemplate = await findMatchingTemplate(goal)
+  
+  if (savedTemplate) {
+    const templateResult = generateQuestionFromTemplate(savedTemplate, goal, questionNumber)
+    if (templateResult) {
+      // Use AI to add variation to the template question (if hybrid mode)
+      if (config.method === 'hybrid') {
+        try {
+          const aiConfig = {
+            provider: 'google' as 'google' | 'openai',
+            apiKey: config.geminiApiKey || import.meta.env.VITE_GEMINI_API_KEY || '',
+            model: 'gemini-flash-latest',
+            difficulty: config.difficulty || 'medium',
+          }
+          
+          if (aiConfig.apiKey) {
+            const detection = detectGoalCharacteristics(goal)
+            const aiResult = await generateQuestionWithAI(
+              goal,
+              detection.subject,
+              questionNumber,
+              aiConfig,
+              templateResult, // Use saved template as reference
+            )
+            return {
+              ...aiResult,
+              source: 'ai-with-template-reference',
+            }
+          }
+        } catch (error) {
+          console.warn('AI generation failed for saved template, using template as-is:', error)
+          return templateResult
+        }
+      }
+      
+      // Return template directly if not hybrid mode
+      return templateResult
+    }
+  }
+  
+  // STEP 2: Fall back to coded templates
   const detection = detectGoalCharacteristics(goal)
 
   // Always generate template first for hybrid mode (to use as reference)

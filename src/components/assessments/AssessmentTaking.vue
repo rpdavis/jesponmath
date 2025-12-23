@@ -265,12 +265,13 @@
 
               <!-- Short Answer -->
               <div v-else-if="currentQuestion.questionType === 'short-answer'" class="answer-input">
-                <div class="answer-with-prefix-suffix">
+                <div class="answer-with-prefix-suffix" :class="{ 'has-prefix-suffix': currentQuestion.answerPrefix || currentQuestion.answerSuffix }">
                   <span v-if="currentQuestion.answerPrefix" class="answer-prefix">{{ currentQuestion.answerPrefix }}</span>
                   <RichTextAnswerInput
                     :key="currentQuestion.id"
                     v-model="answers[currentQuestion.id] as string"
-                    :placeholder="currentQuestion.answerSuffix ? `Enter answer (${currentQuestion.answerSuffix} will be added)` : 'Enter your answer...'"
+                    :placeholder="currentQuestion.answerSuffix ? `Enter answer` : 'Enter your answer...'"
+                    :compact="!!(currentQuestion.answerPrefix || currentQuestion.answerSuffix)"
                   />
                   <span v-if="currentQuestion.answerSuffix" class="answer-suffix">{{ currentQuestion.answerSuffix }}</span>
                 </div>
@@ -3076,23 +3077,41 @@ onMounted(() => {
 .answer-with-prefix-suffix {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
+  gap: 0.75rem;
+  flex-wrap: nowrap;
+  max-width: 600px;
+}
+
+/* When there's a prefix/suffix, make it more compact and inline */
+.answer-with-prefix-suffix.has-prefix-suffix {
+  align-items: center;
 }
 
 .answer-prefix,
 .answer-suffix {
   font-weight: 600;
   color: #1e40af;
-  font-size: 1.1rem;
-  padding: 0.5rem 0.75rem;
+  font-size: 1.2rem;
+  padding: 0.75rem 1rem;
   background: #eff6ff;
-  border-radius: 6px;
+  border: 2px solid #dbeafe;
+  border-radius: 8px;
   white-space: nowrap;
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  line-height: 1;
 }
 
 .answer-with-prefix-suffix :deep(.rich-text-answer) {
   flex: 1;
   min-width: 200px;
+  max-width: 400px;
+}
+
+/* Ensure the textarea in compact mode aligns with prefix/suffix */
+.answer-with-prefix-suffix.has-prefix-suffix :deep(.text-editor) {
+  font-size: 1.1rem;
+  font-weight: 500;
 }
 </style>
