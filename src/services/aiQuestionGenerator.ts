@@ -757,6 +757,11 @@ IMPORTANT FORMATTING RULES:
 - Example: For fractions, use "$\\\\frac{1}{2}$" (double backslash)
 - Example: For square roots, use "$\\\\sqrt{25}$" (double backslash)
 - This is because JSON strings treat single backslash as an escape character.
+- **CRITICAL FOR MONEY (DOLLAR AMOUNTS)**: Wrap dollar amounts in math mode with escaped dollar sign:
+  * CORRECT: "$\\\\$18.25$" (renders as $18.25)
+  * WRONG: "$18.25" (breaks KaTeX rendering)
+  * Example: "Rose buys a book for $\\\\$18.25$ and a magazine for $\\\\$9.50$. If she pays with a $\\\\$30$ bill, how much change will she receive?"
+  * Always use: $\\\\$[amount]$ for any dollar amount in the question text
 
 Example for a multi-step math goal:
 {
@@ -782,7 +787,7 @@ Example for a simple equation:
 
 Example for a money problem:
 {
-  "question": "Maria has $35.50. She buys a book for $12.75. How much money does she have left?",
+  "question": "Maria has $\\\\$35.50$. She buys a book for $\\\\$12.75$. How much money does she have left?",
   "answer": "22.75",
   "answerPrefix": "$",
   "answerSuffix": "",

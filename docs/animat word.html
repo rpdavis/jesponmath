@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Word Problem Frames – Highlight + Animate</title>
+  <style>
+    :root{
+      --bg:#0b0f17;
+      --card:#111a2b;
+      --text:#e8eefc;
+      --muted:#b8c4e6;
+      --line:#24314f;
+      --hl:#ffe38a;
+      --hlText:#1a1a1a;
+      --accent:#8fd3ff;
+      --good:#9bffb4;
+      --warn:#ffd1a1;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --radius: 16px;
+      font-synthesis-weight: none;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      background: radial-gradient(1200px 700px at 20% 10%, rgba(143,211,255,.12), transparent 60%),
+                  radial-gradient(900px 500px at 85% 25%, rgba(155,255,180,.10), transparent 60%),
+                  var(--bg);
+      color: var(--text);
+      padding: 18px;
+    }
+    .wrap{
+      max-width: 980px;
+      margin: 0 auto;
+      display: grid;
+      gap: 14px;
+    }
+    header{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(17,26,43,.82);
+      box-shadow: var(--shadow);
+    }
+    h1{
+      margin:0;
+      font-size: 18px;
+      letter-spacing:.2px;
+    }
+    .sub{
+      margin-top:6px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.35;
+      max-width: 650px;
+    }
+    .row{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+    .btn{
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.03);
+      color: var(--text);
+      padding: 10px 12px;
+      border-radius: 999px;
+      cursor:pointer;
+      font-weight: 650;
+      font-size: 13px;
+      transition: transform .08s ease, background .2s ease, border-color .2s ease;
+      user-select:none;
+    }
+    .btn:hover{ transform: translateY(-1px); border-color: rgba(143,211,255,.55); }
+    .btn:active{ transform: translateY(0px); }
+    .btn.primary{
+      background: rgba(143,211,255,.14);
+      border-color: rgba(143,211,255,.55);
+    }
+    .btn.small{ padding: 8px 10px; font-size: 12px; }
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 12px;
+      background: rgba(255,255,255,.02);
+    }
+    .dot{
+      width:10px; height:10px; border-radius:99px;
+      background: var(--accent);
+      box-shadow: 0 0 0 3px rgba(143,211,255,.12);
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap:14px;
+    }
+    @media (max-width: 820px){
+      .grid{ grid-template-columns: 1fr; }
+    }
+
+    .card{
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(17,26,43,.82);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .card .hd{
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .card .hd b{
+      font-size: 14px;
+      letter-spacing:.2px;
+    }
+    .card .bd{
+      padding: 14px;
+      display:grid;
+      gap:12px;
+    }
+
+    .problem{
+      font-size: 18px;
+      line-height: 1.5;
+      padding: 12px 12px;
+      border: 1px dashed rgba(184,196,230,.35);
+      border-radius: 14px;
+      background: rgba(0,0,0,.12);
+    }
+    .equation, .answer{
+      font-size: 16px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(184,196,230,.25);
+      background: rgba(0,0,0,.10);
+    }
+    .answer{ border-color: rgba(155,255,180,.25); }
+
+    .label{
+      font-size: 12px;
+      color: var(--muted);
+      display:flex;
+      justify-content:space-between;
+      gap:8px;
+    }
+
+    .legend{
+      display:grid;
+      gap:8px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .tag{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding: 8px 10px;
+      border-radius: 12px;
+      border: 1px solid rgba(184,196,230,.18);
+      background: rgba(0,0,0,.10);
+    }
+    .swatch{
+      width:10px; height:10px; border-radius: 99px;
+      background: var(--hl);
+      box-shadow: 0 0 0 3px rgba(255,227,138,.12);
+    }
+
+    /* Highlight animation */
+    .hl{
+      background: linear-gradient(transparent 55%, rgba(255,227,138,.92) 55%);
+      color: inherit;
+      border-radius: 6px;
+      padding: 0 .18em;
+      transition: background .25s ease;
+    }
+    .hlStrong{
+      background: rgba(255,227,138,.95);
+      color: var(--hlText);
+      border-radius: 8px;
+      padding: 2px 6px;
+      box-shadow: 0 8px 20px rgba(255,227,138,.15);
+      transition: all .25s ease;
+    }
+
+    .frameName{
+      color: var(--accent);
+      font-weight: 800;
+      letter-spacing:.3px;
+    }
+    .stepBar{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+    .stepChip{
+      font-size: 12px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(184,196,230,.18);
+      background: rgba(0,0,0,.10);
+      color: var(--muted);
+    }
+    .stepChip.on{
+      border-color: rgba(255,227,138,.55);
+      color: var(--text);
+      background: rgba(255,227,138,.12);
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>Word Problem Frames (Add/Sub) — Highlight + Animate</h1>
+        <div class="sub">
+          Click a frame, then hit <b>Next</b>. It highlights: <b>Question → Givens → Frame → Math sentence → Answer</b>.
+
+        </div>
+      </div>
+      <div class="pill" title="Use Next/Back to animate">
+        <span class="dot"></span>
+        Step-by-step highlighting
+      </div>
+    </header>
+
+    <div class="row" id="frameButtons"></div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="hd">
+          <b id="title">Frame</b>
+          <div class="row">
+            <button class="btn small" id="backBtn">Back</button>
+            <button class="btn small primary" id="nextBtn">Next</button>
+            <button class="btn small" id="resetBtn">Reset</button>
+          </div>
+        </div>
+        <div class="bd">
+          <div class="label">
+            <span>Problem</span>
+            <span class="frameName" id="frameName"></span>
+          </div>
+          <div class="problem" id="problem"></div>
+
+          <div class="label"><span>Math sentence</span><span id="stepHint"></span></div>
+          <div class="equation" id="equation"></div>
+
+          <div class="label"><span>Answer</span><span>(with units)</span></div>
+          <div class="answer" id="answer"></div>
+
+          <div class="stepBar" id="stepBar"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="hd"><b>Legend (what gets highlighted)</b></div>
+        <div class="bd">
+          <div class="legend">
+            <div class="tag"><span class="swatch"></span> <b>Question</b> = what we are finding</div>
+            <div class="tag"><span class="swatch"></span> <b>Givens</b> = numbers + units in the story</div>
+            <div class="tag"><span class="swatch"></span> <b>Frame</b> = the story skeleton (combine/change/compare/missing part)</div>
+            <div class="tag"><span class="swatch"></span> <b>Math sentence</b> = one clean equation to solve</div>
+            <div class="tag"><span class="swatch"></span> <b>Answer</b> = final statement with units</div>
+          </div>
+          <div style="color:var(--muted); font-size:12px; line-height:1.4; margin-top:6px;">
+            Teacher tip: after Step 2, ask: <b>“Which frame fits the story?”</b> (not “what keyword do you see?”).
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const steps = [
+      { key: "question", label: "1) Highlight Question" },
+      { key: "givens", label: "2) Highlight Givens" },
+      { key: "frame", label: "3) Highlight Frame" },
+      { key: "equation", label: "4) Highlight Math Sentence" },
+      { key: "answer", label: "5) Highlight Answer" },
+    ];
+
+    // Each frame has markup with tags that we can highlight.
+    // Use <span data-role="question"> ... </span> etc.
+    const frames = [
+      {
+        id: "combine",
+        name: "COMBINE",
+        title: "Combine (Add)",
+        problemHTML:
+          `There are <span data-role="given">7 red balloons</span> and <span data-role="given">5 blue balloons</span>. 
+           <span data-role="question">How many balloons are there in all?</span>`,
+        equationHTML:
+          `<span data-role="equation"><span data-role="given">7</span> + <span data-role="given">5</span> = 12</span>`,
+        answerHTML:
+          `<span data-role="answer">There are 12 balloons.</span>`,
+        frameRule: `part + part = total`
+      },
+      {
+        id: "change",
+        name: "CHANGE",
+        title: "Change (Add or Subtract)",
+        problemHTML:
+          `Mia had <span data-role="given">14 pencils</span>. She gave away <span data-role="given">6 pencils</span>. 
+           <span data-role="question">How many pencils does Mia have now?</span>`,
+        equationHTML:
+          `<span data-role="equation"><span data-role="given">14</span> − <span data-role="given">6</span> = 8</span>`,
+        answerHTML:
+          `<span data-role="answer">Mia has 8 pencils now.</span>`,
+        frameRule: `start ± change = final`
+      },
+      {
+        id: "compare",
+        name: "COMPARE",
+        title: "Compare (Subtract)",
+        problemHTML:
+          `Leo has <span data-role="given">12 marbles</span>. Mia has <span data-role="given">7 marbles</span>. 
+           <span data-role="question">How many more marbles does Leo have than Mia?</span>`,
+        equationHTML:
+          `<span data-role="equation"><span data-role="given">12</span> − <span data-role="given">7</span> = 5</span>`,
+        answerHTML:
+          `<span data-role="answer">Leo has 5 more marbles than Mia.</span>`,
+        frameRule: `bigger − smaller = difference`
+      },
+      {
+        id: "missing",
+        name: "MISSING PART",
+        title: "Missing Part (Subtract)",
+        problemHTML:
+          `There are <span data-role="given">15 students</span> in line. <span data-role="given">9 students are boys</span>. 
+           <span data-role="question">How many students are girls?</span>`,
+        equationHTML:
+          `<span data-role="equation"><span data-role="given">15</span> − <span data-role="given">9</span> = 6</span>`,
+        answerHTML:
+          `<span data-role="answer">There are 6 girls.</span>`,
+        frameRule: `total − known part = missing part`
+      },
+    ];
+
+    // UI Elements
+    const frameButtons = document.getElementById("frameButtons");
+    const titleEl = document.getElementById("title");
+    const frameNameEl = document.getElementById("frameName");
+    const problemEl = document.getElementById("problem");
+    const equationEl = document.getElementById("equation");
+    const answerEl = document.getElementById("answer");
+    const backBtn = document.getElementById("backBtn");
+    const nextBtn = document.getElementById("nextBtn");
+    const resetBtn = document.getElementById("resetBtn");
+    const stepHint = document.getElementById("stepHint");
+    const stepBar = document.getElementById("stepBar");
+
+    let currentFrame = frames[0];
+    let stepIndex = 0;
+
+    function renderFrameButtons(){
+      frameButtons.innerHTML = "";
+      frames.forEach(f => {
+        const b = document.createElement("button");
+        b.className = "btn" + (f.id === currentFrame.id ? " primary" : "");
+        b.textContent = f.title;
+        b.onclick = () => { currentFrame = f; stepIndex = 0; render(); };
+        frameButtons.appendChild(b);
+      });
+    }
+
+    function renderStepBar(){
+      stepBar.innerHTML = "";
+      steps.forEach((s, i) => {
+        const chip = document.createElement("span");
+        chip.className = "stepChip" + (i === stepIndex ? " on" : "");
+        chip.textContent = s.label;
+        stepBar.appendChild(chip);
+      });
+    }
+
+    function setContent(){
+      titleEl.textContent = `${currentFrame.title}`;
+      frameNameEl.textContent = `${currentFrame.name}  •  ${currentFrame.frameRule}`;
+      problemEl.innerHTML = currentFrame.problemHTML;
+      equationEl.innerHTML = currentFrame.equationHTML;
+      answerEl.innerHTML = currentFrame.answerHTML;
+    }
+
+    function clearHighlights(){
+      document.querySelectorAll("[data-role]").forEach(el=>{
+        el.classList.remove("hl","hlStrong");
+      });
+    }
+
+    function highlight(role){
+      const nodes = document.querySelectorAll(`[data-role="${role}"]`);
+      nodes.forEach((el, idx)=>{
+        el.classList.add(idx === 0 ? "hlStrong" : "hl");
+      });
+    }
+
+    function render(){
+      renderFrameButtons();
+      renderStepBar();
+      setContent();
+      clearHighlights();
+
+      const step = steps[stepIndex]?.key;
+
+      // Step hint text
+      const hints = {
+        question: "Find what you’re solving for.",
+        givens: "Find the numbers + units.",
+        frame: "Name the story skeleton.",
+        equation: "Write one clean math sentence.",
+        answer: "Say the answer with units.",
+      };
+      stepHint.textContent = hints[step] || "";
+
+      if(step === "frame"){
+        // highlight frame name line instead of data-role text
+        frameNameEl.classList.add("hlStrong");
+      }else{
+        frameNameEl.classList.remove("hlStrong");
+        highlight(step);
+      }
+
+      // Disable buttons at ends
+      backBtn.disabled = stepIndex === 0;
+      nextBtn.disabled = stepIndex === steps.length - 1;
+      backBtn.style.opacity = backBtn.disabled ? .5 : 1;
+      nextBtn.style.opacity = nextBtn.disabled ? .5 : 1;
+    }
+
+    backBtn.onclick = () => { if(stepIndex > 0){ stepIndex--; render(); } };
+    nextBtn.onclick = () => { if(stepIndex < steps.length - 1){ stepIndex++; render(); } };
+    resetBtn.onclick = () => { stepIndex = 0; render(); };
+
+    // Keyboard support
+    document.addEventListener("keydown", (e)=>{
+      if(e.key === "ArrowRight") nextBtn.click();
+      if(e.key === "ArrowLeft") backBtn.click();
+      if(e.key.toLowerCase() === "r") resetBtn.click();
+    });
+
+    render();
+  </script>
+</body>
+</html>

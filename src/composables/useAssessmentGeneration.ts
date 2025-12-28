@@ -322,11 +322,12 @@ export function useAssessmentGeneration(
 
       const subject = getSubjectArea ? getSubjectArea(goal) : 'other'
       
-      // Load templates for this goal to get directions and examples
+      // Load templates for this goal to get directions, examples, and frame guides
       let templateInstructions = ''
       if (goal.preferredTemplateIds && goal.preferredTemplateIds.length > 0) {
         try {
           const { getTemplate } = await import('@/firebase/templateServices')
+          const { getFrameGuide } = await import('@/utils/wordProblemFrames')
           const templates = []
           for (const templateId of goal.preferredTemplateIds) {
             const template = await getTemplate(templateId)
@@ -343,9 +344,12 @@ export function useAssessmentGeneration(
                 templateInstructions += `\n📋 ${template.name}:\n`
               }
               
-              // Add directions
+              // Add custom directions OR frame guide (fallback)
               if (template.directions) {
                 templateInstructions += template.directions + '\n'
+              } else if (template.problemFrameType) {
+                // Use the word problem frame guide as fallback
+                templateInstructions += getFrameGuide(template.problemFrameType) + '\n'
               }
               
               // Add example
@@ -356,6 +360,11 @@ export function useAssessmentGeneration(
                 if (template.exampleExplanation) {
                   templateInstructions += `Explanation: ${template.exampleExplanation}\n`
                 }
+              }
+              
+              // Add Khan Academy video link if available
+              if (template.khanAcademyVideoUrl) {
+                templateInstructions += `\n🎥 Video Help: ${template.khanAcademyVideoUrl}\n`
               }
               
               if (index < templates.length - 1) {

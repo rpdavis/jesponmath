@@ -410,6 +410,12 @@ export interface GoalTemplate {
   
   // NEW: Student-facing directions on how to solve this type of problem
   directions?: string // Step-by-step directions for students (e.g., "1. Read the problem carefully. 2. Identify what you need to find...")
+  
+  // NEW: Khan Academy video link for this problem type
+  khanAcademyVideoUrl?: string // URL to Khan Academy video explaining this concept (e.g., "https://www.khanacademy.org/math/...")
+  
+  // NEW: Word problem frame type (for providing student-friendly solving frameworks)
+  problemFrameType?: 'combine' | 'change' | 'compare' | 'missing-part' | 'equal-groups' | 'comparison' | 'multi-step' | 'other' // The story structure/frame of the word problem
 
   // NEW: Structured problem characteristics for AI generation
   problemStructure?: {

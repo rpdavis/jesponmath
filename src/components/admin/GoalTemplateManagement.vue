@@ -489,6 +489,19 @@ Example: 'Given five one-step word problems involving a percentage read aloud, M
                 placeholder="Enter explanation for the example question..."
               ></textarea>
             </div>
+            
+            <div class="form-group">
+              <label>🎥 Khan Academy Video URL (Optional)</label>
+              <input
+                v-model="formData.khanAcademyVideoUrl"
+                type="url"
+                class="form-control"
+                placeholder="https://www.khanacademy.org/math/..."
+              />
+              <small class="form-text">
+                Add a Khan Academy video link to help students learn this concept
+              </small>
+            </div>
           </div>
 
           <!-- PROBLEM STRUCTURE SECTION - NEW -->
@@ -786,6 +799,7 @@ const formData = ref({
   exampleAnswer: '',
   exampleAlternativeAnswers: '',
   exampleExplanation: '',
+  khanAcademyVideoUrl: '',
   // Operation constraints for math
   allowedOperations: [] as ('addition' | 'subtraction' | 'multiplication' | 'division')[],
   // Problem structure fields (NEW)
@@ -888,6 +902,7 @@ const resetForm = () => {
     exampleAnswer: '',
     exampleAlternativeAnswers: '',
     exampleExplanation: '',
+    khanAcademyVideoUrl: '',
     allowedOperations: [],
     problemStructure: {
       numberOfSteps: undefined,
@@ -942,6 +957,7 @@ const editTemplate = (template: GoalTemplate) => {
     exampleAnswer: template.exampleAnswer || '',
     exampleAlternativeAnswers: template.exampleAlternativeAnswers || '',
     exampleExplanation: template.exampleExplanation || '',
+    khanAcademyVideoUrl: template.khanAcademyVideoUrl || '',
     allowedOperations: template.allowedOperations || [],
     problemStructure: {
       numberOfSteps: template.problemStructure?.numberOfSteps,
@@ -1002,6 +1018,8 @@ const saveTemplate = async () => {
       templateData.exampleAlternativeAnswers = formData.value.exampleAlternativeAnswers
     if (formData.value.exampleExplanation)
       templateData.exampleExplanation = formData.value.exampleExplanation
+    if (formData.value.khanAcademyVideoUrl)
+      templateData.khanAcademyVideoUrl = formData.value.khanAcademyVideoUrl
     if (formData.value.allowedOperations && formData.value.allowedOperations.length > 0)
       templateData.allowedOperations = formData.value.allowedOperations
 
@@ -1112,6 +1130,7 @@ const createFromTemplate = (t: GoalTemplate) => {
     exampleAnswer: t.exampleAnswer || '',
     exampleAlternativeAnswers: t.exampleAlternativeAnswers || '',
     exampleExplanation: t.exampleExplanation || '',
+    khanAcademyVideoUrl: t.khanAcademyVideoUrl || '',
     allowedOperations: t.allowedOperations || [],
     problemStructure: {
       numberOfSteps: t.problemStructure?.numberOfSteps,
@@ -1189,6 +1208,7 @@ const generateDraft = async () => {
       exampleAnswer: draft.exampleAnswer,
       exampleAlternativeAnswers: '',
       exampleExplanation: draft.exampleExplanation || '',
+      khanAcademyVideoUrl: '',
       allowedOperations: draft.allowedOperations || [],
       problemStructure: {
         numberOfSteps: draft.problemStructure.numberOfSteps,

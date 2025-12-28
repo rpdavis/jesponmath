@@ -22,6 +22,9 @@ export interface TemplateDraft {
   // NEW: Student-facing directions
   directions?: string
   
+  // NEW: Word problem frame type
+  problemFrameType?: 'combine' | 'change' | 'compare' | 'missing-part' | 'equal-groups' | 'comparison' | 'multi-step' | 'other'
+  
   // Structured fields
   problemStructure: {
     numberOfSteps?: 1 | 2 | 3 | 4
@@ -124,6 +127,17 @@ For EACH template, analyze and include:
    - Written in student-friendly language
    - Example: "1. Read the problem carefully and identify what you need to find. 2. Multiply the cost of each item by the quantity. 3. Add all the costs together. 4. Subtract from the amount paid to find the change."
 
+8. **Word Problem Frame Type** (NEW)
+   - Identify which story structure/frame this problem follows:
+     * "combine" = Two or more groups put together to find total (part + part = total)
+     * "change" = Start with amount, then change happens (start ± change = final)
+     * "compare" = Compare two amounts to find difference (bigger − smaller = difference)
+     * "missing-part" = Know total and one part, find other part (total − known = missing)
+     * "equal-groups" = Multiple equal groups (groups × size = total)
+     * "multi-step" = Requires multiple operations/frames
+     * "other" = Doesn't fit standard frames
+   - This helps students identify the story structure and choose the right solving strategy
+
 Return your analysis as a JSON object with this exact structure:
 
 {
@@ -138,6 +152,7 @@ Return your analysis as a JSON object with this exact structure:
       "exampleAnswer": "The correct answer",
       "exampleExplanation": "Brief explanation of solution",
       "directions": "Step-by-step student directions (3-5 steps) on HOW to solve this type of problem",
+      "problemFrameType": "combine" | "change" | "compare" | "missing-part" | "equal-groups" | "multi-step" | "other",
       "problemStructure": {
         "numberOfSteps": 1 | 2 | 3 | 4,
         "questionTypes": ["array", "of", "question-type-variations"],

@@ -314,6 +314,14 @@ const router = createRouter({
       component: StudentSummary,
       beforeEnter: [authGuard, teacherGuard], // Teachers can view any student's summary
     },
+    
+    // Student Resources
+    {
+      path: '/resources/word-problem-frames',
+      name: 'word-problem-frames',
+      component: () => import('@/views/WordProblemFramesResource.vue'),
+      beforeEnter: authGuard, // All authenticated users can access
+    },
 
     // Admin-only routes
     {
