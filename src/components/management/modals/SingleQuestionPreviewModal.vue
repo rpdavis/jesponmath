@@ -304,6 +304,7 @@
 import { ref, watch } from 'vue'
 import type { PreviewQuestion } from '@/composables/useAssessmentGeneration'
 import type { GoalTemplate } from '@/types/iep'
+import { detectGoalCharacteristics } from '@/services/goalQuestionGenerator'
 
 const props = defineProps<{
   show: boolean
@@ -421,11 +422,51 @@ const prefillTemplateForm = () => {
   // Determine subject from goal
   const subject = goal?.subject || 'math'
 
+  // CRITICAL FIX: Auto-detect topic from QUESTION CONTENT (not just goal text)
+  // The question is the actual content, goal text might be generic
+  let detectedTopic = ''
+  
+  // PRIORITY 1: Detect from the actual question content
+  const questionText = (question.questionText || '').toLowerCase()
+  
+  const topicKeywords = [
+    { keywords: ['elapsed time', 'time elapsed', 'what time', 'start time', 'end time', 'finish', 'began at', 'started at'], topic: 'Elapsed Time' },
+    { keywords: ['money', 'dollar', 'cost', 'price', 'purchase', 'buy', 'spend', 'save', 'pay'], topic: 'Money' },
+    { keywords: ['fraction', 'fractions', 'numerator', 'denominator', '1/2', '1/4', '3/4'], topic: 'Fractions' },
+    { keywords: ['decimal', 'decimals', '.', 'point'], topic: 'Decimals' },
+    { keywords: ['percent', 'percentage', '%'], topic: 'Percentages' },
+    { keywords: ['area', 'perimeter', 'volume', 'length', 'width', 'height'], topic: 'Geometry' },
+    { keywords: ['equation', 'solve for', 'variable', 'x =', 'y ='], topic: 'Algebra' },
+    { keywords: ['ratio', 'proportion', 'per', 'rate'], topic: 'Ratios & Proportions' },
+  ]
+  
+  // Check question text for topic keywords
+  for (const { keywords, topic: topicName } of topicKeywords) {
+    if (keywords.some(k => questionText.includes(k))) {
+      detectedTopic = topicName
+      console.log(`✨ Auto-detected topic from QUESTION: "${detectedTopic}" (found keyword: "${keywords.find(k => questionText.includes(k))}")`)
+      break
+    }
+  }
+  
+  // PRIORITY 2: Fall back to goal text if question doesn't reveal topic
+  if (!detectedTopic && goal) {
+    const detection = detectGoalCharacteristics(goal)
+    detectedTopic = detection.topic
+    console.log(`✨ Auto-detected topic from GOAL: "${detectedTopic}"`)
+  }
+  
+  // PRIORITY 3: Generic fallback
+  if (!detectedTopic) {
+    detectedTopic = subject === 'math' ? 'Math' : subject === 'ela' ? 'Reading/Writing' : 'General'
+    console.log(`⚠️  Using generic topic: "${detectedTopic}"`)
+  }
+
   // Pre-fill form - EXAMPLE QUESTION IS MOST IMPORTANT
   templateFormData.value = {
     name: `Question Template: ${questionPreview}${questionPreview.length >= 50 ? '...' : ''}`,
     subject: subject as 'math' | 'ela' | 'other',
-    topic: goal?.topicHint || '',
+    topic: detectedTopic, // NOW PROPERLY DETECTED FROM GOAL
     areaOfNeed: goal?.areaOfNeed || 'Assessment',
     goalTitleTemplate: `{{topic}} - Grade {{gradeLevel}}`,
     goalTextTemplate: goal?.goalText || `Given {{topic}}, the student will solve problems correctly`,

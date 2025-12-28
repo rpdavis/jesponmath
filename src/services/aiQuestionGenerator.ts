@@ -36,17 +36,16 @@ export interface AIGeneratorConfig {
 
 // Default configuration
 const DEFAULT_CONFIG: Partial<AIGeneratorConfig> = {
-  provider: 'openai',
-  model: 'gpt-3.5-turbo', // Cheaper option, can upgrade to gpt-4 for better quality
-  temperature: 0.7, // Balance between creativity and consistency
-  maxTokens: 500,
+  provider: 'google',
+  model: 'gemini-2.0-flash', // Best for JSON & Math reasoning
+  temperature: 0.5, // Lower temperature for better Math & JSON stability
+  maxTokens: 1500, // Increased to prevent response cut-offs
 }
 
 // Default Gemini model (updated to current API)
-// Use gemini-2.5-flash for fast generation (latest)
-// Use gemini-2.5-pro for better quality
+// Use gemini-2.0-flash for fast generation (latest)
+// Use gemini-1.5-pro for better quality
 // Use gemini-flash-latest for stable, auto-updating model
-const DEFAULT_GEMINI_MODEL = 'gemini-flash-latest' // Auto-updating to latest stable flash model
 
 /**
  * Generate a question using AI based on the goal
@@ -57,6 +56,9 @@ export async function generateQuestionWithAI(
   questionNumber: number,
   config?: Partial<AIGeneratorConfig>,
   templateReference?: QuestionResult,
+  allowedOperations?: ('addition' | 'subtraction' | 'multiplication' | 'division')[],
+  customVariationInstructions?: string,
+  templateStructure?: any, // NEW: Full template with problemStructure
 ): Promise<QuestionResult> {
   const finalConfig = { ...DEFAULT_CONFIG, ...config } as AIGeneratorConfig
 
@@ -74,6 +76,18 @@ export async function generateQuestionWithAI(
     }
   }
 
+  // Build the prompt with template structure
+  const prompt = buildPrompt(
+    goal,
+    subject,
+    questionNumber,
+    templateReference,
+    finalConfig.difficulty,
+    allowedOperations,
+    customVariationInstructions,
+    templateStructure, // Pass the full template
+  )
+
   try {
     switch (finalConfig.provider) {
       case 'openai':
@@ -84,6 +98,8 @@ export async function generateQuestionWithAI(
           apiKey,
           finalConfig,
           templateReference,
+          allowedOperations,
+          customVariationInstructions,
         )
       case 'anthropic':
         return await generateWithAnthropic(
@@ -93,6 +109,8 @@ export async function generateQuestionWithAI(
           apiKey,
           finalConfig,
           templateReference,
+          allowedOperations,
+          customVariationInstructions,
         )
       case 'google':
         return await generateWithGoogle(
@@ -102,6 +120,8 @@ export async function generateQuestionWithAI(
           apiKey,
           finalConfig,
           templateReference,
+          allowedOperations,
+          customVariationInstructions,
         )
       default:
         throw new Error(`Unsupported AI provider: ${finalConfig.provider}`)
@@ -122,6 +142,8 @@ async function generateWithOpenAI(
   apiKey: string,
   config: AIGeneratorConfig,
   templateReference?: QuestionResult,
+  allowedOperations?: ('addition' | 'subtraction' | 'multiplication' | 'division')[],
+  customVariationInstructions?: string,
 ): Promise<QuestionResult> {
   const prompt = buildPrompt(
     goal,
@@ -129,6 +151,9 @@ async function generateWithOpenAI(
     questionNumber,
     templateReference,
     config.difficulty || 'medium',
+    allowedOperations,
+    customVariationInstructions,
+    undefined, // templateStructure not passed in this path
   )
 
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -143,7 +168,7 @@ async function generateWithOpenAI(
         {
           role: 'system',
           content:
-            'You are an expert educational assessment question generator. Generate questions that are appropriate for students with IEP goals. Always return valid JSON.',
+            'You are an expert educational assessment question generator. Generate questions that are appropriate for students with IEP goals. You MUST return ONLY valid JSON. Do NOT include any introductory text, markdown code blocks, or conversational filler. Your entire response must be parseable by JSON.parse().',
         },
         {
           role: 'user',
@@ -183,6 +208,7 @@ async function generateWithOpenAI(
       source: 'ai',
     }
   } catch (parseError) {
+    console.error('❌ OpenAI JSON parsing failed:', parseError)
     // Fallback: try to extract question and answer from text
     const result = parseTextResponse(content)
     return {
@@ -203,6 +229,8 @@ async function generateWithAnthropic(
   apiKey: string,
   config: AIGeneratorConfig,
   templateReference?: QuestionResult,
+  allowedOperations?: ('addition' | 'subtraction' | 'multiplication' | 'division')[],
+  customVariationInstructions?: string,
 ): Promise<QuestionResult> {
   const prompt = buildPrompt(
     goal,
@@ -210,6 +238,9 @@ async function generateWithAnthropic(
     questionNumber,
     templateReference,
     config.difficulty || 'medium',
+    allowedOperations,
+    customVariationInstructions,
+    undefined, // templateStructure not passed in this path
   )
 
   const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -256,6 +287,7 @@ async function generateWithAnthropic(
       source: 'ai',
     }
   } catch (parseError) {
+    console.error('❌ Anthropic JSON parsing failed:', parseError)
     const result = parseTextResponse(content)
     return {
       ...result,
@@ -275,6 +307,8 @@ async function generateWithGoogle(
   apiKey: string,
   config: AIGeneratorConfig,
   templateReference?: QuestionResult,
+  allowedOperations?: ('addition' | 'subtraction' | 'multiplication' | 'division')[],
+  customVariationInstructions?: string,
 ): Promise<QuestionResult> {
   const prompt = buildPrompt(
     goal,
@@ -282,14 +316,16 @@ async function generateWithGoogle(
     questionNumber,
     templateReference,
     config.difficulty || 'medium',
+    allowedOperations,
+    customVariationInstructions,
+    undefined, // templateStructure not passed in this path
   )
 
   // Try different models in order of preference
   const modelAttempts = [
-    'gemini-2.0-flash', // Stable model that works
-    'gemini-2.5-flash', // Latest fast model
-    config.model || DEFAULT_GEMINI_MODEL, // User's choice or default
-    'gemini-flash-latest', // Auto-updating model
+    'gemini-2.0-flash', // Primary: Best for JSON & Math reasoning
+    'gemini-2.0-flash-lite', // Fallback: Ultra-fast
+    'gemini-1.5-flash', // Safety Fallback
   ]
 
   let lastError: Error | null = null
@@ -307,33 +343,64 @@ async function generateWithGoogle(
         const result = await generateWithGemini({
           model,
           prompt,
-          temperature: config.temperature || 0.7,
-          maxTokens: config.maxTokens || 1000, // Increased for JSON responses
+          temperature: config.temperature || 0.5, // Lower for stability
+          maxTokens: config.maxTokens || 2000, // Increased to prevent cut-offs
           apiKey,
         })
 
-        const data = result.data as any
+        const data = result.data as { success: boolean; content?: string; error?: string }
         if (data.success && data.content) {
           content = data.content
           break // Success!
         } else {
           lastError = new Error(`Model ${model} failed: ${data.error || 'No content returned'}`)
         }
-      } catch (e: any) {
-        lastError = new Error(`Model ${model} error: ${e.message || 'Unknown error'}`)
+      } catch (e: unknown) {
+        const error = e as Error
+        lastError = new Error(`Model ${model} error: ${error.message || 'Unknown error'}`)
       }
     }
-  } catch (e: any) {
+  } catch (e: unknown) {
+    const error = e as Error
     // If Firebase Functions fail, throw error
-    throw new Error(`Firebase Functions error: ${e.message}`)
+    throw new Error(`Firebase Functions error: ${error.message}`)
   }
 
   if (!content) {
     throw lastError || new Error('Failed to generate with Google API')
   }
 
+  // Log the raw content for debugging
+  console.log('📄 Raw AI response (first 500 chars):', content.substring(0, 500))
+  console.log('📄 Raw AI response length:', content.length)
+
   try {
-    const parsed = JSON.parse(content)
+    // 1. EXTRACT JSON: Use regex to find the JSON object within the response
+    const jsonMatch = content.match(/\{[\s\S]*\}/)
+    let cleanJson = jsonMatch ? jsonMatch[0] : content
+
+    console.log('🔍 JSON extraction result:', jsonMatch ? 'Found JSON' : 'No JSON found')
+    console.log('🔍 Clean JSON (first 300 chars):', cleanJson.substring(0, 300))
+
+    // 2. EMERGENCY REPAIR: Fix "Unterminated string" by closing quotes and braces
+    // This solves the "How much more money does she..." cutoff error
+    const quoteCount = (cleanJson.match(/"/g) || []).length
+    if (quoteCount % 2 !== 0) {
+      console.log('🔧 Repairing unterminated string (odd quote count)')
+      cleanJson += '"}' // Close the open string and the object
+    } else if (!cleanJson.trim().endsWith('}')) {
+      console.log('🔧 Repairing unclosed object')
+      cleanJson += '}' // Close just the object
+    }
+
+    const parsed = JSON.parse(cleanJson)
+    console.log('✅ JSON parsed successfully:', {
+      hasQuestion: !!parsed.question,
+      hasAnswer: !!parsed.answer,
+      questionLength: parsed.question?.length,
+      answerValue: parsed.answer,
+    })
+
     return {
       question: cleanQuestionText(parsed.question || 'Error generating question'),
       answer: (parsed.answer || 'N/A').trim(),
@@ -345,7 +412,10 @@ async function generateWithGoogle(
       source: 'ai',
     }
   } catch (parseError) {
+    console.error('❌ Gemini JSON repair failed:', parseError)
+    console.error('❌ Content that failed to parse:', content.substring(0, 500))
     const result = parseTextResponse(content)
+    console.warn('⚠️ Falling back to text parsing. Result:', result)
     return {
       ...result,
       alternativeAnswers: parseAlternativesFromAnswer(result.answer),
@@ -410,37 +480,144 @@ function buildPrompt(
   questionNumber: number,
   templateReference?: QuestionResult,
   difficulty: 'easy' | 'medium' | 'hard' = 'medium',
+  allowedOperations?: ('addition' | 'subtraction' | 'multiplication' | 'division')[],
+  customVariationInstructions?: string,
+  templateStructure?: any, // NEW: Pass the full template with problemStructure
 ): string {
-  // Generate variety instructions based on question number
-  // 20 names per question for maximum variety - includes actual students + diverse, readable names
-  const varietyInstructions = `
+  // Name variety for each question
+  const names = [
+    ['Rose', 'Maria', 'Jesus', 'Aisha', 'Jaime'],
+    ['Antoinette', 'Jamal', 'Israel', 'Victor', 'Diego'],
+    ['Lexee', 'Fatima', 'Jose', 'Daniel', 'Michael'],
+    ['Alonzo', 'Omar', 'Mikah', 'Olivia', 'Marcos'],
+    ['Dylan', 'Amara', 'Hassan', 'Maya', 'Tucker'],
+  ]
+  const studentName = names[questionNumber - 1]?.[Math.floor(Math.random() * 5)] || 'Student'
 
-CRITICAL: ENSURE VARIETY - Question #${questionNumber}
-${questionNumber === 1 ? '- Use the first student name from this list: [Rose, Maria, Jesus, Aisha, Jaime, Kenji, Samantha, Aaliyah, Caiden, Mateo, Jayden, Aubree, Lucas, Sofia, Emma, Liam, Noah, Zara, Andre, Kai]' : ''}
-${questionNumber === 2 ? '- Use the second student name from this list: [Antoinette, Jamal, Israel, Gus, Victor, Diego, Liliana, Mika, Annabella, Carlos, Kevin, EJ, Kaylani, Mia, Elijah, Amara, Adrian, Leah, Dante, Nadia]' : ''}
-${questionNumber === 3 ? '- Use the third student name from this list: [Lexee, Fatima, Kwame, Jose, Josue, Zyphier, Daniel, Darnell, Michael, Esperanza, Aubrey, Carter, Matteo, Grace, Isaiah, Layla, Marco, Ruby, Ben, Zoe]' : ''}
-${questionNumber === 4 ? '- Use the fourth student name from this list: [Alonzo, Omar, Mikah, Xiomara, Olivia, Raj, Marcos, Lakisha, Steven, Hiroshi, Iker, William, Jazmine, Aria, Ethan, Camila, Rashid, Lily, Marcus, Yuki]' : ''}
-${questionNumber === 5 ? '- Use the fifth student name from this list: [Dylan, Amara, Lyra, Hassan, Maya, Rosa, Tucker, Chen, Elizabeth, Isaiah, Maria, Amy, Omar, Ava, Jackson, Sofia, Ahmed, Chloe, Jordan, Keisha]' : ''}
-- Change the item being purchased (examples: video game, skateboard, scooter, bike, headphones, tablet, books, art supplies)
-- Vary the dollar amounts significantly (make the total cost between $45-120, saved amount between $15-50, hourly rate between $5-15)
-- IMPORTANT: Calculate a DIFFERENT final answer - vary your numbers so the answer is NOT the same as previous questions
-- Use different scenarios (babysitting, mowing lawns, walking dogs, tutoring, washing cars, selling crafts)
-- Make each question UNIQUE with different numbers that lead to different answers`
+  // Build variety instructions from template's problemStructure
+  let varietyInstructions = `
+⚠️ THIS IS QUESTION #${questionNumber} - Use student name: ${studentName}
+
+🚨 CRITICAL: ENSURE VARIETY FOR QUESTION #${questionNumber}:
+`
+
+  // If template has problemStructure, use it!
+  if (templateStructure?.problemStructure) {
+    const ps = templateStructure.problemStructure
+
+    // 1. Use specific number ranges for this question
+    const questionKey = `question${questionNumber}` as keyof typeof ps.numberRanges
+    if (ps.numberRanges?.[questionKey]) {
+      varietyInstructions += `
+📊 NUMBER REQUIREMENTS FOR QUESTION #${questionNumber}:
+${ps.numberRanges[questionKey]}
+`
+    }
+
+    // 2. Pick a random context from contextTypes
+    if (ps.contextTypes && ps.contextTypes.length > 0) {
+      const randomContext = ps.contextTypes[Math.floor(Math.random() * ps.contextTypes.length)]
+      varietyInstructions += `
+🎯 USE THIS CONTEXT: ${randomContext}
+`
+    }
+
+    // 3. List forbidden patterns
+    if (ps.forbiddenPatterns && ps.forbiddenPatterns.length > 0) {
+      varietyInstructions += `
+⛔ FORBIDDEN PATTERNS (DO NOT USE):
+${ps.forbiddenPatterns.map((p: string) => `- DO NOT use "${p}"`).join('\n')}
+`
+    }
+  } else {
+    // Fallback: generic variety instructions
+    varietyInstructions += `
+- Vary the numbers significantly from the template
+- Change the context/scenario
+- Use different items, activities, or situations
+`
+  }
+
+  // Use custom AI prompt if provided
+  if (customVariationInstructions) {
+    varietyInstructions += `
+📋 CUSTOM VARIATION INSTRUCTIONS:
+${customVariationInstructions}
+`
+  }
+
+  // Add operation constraints if specified
+  const operationConstraints =
+    allowedOperations && allowedOperations.length > 0
+      ? `
+
+🔒 OPERATION CONSTRAINTS (CRITICAL):
+- You MUST use ONLY these operations: ${allowedOperations.join(', ')}
+- Do NOT use any other operations (${['addition', 'subtraction', 'multiplication', 'division'].filter((op) => !allowedOperations.includes(op as 'addition' | 'subtraction' | 'multiplication' | 'division')).join(', ')})
+- This is a strict requirement - questions using unauthorized operations will be rejected
+- Example: If only "addition and subtraction" are allowed, do NOT create problems requiring multiplication or division`
+      : ''
 
   const templateSection = templateReference
     ? `
 
-TEMPLATE REFERENCE (use as a style guide, but generate a COMPLETELY DIFFERENT question):
+🎯 CRITICAL: TEMPLATE REFERENCE - YOU MUST FOLLOW THIS EXACT STRUCTURE:
+
+TEMPLATE EXAMPLE:
 Question: ${templateReference.question}
 Answer: ${templateReference.answer}
 ${templateReference.explanation ? `Explanation: ${templateReference.explanation}` : ''}
 
-⚠️ CRITICAL VARIETY REQUIREMENTS:
-- Use DIFFERENT student names (see variety instructions above for this question number)
-- Use DIFFERENT items/scenarios
-- Use DIFFERENT numbers (vary costs, savings, hourly rates)
-- Calculate to ensure a DIFFERENT answer than the template
-- Do NOT copy the template question - create a NEW question in the same style`
+📋 PROBLEM TYPE ANALYSIS:
+Carefully analyze the template above to identify:
+- What TYPE of math problem is this? (e.g., percentage calculation, fraction addition, elapsed time, money word problem, etc.)
+- What is the QUESTION ASKING FOR? (e.g., "What percent?", "How much money?", "What time?", "What is X?")
+- What is the MATHEMATICAL STRUCTURE? (e.g., "X out of Y total, find percent", "Start time + duration", "Cost - savings")
+- What is the ANSWER FORMAT? (e.g., percentage like "90%", money like "$24", time like "3:45 PM", number like "42")
+
+⚠️ STRICT REQUIREMENTS FOR VARIATION:
+
+1. PRESERVE THE EXACT PROBLEM TYPE:
+   - If the template asks "What percent?", your question MUST ALSO ask "What percent?"
+   - If the template is about finding a percentage FROM a fraction, your question must do the SAME
+   - DO NOT change the problem type (don't turn a percentage problem into a money problem!)
+   - DO NOT change what the question is asking for
+
+2. PRESERVE THE MATHEMATICAL STRUCTURE:
+   - Use the SAME mathematical operations in the SAME order
+   - If template has "X out of Y, find percent", your question must have "X out of Y, find percent"
+   - Keep the same number of steps
+   - Keep the same calculation method
+
+3. VARIATION INSTRUCTIONS (What you CAN change):
+${
+  customVariationInstructions
+    ? customVariationInstructions
+    : `- Change student names (use variety instructions above)
+- Vary the specific numbers to get different answers
+- Change the CONTEXT (e.g., "problems on a test" vs "free throws in basketball" vs "questions correct on quiz")
+- But NEVER change the problem TYPE or structure`
+}
+
+4. DO NOT CHANGE:
+   - The problem TYPE (percentage, money, time, etc.)
+   - What the question is asking for
+   - The mathematical structure or operations
+   - The answer format (if template wants %, you give %)
+
+5. EXAMPLES OF CORRECT VARIATION:
+
+   Example A - Percentage Problem:
+   Template: "Joe got 18 correct out of 20 problems. What percent did he get correct?"
+   CORRECT Variation: "Maria made 15 out of 25 free throws. What percent did she make?"
+   WRONG Variation: "Maria wants to buy a $50 item with a 15% discount. How much does she pay?" ← This changed the problem type!
+
+   Example B - Money Word Problem:
+   Template: "Rose has $30 and needs $100. She earns $20. How much more does she need?"
+   CORRECT Variation: "Alex has $45 and needs $85. He earns $15. How much more does he need?"
+   WRONG Variation: "Alex answered 15 out of 20 questions. What percent did he get?" ← This changed the problem type!
+
+The key: Look at what the template is ASKING FOR (percent? money? time?) and make sure your question asks for the SAME THING.`
     : ''
 
   const assessmentMethod = goal.assessmentMethod || 'app'
@@ -451,7 +628,32 @@ ${templateReference.explanation ? `Explanation: ${templateReference.explanation}
         ? 'This is a PAPER-based assessment (manual grading). Generate questions that may require students to show work, write essays, or demonstrate skills that need teacher evaluation. Photo uploads and rubrics are appropriate.'
         : 'This is a HYBRID assessment (combination of digital and paper). Generate questions that can include both automated and manual components.'
 
-  return `Generate an assessment question based on this IEP goal:
+  // If we have a template, PUT IT FIRST and suppress conflicting variety instructions
+  const promptStart = templateReference
+    ? `🚨🚨🚨 CRITICAL INSTRUCTION - READ THIS FIRST 🚨🚨🚨
+
+YOU HAVE BEEN PROVIDED WITH A TEMPLATE QUESTION.
+YOUR ONLY JOB IS TO CREATE A VARIATION OF THIS EXACT TEMPLATE.
+
+${templateSection}
+
+⛔ IGNORE ANY LATER INSTRUCTIONS ABOUT:
+- Money problems, skateboards, or purchasing items (UNLESS the template is about these)
+- Any scenario types that differ from the template
+- Any problem types that differ from the template
+
+✅ YOUR TASK:
+Look at the template above. What is it asking for?
+- If it asks "What percent?", your question MUST ask "What percent?"
+- If it's about "X out of Y", your question MUST be about "X out of Y"
+- If the answer is a percentage (90%), your answer MUST be a percentage
+- DO NOT turn this into a different type of problem!
+
+Now proceed with the question generation, keeping the template structure SACRED.
+
+---
+
+Generate an assessment question based on this IEP goal:
 
 Goal Title: ${goal.goalTitle}
 Goal Text: ${goal.goalText}
@@ -462,7 +664,30 @@ Question Number: ${questionNumber}
 Assessment Method: ${assessmentMethod.toUpperCase()}
 
 ${assessmentMethodGuidance}
-${varietyInstructions}
+
+CRITICAL: ENSURE VARIETY - Question #${questionNumber}
+${questionNumber === 1 ? '- Use the first student name from this list: [Rose, Maria, Jesus, Aisha, Jaime, Kenji, Samantha, Aaliyah, Caiden, Mateo, Jayden, Aubree, Lucas, Sofia, Emma, Liam, Noah, Zara, Andre, Kai]' : ''}
+${questionNumber === 2 ? '- Use the second student name from this list: [Antoinette, Jamal, Israel, Gus, Victor, Diego, Liliana, Mika, Annabella, Carlos, Kevin, EJ, Kaylani, Mia, Elijah, Amara, Adrian, Leah, Dante, Nadia]' : ''}
+${questionNumber === 3 ? '- Use the third student name from this list: [Lexee, Fatima, Kwame, Jose, Josue, Zyphier, Daniel, Darnell, Michael, Esperanza, Aubrey, Carter, Matteo, Grace, Isaiah, Layla, Marco, Ruby, Ben, Zoe]' : ''}
+${questionNumber === 4 ? '- Use the fourth student name from this list: [Alonzo, Omar, Mikah, Xiomara, Olivia, Raj, Marcos, Lakisha, Steven, Hiroshi, Iker, William, Jazmine, Aria, Ethan, Camila, Rashid, Lily, Marcus, Yuki]' : ''}
+${questionNumber === 5 ? '- Use the fifth student name from this list: [Dylan, Amara, Lyra, Hassan, Maya, Rosa, Tucker, Chen, Elizabeth, Isaiah, Maria, Amy, Omar, Ava, Jackson, Sofia, Ahmed, Chloe, Jordan, Keisha]' : ''}
+
+REMEMBER: You are creating a VARIATION of the template shown above. Change names and numbers, but DO NOT change the problem type or structure!`
+    : `Generate an assessment question based on this IEP goal:
+
+Goal Title: ${goal.goalTitle}
+Goal Text: ${goal.goalText}
+Area of Need: ${goal.areaOfNeed}
+Subject: ${subject}
+Grade Level: ${goal.gradeLevel || 'Not specified'}
+Question Number: ${questionNumber}
+Assessment Method: ${assessmentMethod.toUpperCase()}
+
+${assessmentMethodGuidance}
+${varietyInstructions}`
+
+  return `${promptStart}
+${operationConstraints}
 
 Requirements:
 1. The question must directly assess the skill described in the goal
@@ -500,6 +725,16 @@ ANSWER AFFIXES (Prefix/Suffix):
   * For "$42": "answer": "42", "answerPrefix": "$"
 - This helps students know the expected format and enables flexible grading
 
+⚠️ CRITICAL JSON FORMAT REQUIREMENT:
+- You MUST return ONLY a valid JSON object
+- Do NOT include any introductory text, markdown code blocks (like \`\`\`json), or conversational filler
+- Do NOT add explanations outside the JSON structure
+- Your entire response must be parseable by JSON.parse()
+- Start your response with { and end with }
+- Keep the 'explanation' extremely short (1-2 sentences)
+- If you run out of space, ensure you have closed the 'question' and 'answer' fields properly
+- NEVER use markdown backticks
+
 Return your response as JSON with this exact format:
 {
   "question": "The full question text here",
@@ -513,9 +748,15 @@ Return your response as JSON with this exact format:
 
 IMPORTANT FORMATTING RULES:
 - Do NOT use markdown formatting (no *, -, #, etc.) in the question text
-- Use plain text with line breaks (\n) for multi-line questions
+- Use plain text with line breaks (\\n) for multi-line questions
 - For lists, use numbered items (1), 2), 3)) or plain text, NOT markdown bullets
 - Keep the question text clean and readable without special formatting characters
+- CRITICAL: For all mathematical equations, expressions, and fractions, use LaTeX/KaTeX formatting.
+- Use $...$ for inline math (e.g., $x = 5$) and $$...$$ for standalone equations.
+- **IMPORTANT**: When using LaTeX commands in JSON, you MUST use DOUBLE BACKSLASHES.
+- Example: For fractions, use "$\\\\frac{1}{2}$" (double backslash)
+- Example: For square roots, use "$\\\\sqrt{25}$" (double backslash)
+- This is because JSON strings treat single backslash as an escape character.
 
 Example for a multi-step math goal:
 {

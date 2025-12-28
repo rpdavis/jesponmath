@@ -16,7 +16,6 @@
 
 import type { Goal, GoalTemplate } from '@/types/iep'
 import { generateQuestionWithAI } from './aiQuestionGenerator'
-import { getActiveTemplates, incrementTemplateUsage } from '@/firebase/templateServices'
 
 /**
  * Helper function to format math expressions for KaTeX
@@ -43,6 +42,7 @@ export interface QuestionResult {
 
 export interface GoalDetection {
   subject: 'math' | 'ela' | 'other'
+  topic: string // NEW: Detected topic (e.g., "Money", "Elapsed Time", "Fractions")
   isMultiStep: boolean
   isMultiStepScenario: boolean
   needsNumericalExpression: boolean
@@ -71,8 +71,13 @@ export interface GeneratorConfig {
 
 /**
  * Detect goal characteristics for better question generation
+ * @param goal - The goal to analyze
+ * @param allowedOperations - Optional: Restrict operations to specific types (from template)
  */
-export function detectGoalCharacteristics(goal: Goal): GoalDetection {
+export function detectGoalCharacteristics(
+  goal: Goal,
+  allowedOperations?: ('addition' | 'subtraction' | 'multiplication' | 'division')[],
+): GoalDetection {
   const goalText = goal.goalText.toLowerCase()
   const goalTitle = (goal.goalTitle || '').toLowerCase()
   const areaOfNeed = (goal.areaOfNeed || '').toLowerCase()
@@ -181,13 +186,65 @@ export function detectGoalCharacteristics(goal: Goal): GoalDetection {
 
   // Determine operation types
   const operationTypes: string[] = []
-  if (isAddition) operationTypes.push('addition')
-  if (isSubtraction) operationTypes.push('subtraction')
-  if (isMultiplication) operationTypes.push('multiplication')
-  if (isDivision) operationTypes.push('division')
+
+  // If allowedOperations is specified (from template), use ONLY those operations
+  if (allowedOperations && allowedOperations.length > 0) {
+    operationTypes.push(...allowedOperations)
+    console.log(`✨ Using allowed operations from template: ${allowedOperations.join(', ')}`)
+  } else {
+    // Otherwise, detect from goal text as usual
+    if (isAddition) operationTypes.push('addition')
+    if (isSubtraction) operationTypes.push('subtraction')
+    if (isMultiplication) operationTypes.push('multiplication')
+    if (isDivision) operationTypes.push('division')
+  }
+
+  // Topic detection - check for specific math/ELA topics
+  let topic = ''
+  const topicKeywords = [
+    { keywords: ['elapsed time', 'time elapsed', 'time calculation'], topic: 'Elapsed Time' },
+    { keywords: ['money', 'dollar', 'cost', 'price', 'purchase', 'buy'], topic: 'Money' },
+    { keywords: ['fraction', 'fractions', 'numerator', 'denominator'], topic: 'Fractions' },
+    { keywords: ['decimal', 'decimals'], topic: 'Decimals' },
+    { keywords: ['percent', 'percentage'], topic: 'Percentages' },
+    { keywords: ['area', 'perimeter', 'volume', 'geometry'], topic: 'Geometry' },
+    { keywords: ['algebra', 'equation', 'variable', 'expression'], topic: 'Algebra' },
+    { keywords: ['ratio', 'proportion'], topic: 'Ratios & Proportions' },
+    { keywords: ['measurement', 'measure', 'length', 'weight'], topic: 'Measurement' },
+    { keywords: ['graph', 'chart', 'data', 'statistics'], topic: 'Data & Graphs' },
+    {
+      keywords: ['reading comprehension', 'main idea', 'inference'],
+      topic: 'Reading Comprehension',
+    },
+    { keywords: ['vocabulary', 'word meaning', 'context clue'], topic: 'Vocabulary' },
+    { keywords: ['writing', 'essay', 'paragraph'], topic: 'Writing' },
+    { keywords: ['grammar', 'punctuation', 'syntax'], topic: 'Grammar' },
+  ]
+
+  // Check for topic matches (first match wins)
+  for (const { keywords, topic: topicName } of topicKeywords) {
+    if (
+      keywords.some((k) => goalText.includes(k) || areaOfNeed.includes(k) || goalTitle.includes(k))
+    ) {
+      topic = topicName
+      break
+    }
+  }
+
+  // Fallback to area of need or generic topic
+  if (!topic) {
+    if (subject === 'math') {
+      topic = 'Math'
+    } else if (subject === 'ela') {
+      topic = 'Reading/Writing'
+    } else {
+      topic = 'General'
+    }
+  }
 
   return {
     subject,
+    topic, // NEW: Include detected topic
     isMultiStep,
     isMultiStepScenario,
     needsNumericalExpression,
@@ -249,69 +306,75 @@ function generateMathTemplate(
   questionNumber: number,
 ): QuestionResult | null {
   const goalText = goal.goalText.toLowerCase()
+  const areaOfNeed = (goal.areaOfNeed || '').toLowerCase()
 
-  // PRIORITY 1: Multi-step scenarios with numerical expressions
+  // PRIORITY 1: Elapsed Time (check FIRST before generic word problems)
+  if (goalText.includes('elapsed time') || areaOfNeed.includes('elapsed time')) {
+    return generateElapsedTimeProblem(questionNumber)
+  }
+
+  // PRIORITY 2: Multi-step scenarios with numerical expressions
   if (detection.isMultiStepScenario && detection.needsNumericalExpression) {
     return generateMultiStepNumericalExpression(goal, questionNumber)
   }
 
-  // PRIORITY 2: Evaluate expressions
+  // PRIORITY 3: Evaluate expressions
   if (detection.isEvaluateExpression) {
     return generateEvaluateExpression(questionNumber)
   }
 
-  // PRIORITY 3: Word problems with equations
+  // PRIORITY 4: Word problems with equations
   if (detection.isWordProblem && detection.needsEquation) {
     return generateWordProblemWithEquation(goal, detection, questionNumber)
   }
 
-  // PRIORITY 4: Word problems with algebraic expressions
+  // PRIORITY 5: Word problems with algebraic expressions
   if (detection.isWordProblem && detection.needsAlgebraicExpression) {
     return generateWordProblemWithAlgebraicExpression(goal, questionNumber)
   }
 
-  // PRIORITY 5: Multi-step word problems (without expressions)
+  // PRIORITY 6: Multi-step word problems (without expressions)
   // Check this BEFORE single-step word problems
   if (detection.isMultiStep && detection.isWordProblem) {
     return generateMultiStepWordProblem(goal, detection, questionNumber)
   }
 
-  // PRIORITY 6: Single-step word problems
+  // PRIORITY 7: Single-step word problems
   if (detection.isWordProblem) {
     return generateSingleStepWordProblem(goal, detection, questionNumber)
   }
 
-  // PRIORITY 7: Fractions
+  // PRIORITY 8: Fractions
   if (detection.isFraction) {
     return generateFractionProblem(questionNumber)
   }
 
-  // PRIORITY 8: Decimals
+  // PRIORITY 9: Decimals
   if (detection.isDecimal) {
     return generateDecimalProblem(goal, detection, questionNumber)
   }
 
-  // PRIORITY 9: Division
+  // PRIORITY 10: Division
   if (detection.isDivision) {
     return generateDivisionProblem(goal, questionNumber)
   }
 
-  // PRIORITY 10: Multiplication
+  // PRIORITY 11: Multiplication
   if (detection.isMultiplication) {
     return generateMultiplicationProblem(goal, questionNumber)
   }
 
-  // PRIORITY 11: Subtraction
+  // PRIORITY 12: Subtraction
   if (detection.isSubtraction) {
     return generateSubtractionProblem(goal, questionNumber)
   }
 
-  // PRIORITY 12: Addition
+  // PRIORITY 13: Addition
   if (detection.isAddition) {
     return generateAdditionProblem(questionNumber)
   }
 
-  // PRIORITY 13: Solving equations
+  // PRIORITY 14: Solving equations
   if (goalText.includes('solve') && goalText.includes('equation')) {
     return generateEquationProblem(goal, questionNumber)
   }
@@ -645,6 +708,74 @@ function generateSingleStepWordProblem(
 }
 
 /**
+ * Generate elapsed time problem
+ */
+function generateElapsedTimeProblem(questionNumber: number): QuestionResult {
+  const scenarios = [
+    {
+      startTime: '8:15 AM',
+      endTime: '11:30 AM',
+      question:
+        'A train leaves the station at 8:15 AM and arrives at its destination at 11:30 AM. How much time did the trip take?',
+      answer: '3 hours 15 minutes',
+      alternativeAnswers: ['3:15', '3 hours and 15 minutes', '195 minutes', '3 hr 15 min'],
+    },
+    {
+      startTime: '2:45 PM',
+      endTime: '5:20 PM',
+      question:
+        'Maria started her homework at 2:45 PM and finished at 5:20 PM. How long did she spend on homework?',
+      answer: '2 hours 35 minutes',
+      alternativeAnswers: ['2:35', '2 hours and 35 minutes', '155 minutes', '2 hr 35 min'],
+    },
+    {
+      startTime: '9:50 AM',
+      endTime: '1:15 PM',
+      question: 'A movie started at 9:50 AM and ended at 1:15 PM. How long was the movie?',
+      answer: '3 hours 25 minutes',
+      alternativeAnswers: ['3:25', '3 hours and 25 minutes', '205 minutes', '3 hr 25 min'],
+    },
+    {
+      startTime: '11:40 AM',
+      endTime: '2:10 PM',
+      question:
+        'A school field trip began at 11:40 AM and returned at 2:10 PM. How long was the trip?',
+      answer: '2 hours 30 minutes',
+      alternativeAnswers: [
+        '2:30',
+        '2 hours and 30 minutes',
+        '150 minutes',
+        '2 hr 30 min',
+        '2.5 hours',
+      ],
+    },
+    {
+      startTime: '7:25 AM',
+      endTime: '10:55 AM',
+      question: 'A bus left at 7:25 AM and arrived at 10:55 AM. How long was the bus ride?',
+      answer: '3 hours 30 minutes',
+      alternativeAnswers: [
+        '3:30',
+        '3 hours and 30 minutes',
+        '210 minutes',
+        '3 hr 30 min',
+        '3.5 hours',
+      ],
+    },
+  ]
+
+  const scenario = scenarios[questionNumber % scenarios.length]
+
+  return {
+    question: scenario.question,
+    answer: scenario.answer,
+    alternativeAnswers: scenario.alternativeAnswers,
+    explanation: `Calculate the time from ${scenario.startTime} to ${scenario.endTime} by finding the difference.`,
+    requiresPhoto: true,
+  }
+}
+
+/**
  * Generate fraction problem
  */
 function generateFractionProblem(questionNumber: number): QuestionResult {
@@ -905,33 +1036,108 @@ function gcd(a: number, b: number): number {
 }
 
 /**
+ * DEPRECATED: Fuzzy matching disabled in favor of explicit template assignment + AI generation
  * Find best matching saved template for a goal
  * Returns null if no good match found
+ *
+ * NEW: Checks goal.preferredTemplateIds first for explicit assignments
  */
+/*
 async function findMatchingTemplate(goal: Goal): Promise<GoalTemplate | null> {
+  console.log('🔍 findMatchingTemplate called for goal:', {
+    id: goal.id,
+    title: goal.goalTitle,
+    areaOfNeed: goal.areaOfNeed,
+    preferredTemplateIds: goal.preferredTemplateIds,
+  })
   try {
+    // STEP 1: Check if goal has explicitly assigned templates
+    if (goal.preferredTemplateIds && goal.preferredTemplateIds.length > 0) {
+      console.log(
+        `🎯 Goal has ${goal.preferredTemplateIds.length} preferred template(s). Checking...`,
+      )
+
+      // Import template service
+      const { getTemplate } = await import('@/firebase/templateServices')
+
+      // Try each preferred template in order
+      for (const templateId of goal.preferredTemplateIds) {
+        try {
+          const template = await getTemplate(templateId)
+
+          if (template && template.isActive) {
+            console.log(
+              `✅ Using explicitly assigned template: "${template.name}" (ID: ${templateId})`,
+            )
+
+            // Increment usage count
+            await incrementTemplateUsage(template.id)
+
+            return template
+          } else if (template && !template.isActive) {
+            console.log(`⏭️  Skipping inactive template: "${template.name}" (ID: ${templateId})`)
+          } else {
+            console.log(`⚠️  Preferred template not found: ${templateId}`)
+          }
+        } catch (error) {
+          console.warn(`Error loading preferred template ${templateId}:`, error)
+        }
+      }
+
+      console.log(
+        `⚠️  None of the preferred templates are available. Falling back to fuzzy matching...`,
+      )
+    }
+
+    // STEP 2: Fall back to fuzzy matching (original logic)
     // Get all active templates
-    const templates = await getActiveTemplates()
-    
+    console.log('🔍 STEP 2: Fetching active templates from database...')
+    let templates: GoalTemplate[]
+    try {
+      templates = await getActiveTemplates()
+      console.log(`✅ Database query successful: Found ${templates.length} active template(s)`)
+      if (templates.length > 0) {
+        console.log(
+          '📋 Templates found:',
+          templates.map((t) => ({
+            id: t.id,
+            name: t.name,
+            topic: t.topic,
+            areaOfNeed: t.areaOfNeed,
+            isActive: t.isActive,
+            hasExampleQuestion: !!t.exampleQuestion,
+          })),
+        )
+      }
+    } catch (error) {
+      console.error('❌ DATABASE QUERY FAILED:', error)
+      console.error('❌ Error details:', {
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      })
+      return null
+    }
+
     if (templates.length === 0) {
+      console.log('⚠️ No active templates in database. Falling back to hard-coded templates.')
       return null
     }
 
     const goalText = goal.goalText.toLowerCase()
     const goalTitle = (goal.goalTitle || '').toLowerCase()
     const areaOfNeed = (goal.areaOfNeed || '').toLowerCase()
-    
+
     // Score each template based on how well it matches the goal
-    const scoredTemplates = templates.map(template => {
+    const scoredTemplates = templates.map((template) => {
       let score = 0
-      
+
       // Match on area of need (high weight)
       if (template.areaOfNeed.toLowerCase() === areaOfNeed) {
         score += 10
       } else if (areaOfNeed.includes(template.areaOfNeed.toLowerCase())) {
         score += 5
       }
-      
+
       // Match on topic (high weight)
       if (template.topic) {
         const topic = template.topic.toLowerCase()
@@ -939,13 +1145,13 @@ async function findMatchingTemplate(goal: Goal): Promise<GoalTemplate | null> {
           score += 15
         }
       }
-      
+
       // Match on subject
       const detection = detectGoalCharacteristics(goal)
       if (template.subject === detection.subject) {
         score += 5
       }
-      
+
       // Match on grade level
       if (template.defaultGradeLevel && goal.gradeLevel) {
         if (template.defaultGradeLevel === goal.gradeLevel) {
@@ -954,41 +1160,85 @@ async function findMatchingTemplate(goal: Goal): Promise<GoalTemplate | null> {
           score += 1 // Close grade level
         }
       }
-      
+
       // Match on assessment method
       if (template.assessmentMethod === goal.assessmentMethod) {
         score += 2
       }
-      
+
       // Bonus: Has example question (more useful template)
       if (template.exampleQuestion && template.exampleAnswer) {
         score += 5
       }
-      
+
+      // NEW: Bonus for matching allowed operations (if template specifies them)
+      if (
+        template.allowedOperations &&
+        template.allowedOperations.length > 0 &&
+        detection.operationTypes.length > 0
+      ) {
+        // Check if template's allowed operations overlap with detected operations
+        const matchingOps = template.allowedOperations.filter((op) =>
+          detection.operationTypes.includes(op),
+        )
+        // Add 3 points per matching operation (max 12 for all 4)
+        score += matchingOps.length * 3
+
+        // Small penalty if template excludes operations that goal seems to need
+        const excludedOps = detection.operationTypes.filter(
+          (op) =>
+            !template.allowedOperations?.includes(
+              op as 'addition' | 'subtraction' | 'multiplication' | 'division',
+            ),
+        )
+        if (excludedOps.length > 0) {
+          score -= 2 // Slight penalty for mismatch
+        }
+      }
+
       return { template, score }
     })
-    
+
     // Sort by score descending
     scoredTemplates.sort((a, b) => b.score - a.score)
-    
+
+    // Log all scores for debugging
+    console.log('📊 Template matching scores:')
+    scoredTemplates.slice(0, 5).forEach(({ template, score }, index) => {
+      console.log(`  ${index + 1}. "${template.name}" (ID: ${template.id}) - Score: ${score}`)
+    })
+
     // Return best match if score is high enough (threshold: 15)
     const bestMatch = scoredTemplates[0]
     if (bestMatch && bestMatch.score >= 15) {
-      console.log(`✨ Found matching template: "${bestMatch.template.name}" (score: ${bestMatch.score})`)
-      
+      console.log(
+        `✨ Found matching template via fuzzy matching: "${bestMatch.template.name}" (score: ${bestMatch.score})`,
+      )
+
       // Increment usage count
       await incrementTemplateUsage(bestMatch.template.id)
-      
+
       return bestMatch.template
     }
-    
-    console.log(`📋 No matching template found (best score: ${bestMatch?.score || 0}). Using coded templates.`)
+
+    console.log(
+      `📋 No matching template found (best score: ${bestMatch?.score || 0}, threshold: 15). Using coded templates.`,
+    )
+    if (bestMatch) {
+      console.log(`   Best match was: "${bestMatch.template.name}" but score too low.`)
+    }
     return null
   } catch (error) {
-    console.error('Error finding matching template:', error)
+    console.error('❌ CRITICAL ERROR in findMatchingTemplate:', error)
+    console.error('❌ Error type:', error instanceof Error ? error.constructor.name : typeof error)
+    console.error('❌ Error message:', error instanceof Error ? error.message : String(error))
+    if (error instanceof Error && error.stack) {
+      console.error('❌ Stack trace:', error.stack)
+    }
     return null // Fall back to coded templates on error
   }
 }
+*/
 
 /**
  * Generate question from saved template
@@ -1002,7 +1252,7 @@ function generateQuestionFromTemplate(
     console.warn('Template missing example question/answer, cannot generate')
     return null
   }
-  
+
   // Use the example question as a base, with slight variations
   const variations = [
     template.exampleQuestion, // Use exact example for first question
@@ -1011,20 +1261,20 @@ function generateQuestionFromTemplate(
     template.exampleQuestion,
     template.exampleQuestion,
   ]
-  
+
   const question = variations[questionNumber % variations.length]
-  
+
   // Parse alternative answers
   const alternativeAnswers: string[] = []
   if (template.exampleAlternativeAnswers) {
     alternativeAnswers.push(
       ...template.exampleAlternativeAnswers
         .split(',')
-        .map(a => a.trim())
-        .filter(a => a.length > 0)
+        .map((a) => a.trim())
+        .filter((a) => a.length > 0),
     )
   }
-  
+
   return {
     question,
     answer: template.exampleAnswer,
@@ -1044,12 +1294,89 @@ export async function generateQuestionForGoal(
   questionNumber: number,
   config: GeneratorConfig = { method: 'hybrid' },
 ): Promise<QuestionResult> {
-  // STEP 1: Try to find a matching saved template
-  const savedTemplate = await findMatchingTemplate(goal)
-  
+  console.log(`🔄 Generating question #${questionNumber} for goal: ${goal.goalTitle}`)
+
+  // STEP 1: Check for EXPLICITLY ASSIGNED templates only
+  let savedTemplate: GoalTemplate | null = null
+
+  if (goal.preferredTemplateIds && goal.preferredTemplateIds.length > 0) {
+    console.log(`🎯 Goal has ${goal.preferredTemplateIds.length} explicitly assigned template(s)`)
+
+    try {
+      const { getTemplate, incrementTemplateUsage } = await import('@/firebase/templateServices')
+
+      // Load ALL active templates first
+      const activeTemplates: GoalTemplate[] = []
+      for (const templateId of goal.preferredTemplateIds) {
+        try {
+          const template = await getTemplate(templateId)
+          if (template && template.isActive) {
+            activeTemplates.push(template)
+          }
+        } catch (error) {
+          console.warn(`Error loading assigned template ${templateId}:`, error)
+        }
+      }
+
+      // Randomly select one from the available templates
+      if (activeTemplates.length > 0) {
+        const randomIndex = Math.floor(Math.random() * activeTemplates.length)
+        savedTemplate = activeTemplates[randomIndex]
+
+        console.log(
+          `✅ Randomly selected template "${savedTemplate.name}" (ID: ${savedTemplate.id}) from ${activeTemplates.length} assigned template(s)`,
+        )
+
+        // Increment usage count
+        await incrementTemplateUsage(savedTemplate.id)
+      }
+    } catch (error) {
+      console.warn('Error accessing template services:', error)
+    }
+  }
+
+  console.log(
+    `🔍 Explicit template check result:`,
+    savedTemplate
+      ? {
+          id: savedTemplate.id,
+          name: savedTemplate.name,
+          hasExampleQuestion: !!savedTemplate.exampleQuestion,
+          hasExampleAnswer: !!savedTemplate.exampleAnswer,
+        }
+      : 'NULL - No explicitly assigned template. Will use AI to generate from goal text.',
+  )
+
   if (savedTemplate) {
+    console.log('📦 Template found:', {
+      id: savedTemplate.id,
+      name: savedTemplate.name,
+      exampleQuestion: savedTemplate.exampleQuestion,
+      exampleAnswer: savedTemplate.exampleAnswer,
+      allowedOperations: savedTemplate.allowedOperations,
+    })
+
     const templateResult = generateQuestionFromTemplate(savedTemplate, goal, questionNumber)
+    if (!templateResult) {
+      console.error('❌ generateQuestionFromTemplate returned NULL! Template has:', {
+        hasExampleQuestion: !!savedTemplate.exampleQuestion,
+        hasExampleAnswer: !!savedTemplate.exampleAnswer,
+        exampleQuestion: savedTemplate.exampleQuestion,
+        exampleAnswer: savedTemplate.exampleAnswer,
+      })
+      // DO NOT fall through to hard-coded templates - throw error instead
+      throw new Error(
+        `Database template "${savedTemplate.name}" (ID: ${savedTemplate.id}) is missing required fields (exampleQuestion or exampleAnswer). Please edit the template to add these fields.`,
+      )
+    }
+
+    // Template result exists - use it
     if (templateResult) {
+      console.log('📝 Template result generated:', {
+        question: templateResult.question,
+        answer: templateResult.answer,
+      })
+
       // Use AI to add variation to the template question (if hybrid mode)
       if (config.method === 'hybrid') {
         try {
@@ -1059,174 +1386,108 @@ export async function generateQuestionForGoal(
             model: 'gemini-flash-latest',
             difficulty: config.difficulty || 'medium',
           }
-          
+
           if (aiConfig.apiKey) {
-            const detection = detectGoalCharacteristics(goal)
+            console.log(
+              '📋 Passing to AI - Template question:',
+              templateResult.question.substring(0, 100),
+            )
+            console.log('📋 Template allowed operations:', savedTemplate.allowedOperations)
+            console.log(
+              '📋 Template custom AI prompt:',
+              savedTemplate.customAIPrompt?.substring(0, 100) || 'None',
+            )
+            console.log('🔑 API Key found, calling AI...')
+
+            // Pass allowedOperations from template to detection
+            const detection = detectGoalCharacteristics(goal, savedTemplate.allowedOperations)
             const aiResult = await generateQuestionWithAI(
               goal,
               detection.subject,
               questionNumber,
               aiConfig,
               templateResult, // Use saved template as reference
+              savedTemplate.allowedOperations, // Pass allowed operations to AI
+              savedTemplate.customAIPrompt, // Pass custom prompt from template
+              savedTemplate, // Pass FULL template with problemStructure
             )
-            return {
+            console.log('🤖 AI returned question:', aiResult.question)
+            console.log('🤖 AI source:', aiResult.source)
+            console.log('🔍 CHECKING: Does AI question match database template structure?')
+            console.log('   Database template question:', templateResult.question.substring(0, 100))
+            console.log('   AI generated question:', aiResult.question.substring(0, 100))
+            const finalResult: QuestionResult = {
               ...aiResult,
               source: 'ai-with-template-reference',
+            }
+            console.log('✅ RETURNING FINAL RESULT:', {
+              question: finalResult.question.substring(0, 100),
+              source: finalResult.source,
+            })
+            return finalResult
+          } else {
+            console.warn('⚠️ NO API KEY FOUND - Returning template question without AI variation')
+            console.warn('⚠️ To get varied questions, add VITE_GEMINI_API_KEY to .env file')
+            // Return template with question number variation to at least change something
+            return {
+              ...templateResult,
+              question: `${templateResult.question} (Question ${questionNumber})`,
+              source: 'template',
             }
           }
         } catch (error) {
           console.warn('AI generation failed for saved template, using template as-is:', error)
+          console.log('🔍 RETURN PATH: AI error catch - returning database template')
+          console.log('   Question:', templateResult.question.substring(0, 100))
           return templateResult
         }
       }
-      
+
       // Return template directly if not hybrid mode
+      console.log('🔍 RETURN PATH: Non-hybrid mode - returning database template directly')
+      console.log('   Question:', templateResult.question.substring(0, 100))
       return templateResult
     }
   }
-  
-  // STEP 2: Fall back to coded templates
+
+  // STEP 2: No explicit template - use AI to generate directly from goal text
+  console.log('🤖 No explicit template assigned. Generating question from goal text with AI...')
   const detection = detectGoalCharacteristics(goal)
 
-  // Always generate template first for hybrid mode (to use as reference)
-  let templateResult: QuestionResult | null = null
-  if (config.method === 'template' || config.method === 'hybrid') {
-    templateResult = generateWithTemplate(goal, detection, questionNumber)
-    if (templateResult) {
-      templateResult.source = 'template'
-      if (config.method === 'template') {
-        return templateResult
-      }
-    }
-  }
-
-  // For hybrid mode: use AI with template as reference, or use template directly
-  if (config.method === 'hybrid') {
-    // If we have a template and want to use AI with it as reference
-    if (templateResult) {
-      try {
-        const aiConfig = {
-          provider: 'google' as 'google' | 'openai',
-          apiKey: config.geminiApiKey || import.meta.env.VITE_GEMINI_API_KEY || '',
-          model: 'gemini-flash-latest',
-          difficulty: config.difficulty || 'medium',
-        }
-
-        if (aiConfig.apiKey) {
-          // Use AI with template as reference for variation
-          const aiResult = await generateQuestionWithAI(
-            goal,
-            detection.subject,
-            questionNumber,
-            aiConfig,
-            templateResult, // Pass template as reference
-          )
-          return {
-            ...aiResult,
-            source: 'ai-with-template-reference',
-          }
-        }
-      } catch (error) {
-        console.warn('AI generation failed, using template:', error)
-        // Fallback to template if AI fails
-        if (templateResult) {
-          return {
-            ...templateResult,
-            source: 'fallback',
-            aiError: error instanceof Error ? error.message : 'AI generation failed',
-          }
-        }
-      }
+  // Try AI generation directly from goal (no hard-coded templates)
+  try {
+    const aiConfig = {
+      provider: 'google' as 'google' | 'openai',
+      apiKey: config.geminiApiKey || import.meta.env.VITE_GEMINI_API_KEY || '',
+      model: 'gemini-2.0-flash',
+      difficulty: config.difficulty || 'medium',
     }
 
-    // If no template or AI failed, try AI without reference
-    if (!templateResult) {
-      try {
-        const aiConfig = {
-          provider: 'google' as 'google' | 'openai',
-          apiKey: config.geminiApiKey || import.meta.env.VITE_GEMINI_API_KEY || '',
-          model: 'gemini-flash-latest',
-          difficulty: config.difficulty || 'medium',
-        }
-
-        if (aiConfig.apiKey) {
-          const aiResult = await generateQuestionWithAI(
-            goal,
-            detection.subject,
-            questionNumber,
-            aiConfig,
-          )
-          return {
-            ...aiResult,
-            source: 'ai',
-          }
-        }
-      } catch (error) {
-        console.warn('AI generation failed:', error)
-      }
+    if (!aiConfig.apiKey) {
+      console.warn('⚠️ NO API KEY FOUND')
+      console.warn('⚠️ Please either:')
+      console.warn('   1. Assign a template to this goal, OR')
+      console.warn('   2. Add VITE_GEMINI_API_KEY to .env file')
+      throw new Error('No template assigned and no API key available')
     }
 
-    // Final fallback: use template if available
-    if (templateResult) {
-      return templateResult
-    }
-  }
-
-  // Use AI generation (non-hybrid)
-  if (config.method === 'ai-gemini' || config.method === 'ai-openai') {
-    try {
-      const aiConfig = {
-        provider: config.method === 'ai-gemini' ? 'google' : ('openai' as 'google' | 'openai'),
-        apiKey:
-          config.method === 'ai-gemini'
-            ? config.geminiApiKey || import.meta.env.VITE_GEMINI_API_KEY || ''
-            : config.openaiApiKey || import.meta.env.VITE_OPENAI_API_KEY || '',
-        model: config.method === 'ai-gemini' ? 'gemini-flash-latest' : 'gpt-3.5-turbo',
-        difficulty: config.difficulty || 'medium',
-      }
-
-      if (!aiConfig.apiKey) {
-        throw new Error(`API key not configured for ${config.method}`)
-      }
-
-      const aiResult = await generateQuestionWithAI(
-        goal,
-        detection.subject,
-        questionNumber,
-        aiConfig,
-        templateResult || undefined, // Pass template as reference if available
-      )
-      return {
-        ...aiResult,
-        source: templateResult ? 'ai-with-template-reference' : 'ai',
-      }
-    } catch (error) {
-      console.warn('AI generation failed, falling back to template:', error)
-      // Fallback to template
-      if (templateResult) {
-        return {
-          ...templateResult,
-          source: 'fallback',
-          aiError: error instanceof Error ? error.message : 'AI generation failed',
-        }
-      }
-    }
-  }
-
-  // Final fallback
-  const finalTemplateResult = generateWithTemplate(goal, detection, questionNumber)
-  if (finalTemplateResult) {
+    console.log('🔑 Calling AI to generate question from goal...')
+    const aiResult = await generateQuestionWithAI(
+      goal,
+      detection.subject,
+      questionNumber,
+      aiConfig,
+      undefined, // No template - generate from goal text
+    )
+    console.log('✅ AI generated question:', aiResult.question.substring(0, 100))
     return {
-      ...finalTemplateResult,
-      source: 'template',
+      ...aiResult,
+      source: 'ai',
     }
-  }
-
-  // Ultimate fallback
-  return {
-    question: `Respond to prompt ${questionNumber} based on the goal: ${goal.goalTitle}`,
-    answer: 'Teacher will grade',
-    explanation: 'Open-ended response requiring teacher evaluation.',
-    requiresPhoto: false,
+  } catch (error) {
+    console.error('❌ AI generation failed:', error)
+    throw new Error(
+      `Failed to generate question: ${error instanceof Error ? error.message : 'Unknown error'}`,
+    )
   }
 }

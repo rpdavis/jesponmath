@@ -40,7 +40,7 @@ exports.generateWithGemini = (0, https_1.onCall)({
 }, async (request) => {
     var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
     try {
-        const { model, prompt, temperature = 0.7, maxTokens = 500, apiKey } = request.data;
+        const { model, prompt, temperature = 0.7, maxTokens = 2000, apiKey } = request.data;
         if (!model || !prompt || !apiKey) {
             throw new https_1.HttpsError('invalid-argument', 'Missing required parameters: model, prompt, and apiKey');
         }
@@ -59,7 +59,7 @@ exports.generateWithGemini = (0, https_1.onCall)({
                         }],
                     generationConfig: {
                         temperature,
-                        maxOutputTokens: maxTokens || 1000,
+                        maxOutputTokens: maxTokens || 2000,
                         candidateCount: 1
                     }
                 }, {

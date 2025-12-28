@@ -157,6 +157,52 @@
       </div>
     </div>
 
+    <!-- Preferred Templates Section -->
+    <div class="templates-section">
+      <h4>🎯 Preferred Question Templates</h4>
+      <p class="template-help-text">
+        Assign specific templates to ensure consistent question generation for this goal.
+      </p>
+      
+      <div v-if="goal.preferredTemplateIds?.length" class="template-list">
+        <div
+          v-for="(templateId, index) in goal.preferredTemplateIds"
+          :key="templateId"
+          class="template-item"
+        >
+          <span class="template-badge">{{ index + 1 }}</span>
+          <span class="template-id">{{ templateId }}</span>
+          <button
+            @click="$emit('remove-template', goal.id, templateId)"
+            class="btn btn-xs btn-danger"
+            title="Remove template"
+          >
+            ❌
+          </button>
+        </div>
+      </div>
+      <div v-else class="no-templates">
+        <p>No preferred templates assigned. System will use fuzzy matching.</p>
+      </div>
+
+      <div class="template-actions">
+        <button
+          @click="$emit('generate-template', goal)"
+          class="btn btn-sm btn-success"
+          title="Use AI to generate a template from this goal's text"
+        >
+          🤖 Generate Template from Goal
+        </button>
+        <button
+          @click="$emit('assign-template', goal.id)"
+          class="btn btn-sm btn-secondary"
+          title="Assign an existing template to this goal"
+        >
+          ➕ Assign Template
+        </button>
+      </div>
+    </div>
+
     <!-- Goal Actions -->
     <div class="goal-actions">
       <button @click="$emit('edit', goal)" class="btn btn-sm btn-primary">✏️ Edit</button>
@@ -227,6 +273,9 @@ defineEmits<{
   'assign-all': [goal: Goal]
   'view-edit': [assessmentId: string]
   'update-difficulty': [difficulty: string]
+  'generate-template': [goal: Goal]
+  'assign-template': [goalId: string]
+  'remove-template': [goalId: string, templateId: string]
 }>()
 </script>
 
@@ -406,6 +455,77 @@ defineEmits<{
 
 .difficulty-select {
   min-width: 100px;
+}
+
+.templates-section {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e9ecef;
+}
+
+.templates-section h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  color: #495057;
+}
+
+.template-help-text {
+  font-size: 0.75rem;
+  color: #6c757d;
+  margin: 0 0 0.75rem 0;
+  font-style: italic;
+}
+
+.template-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.template-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  font-size: 0.875rem;
+}
+
+.template-badge {
+  background: #007bff;
+  color: white;
+  padding: 0.125rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  min-width: 24px;
+  text-align: center;
+}
+
+.template-id {
+  flex: 1;
+  font-family: 'Courier New', monospace;
+  font-size: 0.75rem;
+  color: #495057;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.no-templates {
+  color: #6c757d;
+  font-style: italic;
+  padding: 0.5rem 0;
+  font-size: 0.875rem;
+}
+
+.template-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
 }
 
 .goal-actions {

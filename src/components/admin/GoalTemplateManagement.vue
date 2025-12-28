@@ -11,6 +11,10 @@
         <span class="icon">➕</span>
         Create New Template
       </button>
+      <button @click="showDraftGeneratorModal = true" class="btn btn-success">
+        <span class="icon">🤖</span>
+        Generate Draft from Goal
+      </button>
       <div class="filters">
         <select v-model="filterSubject" class="filter-select">
           <option value="">All Subjects</option>
@@ -120,6 +124,22 @@
             <strong>Default Threshold:</strong>
             <span>{{ template.defaultThreshold }}</span>
           </div>
+          <div v-if="template.allowedOperations && template.allowedOperations.length > 0" class="template-field">
+            <strong>🔒 Allowed Operations:</strong>
+            <span class="operations-badges">
+              <span v-for="op in template.allowedOperations" :key="op" class="operation-badge">{{ op }}</span>
+            </span>
+          </div>
+          <div class="template-field">
+            <strong>🔗 Linked Goals:</strong>
+            <div v-if="getLinkedGoals(template.id).length > 0" class="linked-goals-list">
+              <div v-for="goal in getLinkedGoals(template.id)" :key="goal.id" class="linked-goal-item">
+                <span class="goal-title">{{ goal.goalTitle }}</span>
+                <span class="goal-student">{{ getGoalStudents(goal) }}</span>
+              </div>
+            </div>
+            <span v-else class="no-linked-goals">No goals currently using this template</span>
+          </div>
           <div v-if="template.exampleQuestion" class="template-field example-question-preview">
             <strong>⭐ Example Question:</strong>
             <div class="example-question-content">
@@ -147,6 +167,73 @@
           <button @click="previewTemplate(template)" class="btn btn-secondary btn-sm">
             👁️ Preview
           </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI Draft Generator Modal -->
+    <div v-if="showDraftGeneratorModal" class="modal-overlay" @click="closeDraftGenerator">
+      <div class="modal-content" @click.stop>
+        <div class="modal-header">
+          <h2>🤖 Generate Template Draft from Goal</h2>
+          <button @click="closeDraftGenerator" class="btn-close">✕</button>
+        </div>
+
+        <div class="modal-body">
+          <p class="info-text">
+            Paste your IEP goal text below, and AI will analyze it to generate a structured template with example questions, number ranges, and variation instructions.
+          </p>
+
+          <form @submit.prevent="generateDraft" class="draft-generator-form">
+            <div class="form-group">
+              <label>Goal Title (optional)</label>
+              <input
+                v-model="draftInput.goalTitle"
+                type="text"
+                placeholder="e.g., One-step word problem involving a percentage"
+              />
+            </div>
+
+            <div class="form-group">
+              <label>Area of Need (optional)</label>
+              <input
+                v-model="draftInput.areaOfNeed"
+                type="text"
+                placeholder="e.g., Math - Percentage"
+              />
+            </div>
+
+            <div class="form-group">
+              <label>Goal Text *</label>
+              <textarea
+                v-model="draftInput.goalText"
+                required
+                rows="6"
+                placeholder="Paste the full IEP goal text here...
+
+Example: 'Given five one-step word problems involving a percentage read aloud, Mikah will use a percent calculation strategy to identify the correct part, whole, or percent and state or write the correct answer with 80% accuracy, on 2 out of 3 progress monitoring assessments.'"
+              ></textarea>
+            </div>
+
+            <div v-if="draftGenerating" class="generating-status">
+              <div class="spinner"></div>
+              <p>AI is analyzing the goal and generating a template draft...</p>
+              <small>This may take 10-20 seconds</small>
+            </div>
+
+            <div v-if="draftError" class="error-message">
+              ❌ {{ draftError }}
+            </div>
+
+            <div class="modal-actions">
+              <button type="button" @click="closeDraftGenerator" class="btn btn-secondary" :disabled="draftGenerating">
+                Cancel
+              </button>
+              <button type="submit" class="btn btn-primary" :disabled="!draftInput.goalText || draftGenerating">
+                {{ draftGenerating ? 'Generating...' : '🤖 Generate Draft' }}
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     </div>
@@ -289,6 +376,49 @@
             </small>
           </div>
 
+          <div v-if="formData.subject === 'math'" class="form-group">
+            <label>Allowed Operations (Math Only) - Optional</label>
+            <div class="checkbox-group">
+              <label class="checkbox-label">
+                <input
+                  type="checkbox"
+                  value="addition"
+                  v-model="formData.allowedOperations"
+                />
+                <span>Addition</span>
+              </label>
+              <label class="checkbox-label">
+                <input
+                  type="checkbox"
+                  value="subtraction"
+                  v-model="formData.allowedOperations"
+                />
+                <span>Subtraction</span>
+              </label>
+              <label class="checkbox-label">
+                <input
+                  type="checkbox"
+                  value="multiplication"
+                  v-model="formData.allowedOperations"
+                />
+                <span>Multiplication</span>
+              </label>
+              <label class="checkbox-label">
+                <input
+                  type="checkbox"
+                  value="division"
+                  v-model="formData.allowedOperations"
+                />
+                <span>Division</span>
+              </label>
+            </div>
+            <small class="form-hint">
+              🔒 Restrict which operations can be used in generated questions. If no operations are selected, all operations will be allowed.
+              <br>
+              <strong>Example:</strong> Select only "Addition" and "Subtraction" to create two-step word problems using only those operations.
+            </small>
+          </div>
+
           <div v-if="formData.assessmentMethod === 'paper' || formData.assessmentMethod === 'hybrid'" class="form-group">
             <label>Rubric (optional)</label>
             <select v-model="formData.rubricId">
@@ -358,6 +488,131 @@
                 class="form-control"
                 placeholder="Enter explanation for the example question..."
               ></textarea>
+            </div>
+          </div>
+
+          <!-- PROBLEM STRUCTURE SECTION - NEW -->
+          <div class="problem-structure-section">
+            <h6 class="section-title">🎯 Problem Structure (For AI Generation)</h6>
+            <p class="section-description">Define how AI should vary questions while keeping the same structure. This prevents AI from changing the problem type.</p>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>Number of Steps</label>
+                <select v-model.number="formData.problemStructure.numberOfSteps">
+                  <option :value="undefined">Not specified</option>
+                  <option :value="1">1 Step</option>
+                  <option :value="2">2 Steps</option>
+                  <option :value="3">3 Steps</option>
+                  <option :value="4">4 Steps</option>
+                </select>
+                <small class="form-hint">For word problems: how many steps to solve?</small>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Question Types (comma-separated)</label>
+              <input
+                v-model="formData.problemStructure.questionTypesText"
+                type="text"
+                placeholder="e.g., find-percent, find-part, find-whole"
+              />
+              <small class="form-hint">
+                Variations within this problem type. Examples:
+                <br>• Percentage: "find-percent", "find-part", "find-whole"
+                <br>• Word problems: "find-missing-amount", "increase", "decrease", "compare"
+              </small>
+            </div>
+
+            <div class="form-group">
+              <label>Context Types (comma-separated)</label>
+              <input
+                v-model="formData.problemStructure.contextTypesText"
+                type="text"
+                placeholder="e.g., quiz, basketball, pizza, homework"
+              />
+              <small class="form-hint">
+                Real-world contexts for variety. Examples:
+                <br>• Percentage: "quiz", "basketball", "pizza", "homework", "spelling"
+                <br>• Money: "skateboard", "tablet", "concert", "game"
+              </small>
+            </div>
+
+            <div class="number-ranges-group">
+              <label>Number Ranges for Each Question</label>
+              <small class="form-hint">Specify different number ranges for questions 1-5 to ensure variety.</small>
+              
+              <div class="form-group">
+                <label>Question 1</label>
+                <input
+                  v-model="formData.problemStructure.numberRanges.question1"
+                  type="text"
+                  placeholder="e.g., 15/20 (75%) or $45-$55, saved $10-$18"
+                />
+              </div>
+              
+              <div class="form-group">
+                <label>Question 2</label>
+                <input
+                  v-model="formData.problemStructure.numberRanges.question2"
+                  type="text"
+                  placeholder="e.g., 18/24 (75%) or $70-$90, saved $30-$42"
+                />
+              </div>
+              
+              <div class="form-group">
+                <label>Question 3</label>
+                <input
+                  v-model="formData.problemStructure.numberRanges.question3"
+                  type="text"
+                  placeholder="e.g., 22/25 (88%) or $35-$48, saved $12-$20"
+                />
+              </div>
+              
+              <div class="form-group">
+                <label>Question 4</label>
+                <input
+                  v-model="formData.problemStructure.numberRanges.question4"
+                  type="text"
+                  placeholder="e.g., 12/15 (80%) or $95-$120, saved $48-$65"
+                />
+              </div>
+              
+              <div class="form-group">
+                <label>Question 5</label>
+                <input
+                  v-model="formData.problemStructure.numberRanges.question5"
+                  type="text"
+                  placeholder="e.g., 27/30 (90%) or $55-$75, saved $20-$32"
+                />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Forbidden Patterns (comma-separated)</label>
+              <input
+                v-model="formData.problemStructure.forbiddenPatternsText"
+                type="text"
+                placeholder="e.g., 8/10, 9/10, $25 saved, $65 cost"
+              />
+              <small class="form-hint">
+                Number patterns that are too common or repetitive. AI will avoid these.
+                <br>Example: "8/10, 9/10" (too common for percentages), "$25, $65" (overused amounts)
+              </small>
+            </div>
+
+            <div class="form-group">
+              <label>Custom AI Instructions</label>
+              <textarea
+                v-model="formData.customAIPrompt"
+                rows="4"
+                placeholder="Optional: Add custom instructions for how AI should vary this question type...
+
+Example: 'Keep the X out of Y structure. Always ask What percent?. Vary the context but never change to a money problem.'"
+              ></textarea>
+              <small class="form-hint">
+                Freeform instructions to guide AI. Use this for specific requirements not covered above.
+              </small>
             </div>
           </div>
 
@@ -475,7 +730,9 @@ import {
   generateGoalFromTemplate,
 } from '@/firebase/templateServices'
 import { getActiveRubrics } from '@/firebase/rubricServices'
-import type { GoalTemplate, Rubric } from '@/types/iep'
+import { getAllGoals } from '@/firebase/goalServices'
+import { generateTemplateDraft } from '@/services/templateDraftGenerator'
+import type { GoalTemplate, Rubric, Goal } from '@/types/iep'
 
 const authStore = useAuthStore()
 
@@ -483,13 +740,24 @@ const authStore = useAuthStore()
 const loading = ref(false)
 const saving = ref(false)
 const templates = ref<GoalTemplate[]>([])
+const goals = ref<Goal[]>([])
 const showCreateModal = ref(false)
 const showEditModal = ref(false)
 const showPreviewModal = ref(false)
 const showRubricModal = ref(false)
+const showDraftGeneratorModal = ref(false)
 const editingTemplate = ref<GoalTemplate | null>(null)
 const previewTemplateData = ref<GoalTemplate | null>(null)
 const availableRubrics = ref<Rubric[]>([])
+
+// Draft Generator State
+const draftGenerating = ref(false)
+const draftError = ref('')
+const draftInput = ref({
+  goalTitle: '',
+  goalText: '',
+  areaOfNeed: '',
+})
 
 // Filters
 const filterSubject = ref('')
@@ -518,6 +786,23 @@ const formData = ref({
   exampleAnswer: '',
   exampleAlternativeAnswers: '',
   exampleExplanation: '',
+  // Operation constraints for math
+  allowedOperations: [] as ('addition' | 'subtraction' | 'multiplication' | 'division')[],
+  // Problem structure fields (NEW)
+  problemStructure: {
+    numberOfSteps: undefined as 1 | 2 | 3 | 4 | undefined,
+    questionTypesText: '', // Comma-separated, will be converted to array
+    contextTypesText: '', // Comma-separated, will be converted to array
+    numberRanges: {
+      question1: '',
+      question2: '',
+      question3: '',
+      question4: '',
+      question5: '',
+    },
+    forbiddenPatternsText: '', // Comma-separated, will be converted to array
+  },
+  customAIPrompt: '',
   isActive: true,
 })
 
@@ -603,6 +888,21 @@ const resetForm = () => {
     exampleAnswer: '',
     exampleAlternativeAnswers: '',
     exampleExplanation: '',
+    allowedOperations: [],
+    problemStructure: {
+      numberOfSteps: undefined,
+      questionTypesText: '',
+      contextTypesText: '',
+      numberRanges: {
+        question1: '',
+        question2: '',
+        question3: '',
+        question4: '',
+        question5: '',
+      },
+      forbiddenPatternsText: '',
+    },
+    customAIPrompt: '',
     isActive: true,
   }
   editingTemplate.value = null
@@ -618,6 +918,10 @@ const loadRubrics = async () => {
 
 const editTemplate = (template: GoalTemplate) => {
   editingTemplate.value = template
+  
+  // Helper to convert array to comma-separated string
+  const arrayToText = (arr?: string[]) => (arr || []).join(', ')
+  
   formData.value = {
     name: template.name,
     subject: template.subject,
@@ -638,6 +942,21 @@ const editTemplate = (template: GoalTemplate) => {
     exampleAnswer: template.exampleAnswer || '',
     exampleAlternativeAnswers: template.exampleAlternativeAnswers || '',
     exampleExplanation: template.exampleExplanation || '',
+    allowedOperations: template.allowedOperations || [],
+    problemStructure: {
+      numberOfSteps: template.problemStructure?.numberOfSteps,
+      questionTypesText: arrayToText(template.problemStructure?.questionTypes),
+      contextTypesText: arrayToText(template.problemStructure?.contextTypes),
+      numberRanges: {
+        question1: template.problemStructure?.numberRanges?.question1 || '',
+        question2: template.problemStructure?.numberRanges?.question2 || '',
+        question3: template.problemStructure?.numberRanges?.question3 || '',
+        question4: template.problemStructure?.numberRanges?.question4 || '',
+        question5: template.problemStructure?.numberRanges?.question5 || '',
+      },
+      forbiddenPatternsText: arrayToText(template.problemStructure?.forbiddenPatterns),
+    },
+    customAIPrompt: template.customAIPrompt || '',
     isActive: template.isActive,
   }
   showEditModal.value = true
@@ -646,6 +965,13 @@ const editTemplate = (template: GoalTemplate) => {
 const saveTemplate = async () => {
   try {
     saving.value = true
+
+    // Helper to convert comma-separated text to array
+    const textToArray = (text: string) =>
+      text
+        .split(',')
+        .map((s) => s.trim())
+        .filter((s) => s)
 
     // Build template data, only including fields that have values (not empty strings for optional fields)
     const templateData: any = {
@@ -663,7 +989,8 @@ const saveTemplate = async () => {
     if (formData.value.topic) templateData.topic = formData.value.topic
     if (formData.value.baselineTemplate) templateData.baselineTemplate = formData.value.baselineTemplate
     if (formData.value.rubricId) templateData.rubricId = formData.value.rubricId
-    if (formData.value.defaultGradeLevel !== undefined) templateData.defaultGradeLevel = formData.value.defaultGradeLevel
+    if (formData.value.defaultGradeLevel !== undefined)
+      templateData.defaultGradeLevel = formData.value.defaultGradeLevel
     if (formData.value.defaultStandard) templateData.defaultStandard = formData.value.defaultStandard
     if (formData.value.defaultThreshold) templateData.defaultThreshold = formData.value.defaultThreshold
     if (formData.value.defaultCondition) templateData.defaultCondition = formData.value.defaultCondition
@@ -671,8 +998,39 @@ const saveTemplate = async () => {
     if (formData.value.exampleGoal) templateData.exampleGoal = formData.value.exampleGoal
     if (formData.value.exampleQuestion) templateData.exampleQuestion = formData.value.exampleQuestion
     if (formData.value.exampleAnswer) templateData.exampleAnswer = formData.value.exampleAnswer
-    if (formData.value.exampleAlternativeAnswers) templateData.exampleAlternativeAnswers = formData.value.exampleAlternativeAnswers
-    if (formData.value.exampleExplanation) templateData.exampleExplanation = formData.value.exampleExplanation
+    if (formData.value.exampleAlternativeAnswers)
+      templateData.exampleAlternativeAnswers = formData.value.exampleAlternativeAnswers
+    if (formData.value.exampleExplanation)
+      templateData.exampleExplanation = formData.value.exampleExplanation
+    if (formData.value.allowedOperations && formData.value.allowedOperations.length > 0)
+      templateData.allowedOperations = formData.value.allowedOperations
+
+    // Add problem structure if any fields are filled
+    const ps = formData.value.problemStructure
+    if (
+      ps.numberOfSteps ||
+      ps.questionTypesText ||
+      ps.contextTypesText ||
+      ps.numberRanges.question1 ||
+      ps.forbiddenPatternsText
+    ) {
+      templateData.problemStructure = {
+        ...(ps.numberOfSteps && { numberOfSteps: ps.numberOfSteps }),
+        ...(ps.questionTypesText && { questionTypes: textToArray(ps.questionTypesText) }),
+        ...(ps.contextTypesText && { contextTypes: textToArray(ps.contextTypesText) }),
+        numberRanges: {
+          ...(ps.numberRanges.question1 && { question1: ps.numberRanges.question1 }),
+          ...(ps.numberRanges.question2 && { question2: ps.numberRanges.question2 }),
+          ...(ps.numberRanges.question3 && { question3: ps.numberRanges.question3 }),
+          ...(ps.numberRanges.question4 && { question4: ps.numberRanges.question4 }),
+          ...(ps.numberRanges.question5 && { question5: ps.numberRanges.question5 }),
+        },
+        ...(ps.forbiddenPatternsText && { forbiddenPatterns: textToArray(ps.forbiddenPatternsText) }),
+      }
+    }
+
+    // Add custom AI prompt
+    if (formData.value.customAIPrompt) templateData.customAIPrompt = formData.value.customAIPrompt
 
     if (showEditModal.value && editingTemplate.value) {
       await updateTemplate(editingTemplate.value.id, templateData)
@@ -731,6 +1089,9 @@ const createFromPreview = () => {
 }
 
 const createFromTemplate = (t: GoalTemplate) => {
+  // Helper to convert array to comma-separated string
+  const arrayToText = (arr?: string[]) => (arr || []).join(', ')
+  
   formData.value = {
     name: `Copy of ${t.name}`,
     subject: t.subject,
@@ -751,6 +1112,21 @@ const createFromTemplate = (t: GoalTemplate) => {
     exampleAnswer: t.exampleAnswer || '',
     exampleAlternativeAnswers: t.exampleAlternativeAnswers || '',
     exampleExplanation: t.exampleExplanation || '',
+    allowedOperations: t.allowedOperations || [],
+    problemStructure: {
+      numberOfSteps: t.problemStructure?.numberOfSteps,
+      questionTypesText: arrayToText(t.problemStructure?.questionTypes),
+      contextTypesText: arrayToText(t.problemStructure?.contextTypes),
+      numberRanges: {
+        question1: t.problemStructure?.numberRanges?.question1 || '',
+        question2: t.problemStructure?.numberRanges?.question2 || '',
+        question3: t.problemStructure?.numberRanges?.question3 || '',
+        question4: t.problemStructure?.numberRanges?.question4 || '',
+        question5: t.problemStructure?.numberRanges?.question5 || '',
+      },
+      forbiddenPatternsText: arrayToText(t.problemStructure?.forbiddenPatterns),
+    },
+    customAIPrompt: t.customAIPrompt || '',
     isActive: true,
   }
   showCreateModal.value = true
@@ -761,6 +1137,87 @@ const closeModals = () => {
   showEditModal.value = false
   showPreviewModal.value = false
   resetForm()
+}
+
+// Draft Generator Methods
+const closeDraftGenerator = () => {
+  showDraftGeneratorModal.value = false
+  draftInput.value = {
+    goalTitle: '',
+    goalText: '',
+    areaOfNeed: '',
+  }
+  draftError.value = ''
+}
+
+const generateDraft = async () => {
+  try {
+    draftGenerating.value = true
+    draftError.value = ''
+
+    console.log('🤖 Generating template draft from goal...')
+    
+    const draft = await generateTemplateDraft(
+      draftInput.value.goalText,
+      draftInput.value.goalTitle,
+      draftInput.value.areaOfNeed,
+    )
+
+    console.log('✅ Draft generated successfully:', draft)
+
+    // Helper to convert array to text
+    const arrayToText = (arr?: string[]) => (arr || []).join(', ')
+
+    // Populate form with draft data
+    formData.value = {
+      name: draft.name,
+      subject: draft.subject,
+      topic: draft.topic,
+      areaOfNeed: draftInput.value.areaOfNeed || draft.topic,
+      goalTitleTemplate: '{{topic}} - Grade {{gradeLevel}}',
+      goalTextTemplate: draftInput.value.goalText,
+      baselineTemplate: '',
+      assessmentMethod: 'app',
+      rubricId: '',
+      defaultGradeLevel: undefined,
+      defaultStandard: '',
+      defaultThreshold: '',
+      defaultCondition: '',
+      description: draft.description,
+      exampleGoal: '',
+      exampleQuestion: draft.exampleQuestion,
+      exampleAnswer: draft.exampleAnswer,
+      exampleAlternativeAnswers: '',
+      exampleExplanation: draft.exampleExplanation || '',
+      allowedOperations: draft.allowedOperations || [],
+      problemStructure: {
+        numberOfSteps: draft.problemStructure.numberOfSteps,
+        questionTypesText: arrayToText(draft.problemStructure.questionTypes),
+        contextTypesText: arrayToText(draft.problemStructure.contextTypes),
+        numberRanges: {
+          question1: draft.problemStructure.numberRanges?.question1 || '',
+          question2: draft.problemStructure.numberRanges?.question2 || '',
+          question3: draft.problemStructure.numberRanges?.question3 || '',
+          question4: draft.problemStructure.numberRanges?.question4 || '',
+          question5: draft.problemStructure.numberRanges?.question5 || '',
+        },
+        forbiddenPatternsText: arrayToText(draft.problemStructure.forbiddenPatterns),
+      },
+      customAIPrompt: draft.customAIPrompt || '',
+      isActive: true,
+    }
+
+    // Close draft modal and open create modal
+    closeDraftGenerator()
+    showCreateModal.value = true
+
+    alert('✅ Template draft generated! Review and edit the fields, then save.')
+  } catch (error) {
+    console.error('❌ Draft generation failed:', error)
+    draftError.value = error instanceof Error ? error.message : 'Failed to generate draft. Please try again.'
+  } finally {
+    draftGenerating.value = false
+  }
 }
 
 const truncateText = (text: string, maxLength: number): string => {
@@ -774,6 +1231,32 @@ const formatDate = (timestamp: any): string => {
   return date.toLocaleDateString()
 }
 
+// Get goals that have this template assigned
+const getLinkedGoals = (templateId: string): Goal[] => {
+  return goals.value.filter(goal => 
+    goal.preferredTemplateIds && goal.preferredTemplateIds.includes(templateId)
+  )
+}
+
+// Get student names for a goal
+const getGoalStudents = (goal: Goal): string => {
+  if (goal.assignedStudents && goal.assignedStudents.length > 0) {
+    return `${goal.assignedStudents.length} student(s)`
+  } else if (goal.studentUid) {
+    return '1 student'
+  }
+  return 'No students'
+}
+
+// Load goals
+const loadGoals = async () => {
+  try {
+    goals.value = await getAllGoals()
+  } catch (error) {
+    console.error('Error loading goals:', error)
+  }
+}
+
 // Lifecycle
 // Watch for modal opening to reload rubrics
 watch([showCreateModal, showEditModal], ([createOpen, editOpen]) => {
@@ -785,6 +1268,7 @@ watch([showCreateModal, showEditModal], ([createOpen, editOpen]) => {
 onMounted(() => {
   loadTemplates()
   loadRubrics()
+  loadGoals()
 })
 </script>
 
@@ -997,6 +1481,44 @@ onMounted(() => {
   color: #666;
 }
 
+.linked-goals-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.linked-goal-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+.goal-title {
+  flex: 1;
+  font-weight: 500;
+  color: #2c3e50;
+}
+
+.goal-student {
+  font-size: 0.75rem;
+  color: #6c757d;
+  padding: 0.125rem 0.5rem;
+  background: #e9ecef;
+  border-radius: 12px;
+}
+
+.no-linked-goals {
+  color: #6c757d;
+  font-style: italic;
+  font-size: 0.85rem;
+}
+
 .template-footer {
   display: flex;
   justify-content: space-between;
@@ -1178,6 +1700,48 @@ onMounted(() => {
   border: 2px solid #ffc107 !important;
 }
 
+.checkbox-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin: 10px 0;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-weight: normal;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.checkbox-label span {
+  user-select: none;
+}
+
+.operations-badges {
+  display: inline-flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.operation-badge {
+  display: inline-block;
+  background: #e3f2fd;
+  color: #1976d2;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.85em;
+  font-weight: 500;
+  border: 1px solid #90caf9;
+}
+
 .example-question-content {
   margin-top: 0.5rem;
 }
@@ -1286,6 +1850,7 @@ onMounted(() => {
   100% { transform: rotate(360deg); }
 }
 </style>
+
 
 
 

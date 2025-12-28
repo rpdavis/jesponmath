@@ -224,7 +224,7 @@ export function useAssessmentGeneration(
   // Generate questions for goal
   const generateQuestionsForGoal = async (
     goal: Goal,
-    approvedQuestion: PreviewQuestion,
+    approvedQuestion: PreviewQuestion | null,
   ): Promise<PreviewAssessment[]> => {
     const numberOfQuestions = 5
     const assessments: PreviewAssessment[] = []
@@ -232,8 +232,9 @@ export function useAssessmentGeneration(
     for (let i = 1; i <= 3; i++) {
       const questions: PreviewQuestion[] = []
 
-      // Use the approved question as the first question of the first assessment
-      if (i === 1) {
+      // If we have an approved question, use it as the first question of the first assessment
+      // Otherwise (when skipping proofread), generate all questions from scratch
+      if (i === 1 && approvedQuestion) {
         const cleanedQuestionText =
           typeof approvedQuestion.questionText === 'string'
             ? approvedQuestion.questionText.trim().replace(/^\n+/, '').replace(/\n+$/, '')
@@ -283,7 +284,7 @@ export function useAssessmentGeneration(
           } as PreviewQuestion)
         }
       } else {
-        // Generate questions for other assessments
+        // Generate all questions for this assessment
         for (let j = 1; j <= numberOfQuestions; j++) {
           const questionData = await generateQuestionForGoal(goal, j, {
             method: generationMethod.value,
@@ -320,11 +321,59 @@ export function useAssessmentGeneration(
       }
 
       const subject = getSubjectArea ? getSubjectArea(goal) : 'other'
+      
+      // Load templates for this goal to get directions and examples
+      let templateInstructions = ''
+      if (goal.preferredTemplateIds && goal.preferredTemplateIds.length > 0) {
+        try {
+          const { getTemplate } = await import('@/firebase/templateServices')
+          const templates = []
+          for (const templateId of goal.preferredTemplateIds) {
+            const template = await getTemplate(templateId)
+            if (template && template.isActive) {
+              templates.push(template)
+            }
+          }
+          
+          if (templates.length > 0) {
+            templateInstructions = '\n\n=== HOW TO SOLVE THESE PROBLEMS ===\n\n'
+            
+            templates.forEach((template, index) => {
+              if (templates.length > 1) {
+                templateInstructions += `\n📋 ${template.name}:\n`
+              }
+              
+              // Add directions
+              if (template.directions) {
+                templateInstructions += template.directions + '\n'
+              }
+              
+              // Add example
+              if (template.exampleQuestion && template.exampleAnswer) {
+                templateInstructions += '\n📝 Example:\n'
+                templateInstructions += `Q: ${template.exampleQuestion}\n`
+                templateInstructions += `A: ${template.exampleAnswer}\n`
+                if (template.exampleExplanation) {
+                  templateInstructions += `Explanation: ${template.exampleExplanation}\n`
+                }
+              }
+              
+              if (index < templates.length - 1) {
+                templateInstructions += '\n---\n'
+              }
+            })
+            
+            templateInstructions += '\n=== YOUR QUESTIONS BEGIN BELOW ===\n'
+          }
+        } catch (error) {
+          console.error('Error loading templates for instructions:', error)
+        }
+      }
 
       assessments.push({
         title: `${goal.goalTitle} - Check #${i}`,
         description: generateAssessmentDescription(goal, subject),
-        instructions: generateAssessmentInstructions(goal, subject),
+        instructions: generateAssessmentInstructions(goal, subject) + templateInstructions,
         questions: questions,
         totalPoints: questions.reduce((sum, q) => sum + q.points, 0),
       })
@@ -348,6 +397,8 @@ export function useAssessmentGeneration(
       })
 
       console.log('Question data received:', questionData)
+      console.log('📋 QUESTION TEXT BEING SET IN PREVIEW:', questionData.question)
+      console.log('📋 QUESTION SOURCE:', questionData.source)
       const altAnswers = questionData.alternativeAnswers || []
       const questionType = detectQuestionType(questionData.question)
       singlePreviewQuestion.value = {
@@ -361,6 +412,10 @@ export function useAssessmentGeneration(
         _source: questionData.source,
         _aiError: questionData.aiError,
       } as PreviewQuestion
+      console.log('📋 PREVIEW QUESTION SET:', {
+        questionText: singlePreviewQuestion.value.questionText,
+        source: singlePreviewQuestion.value._source,
+      })
 
       showSingleQuestionPreview.value = true
     } catch (error) {
@@ -382,6 +437,19 @@ export function useAssessmentGeneration(
     }
 
     console.log('Found goal:', goal.goalTitle)
+    console.log('Goal preferredTemplateIds:', goal.preferredTemplateIds)
+    console.log('Full goal object:', goal)
+    
+    // If goal has assigned templates, show template preview first
+    if (goal.preferredTemplateIds && goal.preferredTemplateIds.length > 0) {
+      console.log('🎯 Goal has templates assigned - showing template preview...')
+      // Set goal and let the modal component handle loading templates
+      currentGoalForGeneration.value = goal
+      // Modal will be shown by parent component watching this state
+      return
+    }
+    
+    // No templates - proceed directly to generation
     try {
       isGenerating.value = true
       currentGoalForGeneration.value = goal
@@ -393,6 +461,37 @@ export function useAssessmentGeneration(
       alert(
         `Failed to generate a preview question: ${error instanceof Error ? error.message : 'Unknown error'}`,
       )
+    } finally {
+      isGenerating.value = false
+    }
+  }
+  
+  // Proceed with generation after template review (called from modal)
+  const proceedWithGeneration = async () => {
+    if (!currentGoalForGeneration.value) return
+    
+    try {
+      isGenerating.value = true
+      isGeneratingRemaining.value = true
+      console.log('Proceeding with generation after template review (skipping proofread)...')
+      
+      // Skip proofread step and generate all assessments directly
+      const generatedAssessments = await generateQuestionsForGoal(
+        currentGoalForGeneration.value,
+        null as any, // No approved question needed - will generate all questions from templates
+      )
+      
+      generatedAssessmentsForPreview.value = generatedAssessments
+      isGeneratingRemaining.value = false
+      showConfirmationPreview.value = true
+      
+      console.log('✅ All assessments generated successfully')
+    } catch (error) {
+      console.error('Error generating assessments:', error)
+      alert(
+        `Failed to generate assessments: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      )
+      isGeneratingRemaining.value = false
     } finally {
       isGenerating.value = false
     }
@@ -611,6 +710,7 @@ export function useAssessmentGeneration(
 
     // Methods
     generateAssessmentsForGoal,
+    proceedWithGeneration, // NEW: Called after template review
     generateProofreadQuestion,
     handleApproval,
     updateAlternativeAnswers,

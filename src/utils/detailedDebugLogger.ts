@@ -845,3 +845,6 @@ export function printDebugCommands(): void {
 
 // Auto-print commands on import
 console.log('🔬 Detailed Debug Logger loaded. Type printDebugCommands() for usage.')
+
+
+

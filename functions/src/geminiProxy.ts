@@ -11,7 +11,7 @@ export const generateWithGemini = onCall({
   maxInstances: 10,
 }, async (request) => {
   try {
-    const { model, prompt, temperature = 0.7, maxTokens = 500, apiKey } = request.data;
+    const { model, prompt, temperature = 0.7, maxTokens = 2000, apiKey } = request.data;
 
     if (!model || !prompt || !apiKey) {
       throw new HttpsError('invalid-argument', 'Missing required parameters: model, prompt, and apiKey');
@@ -22,11 +22,11 @@ export const generateWithGemini = onCall({
     // Try different API versions in case one fails
     const apiVersions = ['v1beta', 'v1'];
     let lastError: any = null;
-    
+
     for (const apiVersion of apiVersions) {
       try {
         const url = `https://generativelanguage.googleapis.com/${apiVersion}/models/${model}:generateContent?key=${apiKey}`;
-        
+
         const response = await axios.post(url, {
           contents: [{
             parts: [{
@@ -35,7 +35,7 @@ export const generateWithGemini = onCall({
           }],
           generationConfig: {
             temperature,
-            maxOutputTokens: maxTokens || 1000,  // Increase default to handle JSON response
+            maxOutputTokens: maxTokens || 2000,  // Increased to prevent response cut-offs
             candidateCount: 1
           }
         }, {
@@ -46,15 +46,15 @@ export const generateWithGemini = onCall({
         });
 
         const data = response.data;
-        
+
         // Extract the generated text - check multiple possible locations
         let content = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        
+
         // Sometimes the text might be in a different structure
         if (!content && data.candidates?.[0]?.output) {
           content = data.candidates?.[0]?.output;
         }
-        
+
         // Check if we have a valid response
         if (content) {
           logger.info('Successfully generated content');
@@ -92,14 +92,14 @@ export const generateWithGemini = onCall({
 
     // If we get here, all attempts failed
     throw new HttpsError('internal', `Failed to generate content: ${lastError?.message || 'Unknown error'}`);
-    
+
   } catch (error) {
     logger.error('Error in generateWithGemini:', error);
-    
+
     if (error instanceof HttpsError) {
       throw error;
     }
-    
+
     throw new HttpsError('internal', 'Failed to process request');
   }
 });

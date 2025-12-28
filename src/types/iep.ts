@@ -41,6 +41,9 @@ export interface Goal {
   progressReports?: ProgressReport[] // Progress tracking
   currentProgress?: string // Current progress status
 
+  // Template connections - NEW: Explicit template assignment
+  preferredTemplateIds?: string[] // Array of template IDs to use for this goal (checked first before fuzzy matching)
+
   // Status tracking
   isActive: boolean // Whether goal is currently active
   isMet: boolean // Whether goal has been met
@@ -389,6 +392,12 @@ export interface GoalTemplate {
     standard?: string // Academic standard
   }
 
+  // Operation constraints for math goals
+  allowedOperations?: ('addition' | 'subtraction' | 'multiplication' | 'division')[] // Restrict which operations can be used in questions
+
+  // Goal connections - NEW: Track which goals use this template
+  linkedGoalIds?: string[] // Array of goal IDs that have this template assigned (for reference/cleanup)
+
   // Metadata
   description?: string // Template description/notes
   exampleGoal?: string // Example of a goal created from this template
@@ -398,6 +407,28 @@ export interface GoalTemplate {
   exampleAnswer?: string // Example correct answer
   exampleAlternativeAnswers?: string // Comma-separated alternative answers
   exampleExplanation?: string // Example explanation
+  
+  // NEW: Student-facing directions on how to solve this type of problem
+  directions?: string // Step-by-step directions for students (e.g., "1. Read the problem carefully. 2. Identify what you need to find...")
+
+  // NEW: Structured problem characteristics for AI generation
+  problemStructure?: {
+    numberOfSteps?: 1 | 2 | 3 | 4 // For word problems: how many steps to solve
+    questionTypes?: string[] // e.g., ["find-part", "find-whole", "find-percent"], ["increase", "decrease"], ["compare"], ["missing-addend"]
+    contextTypes?: string[] // e.g., ["shopping", "sports", "school", "food"], ["test-scores", "free-throws", "pizza-slices"]
+    numberRanges?: {
+      // For structured number variation
+      question1?: string // e.g., "15/20", "$45-$55"
+      question2?: string
+      question3?: string
+      question4?: string
+      question5?: string
+    }
+    forbiddenPatterns?: string[] // e.g., ["8/10", "9/10"], ["$25 saved", "$65 cost"]
+  }
+
+  // NEW: Custom AI prompt for variation instructions
+  customAIPrompt?: string // Custom instructions for AI on how to vary this template
 
   usageCount?: number // How many times this template has been used
   isActive: boolean // Whether template is active/available

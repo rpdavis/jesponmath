@@ -230,3 +230,6 @@ console.log('📚 Lesson check temporarily disabled to prevent redirect loop')
 
 
 
+
+
+

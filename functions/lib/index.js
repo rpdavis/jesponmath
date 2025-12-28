@@ -1,11 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.generateWithGemini = exports.cleanupDuplicateUsers = exports.beforeUserSignedInHandler = exports.beforeUserCreatedHandler = exports.batchCreateStudents = exports.syncGoogleClassroom = exports.updateUser = exports.createUser = void 0;
+exports.onPracticeSessionComplete = exports.generateWithGemini = exports.cleanupDuplicateUsers = exports.beforeUserSignedInHandler = exports.beforeUserCreatedHandler = exports.batchCreateStudents = exports.syncGoogleClassroom = exports.updateUser = exports.createUser = void 0;
 const v2_1 = require("firebase-functions/v2");
 // Set global options
 (0, v2_1.setGlobalOptions)({
     maxInstances: 10,
-    region: 'us-west1'
+    region: 'us-west1',
 });
 // Export all functions
 var userManagement_1 = require("./userManagement");
@@ -18,4 +18,6 @@ Object.defineProperty(exports, "beforeUserSignedInHandler", { enumerable: true, 
 Object.defineProperty(exports, "cleanupDuplicateUsers", { enumerable: true, get: function () { return userManagement_1.cleanupDuplicateUsers; } });
 var geminiProxy_1 = require("./geminiProxy");
 Object.defineProperty(exports, "generateWithGemini", { enumerable: true, get: function () { return geminiProxy_1.generateWithGemini; } });
+var fluencyTriggers_1 = require("./fluencyTriggers");
+Object.defineProperty(exports, "onPracticeSessionComplete", { enumerable: true, get: function () { return fluencyTriggers_1.onPracticeSessionComplete; } });
 //# sourceMappingURL=index.js.map

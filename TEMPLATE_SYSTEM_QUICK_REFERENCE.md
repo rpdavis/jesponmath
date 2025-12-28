@@ -128,3 +128,6 @@ Your template will be used if it matches:
 - `HYBRID_TEMPLATE_SYSTEM.md` - How hybrid system works
 - `SESSION_SUMMARY_TEMPLATE_SYSTEM.md` - Complete session recap
 
+
+
+
