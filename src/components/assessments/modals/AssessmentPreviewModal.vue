@@ -41,7 +41,7 @@
               <span class="question-points">{{ question.points }} pts</span>
             </div>
 
-            <div class="question-text" v-html="question.questionText"></div>
+            <div class="question-text" v-html="renderQuestionText(question.questionText)"></div>
 
             <!-- Show question type specific preview -->
             <div class="question-input-preview">
@@ -102,6 +102,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { AssessmentFormData } from '@/composables/assessment/useAssessmentForm'
+import { renderLatexInText } from '@/utils/latexUtils'
 
 interface Props {
   assessment: AssessmentFormData
@@ -117,6 +118,11 @@ const emit = defineEmits<Emits>()
 const totalPoints = computed(() => {
   return props.assessment.questions.reduce((sum, q) => sum + (q.points || 0), 0)
 })
+
+// Render question text with KaTeX
+const renderQuestionText = (text: string) => {
+  return renderLatexInText(text || '')
+}
 </script>
 
 <style scoped>
@@ -350,6 +356,27 @@ textarea {
 .close-button:hover {
   background: #2563eb;
   transform: translateY(-1px);
+}
+
+/* KaTeX rendering - hide MathML, show visual HTML */
+.katex-mathml {
+  position: absolute;
+  clip: rect(1px, 1px, 1px, 1px);
+  padding: 0;
+  border: 0;
+  height: 1px;
+  width: 1px;
+  overflow: hidden;
+}
+
+.katex-display {
+  display: block;
+  text-align: center;
+  margin: 1em 0;
+}
+
+.katex:not(.katex-display) {
+  display: inline;
 }
 
 @media (max-width: 768px) {

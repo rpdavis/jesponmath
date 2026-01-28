@@ -188,7 +188,15 @@ const studentAssignment = useStudentAssignment()
 const { selectedStudents, selectedQuarter, assignmentMode, selectedClasses, studentSearchQuery, loadingStudents, availableStudents, loadStudents, getSelectedStudentsCount } = studentAssignment
 
 const saveState = useAssessmentSave()
-const helpers = useAssessmentHelpers()
+
+// Watch for selectedQuarter changes to debug the issue
+watch(selectedQuarter, (newValue, oldValue) => {
+  console.log('🔍 DEBUG QUARTER WATCH - selectedQuarter changed!')
+  console.log('  - Old value:', oldValue)
+  console.log('  - New value:', newValue)
+  console.log('  - Type:', typeof newValue)
+  console.trace('Quarter change stack trace:')
+}, { immediate: false })
 
 // Local state
 const availableGoals = ref<Goal[]>([])
@@ -247,6 +255,36 @@ const loadAssessment = async () => {
     noTimeLimit.value = !loaded.timeLimit
     if (loaded.standard) selectedStandard.value = loaded.standard
 
+    // Initialize selectedQuarter from loaded academicPeriod
+    if (loaded.academicPeriod) {
+      selectedQuarter.value = loaded.academicPeriod
+      console.log(`📅 Loaded academicPeriod: ${loaded.academicPeriod}, set selectedQuarter to: ${selectedQuarter.value}`)
+    } else {
+      selectedQuarter.value = 'auto'
+      console.log(`📅 No academicPeriod found, defaulting to auto`)
+    }
+
+    // Initialize date inputs from loaded dates (convert Firestore Timestamps to input format)
+    if (loaded.assignDate) {
+      const assignDateValue = loaded.assignDate?.toDate ? loaded.assignDate.toDate() : new Date(loaded.assignDate.seconds * 1000)
+      assignDateInput.value = assignDateValue.toISOString().slice(0, 16)
+      assessment.value.assignDate = assignDateValue
+      console.log(`📅 Loaded assignDate: ${assignDateInput.value}`)
+    } else {
+      assignDateInput.value = ''
+      assessment.value.assignDate = undefined
+    }
+
+    if (loaded.dueDate) {
+      const dueDateValue = loaded.dueDate?.toDate ? loaded.dueDate.toDate() : new Date(loaded.dueDate.seconds * 1000)
+      dueDateInput.value = dueDateValue.toISOString().slice(0, 16)
+      assessment.value.dueDate = dueDateValue
+      console.log(`📅 Loaded dueDate: ${dueDateInput.value}`)
+    } else {
+      dueDateInput.value = ''
+      assessment.value.dueDate = undefined
+    }
+
     const assigned = await getAssessmentAssignments(assessmentId.value)
     selectedStudents.value = assigned.map((s) => s.studentUid)
 
@@ -283,6 +321,12 @@ const proceedWithUpdate = async () => {
 
 const performSave = async () => {
   updateTotalPoints()
+
+  console.log('🔍 DEBUG - performSave called')
+  console.log('🔍 DEBUG - selectedQuarter.value:', selectedQuarter.value)
+  console.log('🔍 DEBUG - assessment.value.assignDate:', assessment.value.assignDate)
+  console.log('🔍 DEBUG - assessment.value.dueDate:', assessment.value.dueDate)
+  console.log('🔍 DEBUG - assessment.value.academicPeriod:', assessment.value.academicPeriod)
 
   const savedId = await saveState.saveAssessment({
     assessmentData: assessment.value,

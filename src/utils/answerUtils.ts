@@ -286,9 +286,53 @@ export const areAnswersEquivalent = (studentAnswer: string, correctAnswer: strin
 };
 
 /**
+ * Check if two answers are equivalent (handles multiple formats) WITHOUT fraction equivalence checking
+ * This is used when acceptEquivalentFractions flag is false for short-answer questions
+ * Now also handles LaTeX/KaTeX expressions
+ */
+export const areAnswersEquivalentBasic = (studentAnswer: string, correctAnswer: string): boolean => {
+  if (!studentAnswer || !correctAnswer) {
+    return false;
+  }
+
+  // Check if either answer contains LaTeX syntax ($...$)
+  const hasLatex1 = studentAnswer.includes('$') || studentAnswer.includes('\\frac') || studentAnswer.includes('katex');
+  const hasLatex2 = correctAnswer.includes('$') || correctAnswer.includes('\\frac') || correctAnswer.includes('katex');
+
+  // If either answer is LaTeX, try LaTeX comparison first
+  if (hasLatex1 || hasLatex2) {
+    if (areLatexExpressionsEquivalent(studentAnswer, correctAnswer)) {
+      return true;
+    }
+  }
+
+  // Convert HTML answer to plain text if needed
+  const studentPlainText = convertHtmlAnswerToText(studentAnswer);
+  
+  // Normalize both answers
+  const normalizedStudent = normalizeAnswer(studentPlainText);
+  const normalizedCorrect = normalizeAnswer(correctAnswer);
+
+  // Direct comparison
+  if (normalizedStudent === normalizedCorrect) {
+    return true;
+  }
+
+  // NOTE: We intentionally skip fraction equivalence checking here
+  // This allows exact matching when acceptEquivalentFractions is false
+
+  // Try evaluating simple expressions
+  if (areExpressionsEquivalent(normalizedStudent, normalizedCorrect)) {
+    return true;
+  }
+
+  return false;
+};
+
+/**
  * Check if two fractions are equivalent (e.g., 1/2 = 2/4)
  */
-const areFractionsEquivalent = (answer1: string, answer2: string): boolean => {
+export const areFractionsEquivalent = (answer1: string, answer2: string): boolean => {
   // Simple fraction pattern: number/number
   const fractionPattern = /^(-?\d+(?:\.\d+)?)\/(-?\d+(?:\.\d+)?)$/;
   

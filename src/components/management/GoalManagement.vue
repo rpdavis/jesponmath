@@ -13,6 +13,10 @@
           <span class="icon">📝</span>
           Create Progress Assessment
         </button>
+        <button @click="showImportModal = true" class="btn btn-secondary">
+          <span class="icon">📄</span>
+          Import JSON Assessment
+        </button>
       </div>
     </div>
 
@@ -127,6 +131,14 @@
       @proceed="confirmGenerateWithTemplates"
     />
 
+    <!-- Assessment Import Modal -->
+    <AssessmentImporter
+      :show="showImportModal"
+      :goal-id="selectedGoalForImport?.id"
+      @close="closeImportModal"
+      @created="handleImportedAssessment"
+    />
+
     <AssessmentPreviewModal
       :show="showAssessmentPreview"
       :assessments="previewAssessments"
@@ -234,6 +246,7 @@ import AssessmentPreviewModal from './modals/AssessmentPreviewModal.vue'
 import SingleQuestionPreviewModal from './modals/SingleQuestionPreviewModal.vue'
 import ConfirmationPreviewModal from './modals/ConfirmationPreviewModal.vue'
 import TemplatePreviewModal from './modals/TemplatePreviewModal.vue'
+import AssessmentImporter from './modals/AssessmentImporter.vue'
 import type { Goal, GoalTemplate } from '@/types/iep'
 
 // Router and Auth
@@ -314,6 +327,11 @@ const templatePreviewsForGeneration = ref<GoalTemplate[]>([])
 const goalForTemplatePreview = ref<Goal | null>(null)
 const editingGoal = ref<Goal | null>(null)
 const selectedAssessmentForGoal = ref<Record<string, string>>({})
+
+// Import modal state
+const showImportModal = ref(false)
+const selectedGoalForImport = ref<Goal | null>(null)
+
 const createAssessmentInitialData = ref<{
   goalId?: string
   title?: string
@@ -558,6 +576,9 @@ const handleGenerateTemplate = async (goal: Goal) => {
       // Add optional fields
       if (draft.description) templateData.description = draft.description
       if (draft.exampleExplanation) templateData.exampleExplanation = draft.exampleExplanation
+      if (draft.questionCategory) templateData.questionCategory = draft.questionCategory // NEW: Add question category
+      if (draft.directions) templateData.directions = draft.directions // NEW: Add student directions
+      if (draft.problemFrameType) templateData.problemFrameType = draft.problemFrameType // NEW: Add problem frame type
       if (draft.allowedOperations && draft.allowedOperations.length > 0) {
         templateData.allowedOperations = draft.allowedOperations
       }
@@ -681,6 +702,37 @@ const confirmTemplateAssignment = async () => {
   } catch (error) {
     console.error('Error assigning templates:', error)
     alert('Failed to assign templates. Please try again.')
+  }
+}
+
+// JSON Import Handlers
+const closeImportModal = () => {
+  showImportModal.value = false
+  selectedGoalForImport.value = null
+}
+
+const handleImportedAssessment = async (assessmentData: any) => {
+  try {
+    const { createAssessment } = await import('@/firebase/iepServices')
+    
+    // Set createdBy to current user
+    assessmentData.createdBy = authStore.currentUser?.uid || ''
+    
+    // Create the assessment
+    const newAssessmentId = await createAssessment(assessmentData)
+    
+    console.log('✅ Assessment imported successfully:', newAssessmentId)
+    
+    // Reload data
+    await loadData()
+    
+    alert(`✅ Assessment "${assessmentData.title}" imported successfully!`)
+    
+    // Close modal
+    closeImportModal()
+  } catch (error) {
+    console.error('❌ Error importing assessment:', error)
+    alert(`Failed to import assessment: ${error instanceof Error ? error.message : 'Unknown error'}`)
   }
 }
 

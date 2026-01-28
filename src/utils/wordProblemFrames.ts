@@ -25,8 +25,7 @@ export const WORD_PROBLEM_FRAMES: Record<string, WordProblemFrame> = {
     rule: 'part + part = total',
     keywords: ['in all', 'total', 'altogether', 'both', 'combined'],
     example: {
-      problem:
-        'There are 7 red balloons and 5 blue balloons. How many balloons are there in all?',
+      problem: 'There are 7 red balloons and 5 blue balloons. How many balloons are there in all?',
       equation: '7 + 5 = 12',
       answer: 'There are 12 balloons.',
     },
@@ -114,7 +113,8 @@ Answer: Mia has 8 pencils now.
       'longer',
     ],
     example: {
-      problem: 'Leo has 12 marbles. Mia has 7 marbles. How many more marbles does Leo have than Mia?',
+      problem:
+        'Leo has 12 marbles. Mia has 7 marbles. How many more marbles does Leo have than Mia?',
       equation: '12 − 7 = 5',
       answer: 'Leo has 5 more marbles than Mia.',
     },
@@ -147,8 +147,7 @@ Answer: Leo has 5 more marbles than Mia.
     rule: 'total − known part = missing part',
     keywords: ['some', 'rest', 'other', 'remaining'],
     example: {
-      problem:
-        'There are 15 students in line. 9 students are boys. How many students are girls?',
+      problem: 'There are 15 students in line. 9 students are boys. How many students are girls?',
       equation: '15 − 9 = 6',
       answer: 'There are 6 girls.',
     },
@@ -210,6 +209,118 @@ Math: 24 ÷ 4 = 6
 Answer: Each bag has 6 apples.
 
 ⚠️ NOTE: Look for "each" or "equally" — that's the EQUAL GROUPS clue!
+    `.trim(),
+  },
+
+  'money-one-step': {
+    id: 'money-one-step',
+    name: 'MONEY (One-Step)',
+    description: 'Money problems requiring one operation (add, subtract, multiply, or divide)',
+    rule: 'Use money amounts with one operation',
+    keywords: ['dollar', 'cents', 'cost', 'price', 'spent', 'paid', 'change', 'total cost'],
+    example: {
+      problem: 'Emma bought a book for $12 and a pen for $5. How much did she spend in all?',
+      equation: '$12 + $5 = $17',
+      answer: 'Emma spent $17.',
+    },
+    studentGuide: `
+📋 MONEY (One-Step) Frame
+
+🎯 When to use: When the problem involves money and requires one operation.
+
+📝 Steps:
+1. Find the QUESTION (what are we finding?)
+2. Find the GIVENS (money amounts with dollar signs)
+3. Identify the FRAME: What operation do I need? (add, subtract, multiply, or divide)
+4. Write the MATH SENTENCE with dollar signs
+5. Write the ANSWER with dollar sign and units
+
+💡 Example:
+Problem: Emma bought a book for $12 and a pen for $5. How much did she spend in all?
+Math: $12 + $5 = $17
+Answer: Emma spent $17.
+
+⚠️ NOTE: Always include the dollar sign ($) in your answer!
+    `.trim(),
+  },
+
+  'money-two-step': {
+    id: 'money-two-step',
+    name: 'MONEY (Two-Step)',
+    description: 'Money problems requiring two operations to solve',
+    rule: 'Solve in two steps, using money amounts',
+    keywords: ['then', 'after', 'first', 'next', 'saved', 'needs', 'more'],
+    example: {
+      problem:
+        'Jake wants to buy a video game that costs $45. He has $20 saved and earned $15 more. How much more money does he need?',
+      equation: '$20 + $15 = $35, then $45 − $35 = $10',
+      answer: 'Jake needs $10 more.',
+    },
+    studentGuide: `
+📋 MONEY (Two-Step) Frame
+
+🎯 When to use: When the problem involves money and requires two operations.
+
+📝 Steps:
+1. Find the QUESTION (what are we finding at the end?)
+2. Find ALL the GIVENS (all money amounts)
+3. PLAN: What do I need to find FIRST?
+4. Write STEP 1 math sentence (with dollar signs)
+5. Write STEP 2 math sentence (with dollar signs)
+6. Write the ANSWER with dollar sign
+
+💡 Example:
+Problem: Jake wants to buy a video game that costs $45. He has $20 saved and earned $15 more. How much more money does he need?
+
+Step 1 (COMBINE): How much does he have?
+  Math: $20 + $15 = $35
+
+Step 2 (COMPARE): How much more does he need?
+  Math: $45 − $35 = $10
+
+Answer: Jake needs $10 more.
+
+⚠️ NOTE: Always include dollar signs in each step and the final answer!
+    `.trim(),
+  },
+
+  'two-step': {
+    id: 'two-step',
+    name: 'TWO-STEP',
+    description: 'Problems requiring two operations to solve (stepping up in complexity)',
+    rule: 'Solve in two steps, using frames for each step',
+    keywords: ['then', 'after that', 'next', 'first', 'second step'],
+    example: {
+      problem:
+        'A store had 50 apples. They sold 15 apples in the morning and 12 apples in the afternoon. How many apples are left?',
+      equation: '15 + 12 = 27, then 50 − 27 = 23',
+      answer: 'There are 23 apples left.',
+    },
+    studentGuide: `
+📋 TWO-STEP Frame (Stepping Up)
+
+🎯 When to use: When you need to solve the problem in two steps.
+
+📝 Steps:
+1. Find the QUESTION (what are we finding at the end?)
+2. Find ALL the GIVENS (all numbers + units)
+3. PLAN: What do I need to find FIRST before I can answer the question?
+4. Write STEP 1 math sentence (use a frame!)
+5. Write STEP 2 math sentence (use another frame!)
+6. Write the ANSWER with units
+
+💡 Example:
+Problem: A store had 50 apples. They sold 15 apples in the morning and 12 apples in the afternoon. How many apples are left?
+
+Step 1 (COMBINE): How many apples were sold in all?
+  Math: 15 + 12 = 27
+
+Step 2 (CHANGE): How many apples are left?
+  Math: 50 − 27 = 23
+
+Answer: There are 23 apples left.
+
+⚠️ NOTE: Two-step problems are just TWO smaller problems combined. Solve one step at a time!
     `.trim(),
   },
 
@@ -323,4 +434,3 @@ export function getAllFrameTypes(): Array<{ id: string; name: string; descriptio
     description: frame.description,
   }))
 }
-

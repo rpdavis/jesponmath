@@ -885,7 +885,7 @@ const getStandardScore = (studentUid: string, standard: string) => {
   const maxScore = customStd?.maxScore;
 
   // Collect all question attempts for this standard
-  const questionAttempts: { isCorrect: boolean; score: number }[] = [];
+  const questionAttempts: { isCorrect: boolean; score: number; maxPoints: number }[] = [];
 
   // Only count questions from assessments the student actually took
   assessments.value.forEach(assessment => {
@@ -910,11 +910,12 @@ const getStandardScore = (studentUid: string, standard: string) => {
         const response = result.responses?.find((r: any) => r.questionId === question.id);
         if (response) {
           const isCorrect = response.isCorrect
-          const score = response.score || (response.isCorrect ? question.points : 0)
+          const score = response.pointsEarned || (response.isCorrect ? question.points : 0)
 
           questionAttempts.push({
             isCorrect,
-            score
+            score,
+            maxPoints: question.points
           });
         }
       }
@@ -1307,7 +1308,7 @@ const fetchAndRenderStudentSummary = async (studentUid: string, studentName: str
       const maxScore = customStd?.maxScore;
       const scoringMethod = customStd?.scoringMethod || 'additive';
 
-      const questionAttempts: { isCorrect: boolean; score: number }[] = [];
+      const questionAttempts: { isCorrect: boolean; score: number; maxPoints: number }[] = [];
 
       esaAssessments.forEach(assessment => {
         const result = esaResults.find(r => r.assessmentId === assessment.id);
@@ -1325,7 +1326,11 @@ const fetchAndRenderStudentSummary = async (studentUid: string, studentName: str
             if (response) {
               const isCorrect = response.isCorrect;
               const score = response.pointsEarned || (response.isCorrect ? (question.points || 1) : 0);
-              questionAttempts.push({ isCorrect, score });
+              questionAttempts.push({ 
+                isCorrect, 
+                score,
+                maxPoints: question.points || 1
+              });
             }
           }
         });
@@ -1375,7 +1380,7 @@ const fetchAndRenderStudentSummary = async (studentUid: string, studentName: str
       const maxScore = customStd?.maxScore;
       const scoringMethod = customStd?.scoringMethod || 'additive';
 
-      const questionAttempts: { isCorrect: boolean; score: number }[] = [];
+      const questionAttempts: { isCorrect: boolean; score: number; maxPoints: number }[] = [];
 
       saAssessments.forEach(assessment => {
         const result = saResults.find(r => r.assessmentId === assessment.id);
@@ -1393,7 +1398,11 @@ const fetchAndRenderStudentSummary = async (studentUid: string, studentName: str
             if (response) {
               const isCorrect = response.isCorrect;
               const score = response.pointsEarned || (response.isCorrect ? (question.points || 1) : 0);
-              questionAttempts.push({ isCorrect, score });
+              questionAttempts.push({ 
+                isCorrect, 
+                score,
+                maxPoints: question.points || 1
+              });
             }
           }
         });

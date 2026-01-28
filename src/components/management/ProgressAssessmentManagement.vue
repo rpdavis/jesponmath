@@ -268,6 +268,7 @@ import {
 } from '@/firebase/assignmentServices'
 import { getAllTeachers } from '@/firebase/userServices'
 import { generateQuestionForGoal } from '@/services/goalQuestionGenerator'
+import type { QuestionResult } from '@/services/aiQuestionGenerator'
 import type { Student, Teacher } from '@/types/users'
 import type { Goal, Assessment, AssessmentResult, AssessmentQuestion, AssessmentAssignment } from '@/types/iep'
 
@@ -666,7 +667,28 @@ const generateAssessmentsForGoal = async (goalId: string, goalTitle: string) => 
   const goal = goals.value.find(g => g.id === goalId)
   if (!goal) return
 
-  if (!confirm(`Generate 3 Progress Assessments (5 questions each with answers) for "${goalTitle}"?\n\nEach assessment will have 5 questions worth 1 point each (5 points total).`)) {
+  // Prompt for difficulty level
+  const difficultyInput = prompt(
+    `Generate 3 Progress Assessments (5 questions each) for "${goalTitle}"?\n\n` +
+    `Select difficulty level:\n` +
+    `1 = Easy\n` +
+    `2 = Medium (default)\n` +
+    `3 = Hard\n\n` +
+    `Enter 1, 2, or 3 (or press Cancel):`,
+    '2'
+  )
+  
+  if (difficultyInput === null) return // User cancelled
+  
+  const difficultyMap: Record<string, 'easy' | 'medium' | 'hard'> = {
+    '1': 'easy',
+    '2': 'medium',
+    '3': 'hard'
+  }
+  
+  const difficulty = difficultyMap[difficultyInput.trim()] || 'medium'
+  
+  if (!confirm(`Generate 3 Progress Assessments with ${difficulty} difficulty?\n\nEach assessment will have 5 questions worth 1 point each (5 points total).`)) {
     return
   }
 
@@ -686,8 +708,8 @@ const generateAssessmentsForGoal = async (goalId: string, goalTitle: string) => 
     const createdAssessments: string[] = []
 
     for (let i = 0; i < 3; i++) {
-      // Generate questions based on goal
-      const questions = await generateQuestionsForGoal(goal, i + 1)
+      // Generate questions based on goal with selected difficulty
+      const questions = await generateQuestionsForGoal(goal, i + 1, difficulty)
 
       const assessmentData = {
         title: assessmentTitles[i],
@@ -849,12 +871,29 @@ const detectAnswerSuffix = (answer: string, question: string): string | undefine
 }
 
 // Generate questions for goal using the new service
-const generateQuestionsForGoal = async (goal: Goal, assessmentNumber: number): Promise<AssessmentQuestion[]> => {
+const generateQuestionsForGoal = async (goal: Goal, assessmentNumber: number, difficulty: 'easy' | 'medium' | 'hard' = 'medium'): Promise<AssessmentQuestion[]> => {
   const questions: AssessmentQuestion[] = []
   const questionCount = 5
+  const previousQuestions: QuestionResult[] = [] // Track previously generated questions
 
   for (let i = 0; i < questionCount; i++) {
-    const questionData = await generateQuestionForGoal(goal, i + 1, { method: 'hybrid' })
+    const questionData = await generateQuestionForGoal(goal, i + 1, { 
+      method: 'hybrid',
+      difficulty: difficulty,
+      previousQuestions: previousQuestions.length > 0 ? [...previousQuestions] : undefined
+    })
+
+    // Add this question to previousQuestions so next questions can avoid duplicates
+    previousQuestions.push({
+      question: questionData.question,
+      answer: questionData.answer,
+      answerPrefix: questionData.answerPrefix,
+      answerSuffix: questionData.answerSuffix,
+      alternativeAnswers: questionData.alternativeAnswers,
+      explanation: questionData.explanation,
+      requiresPhoto: questionData.requiresPhoto,
+      source: questionData.source,
+    })
 
     // Generate short description based on goal and question
     const shortDescription = generateQuestionDescription(goal, questionData)

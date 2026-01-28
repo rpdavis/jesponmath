@@ -11,7 +11,8 @@
  * - Cost tracking
  */
 
-import type { Goal } from '@/types/iep'
+import type { Goal, GoalTemplate } from '@/types/iep'
+import { getAIModel } from '@/config/aiModels'
 
 export interface QuestionResult {
   question: string
@@ -37,7 +38,7 @@ export interface AIGeneratorConfig {
 // Default configuration
 const DEFAULT_CONFIG: Partial<AIGeneratorConfig> = {
   provider: 'google',
-  model: 'gemini-2.0-flash', // Best for JSON & Math reasoning
+  model: getAIModel('AI_QUESTIONS'), // Current stable model from central config
   temperature: 0.5, // Lower temperature for better Math & JSON stability
   maxTokens: 1500, // Increased to prevent response cut-offs
 }
@@ -58,7 +59,9 @@ export async function generateQuestionWithAI(
   templateReference?: QuestionResult,
   allowedOperations?: ('addition' | 'subtraction' | 'multiplication' | 'division')[],
   customVariationInstructions?: string,
-  templateStructure?: any, // NEW: Full template with problemStructure
+  templateStructure?: GoalTemplate, // NEW: Full template with problemStructure
+  previousQuestions?: QuestionResult[], // NEW: Previously generated questions to avoid
+  questionCategory?: 'computation' | 'word-problem' | 'conceptual' | 'application', // NEW: Question type
 ): Promise<QuestionResult> {
   const finalConfig = { ...DEFAULT_CONFIG, ...config } as AIGeneratorConfig
 
@@ -76,17 +79,10 @@ export async function generateQuestionWithAI(
     }
   }
 
-  // Build the prompt with template structure
-  const prompt = buildPrompt(
-    goal,
-    subject,
-    questionNumber,
-    templateReference,
-    finalConfig.difficulty,
-    allowedOperations,
-    customVariationInstructions,
-    templateStructure, // Pass the full template
-  )
+  // Note: Each provider function (generateWithOpenAI, generateWithAnthropic, generateWithGoogle)
+  // builds its own prompt. The templateStructure is passed through to buildPrompt in each function.
+  // However, currently only generateWithGoogle path supports templateStructure via the updated
+  // generateQuestionWithAI signature. Other providers will need updates to support it.
 
   try {
     switch (finalConfig.provider) {
@@ -100,6 +96,7 @@ export async function generateQuestionWithAI(
           templateReference,
           allowedOperations,
           customVariationInstructions,
+          questionCategory,
         )
       case 'anthropic':
         return await generateWithAnthropic(
@@ -111,6 +108,7 @@ export async function generateQuestionWithAI(
           templateReference,
           allowedOperations,
           customVariationInstructions,
+          questionCategory,
         )
       case 'google':
         return await generateWithGoogle(
@@ -122,6 +120,9 @@ export async function generateQuestionWithAI(
           templateReference,
           allowedOperations,
           customVariationInstructions,
+          templateStructure,
+          previousQuestions, // Pass previous questions to avoid duplicates
+          questionCategory, // Pass question category
         )
       default:
         throw new Error(`Unsupported AI provider: ${finalConfig.provider}`)
@@ -144,6 +145,7 @@ async function generateWithOpenAI(
   templateReference?: QuestionResult,
   allowedOperations?: ('addition' | 'subtraction' | 'multiplication' | 'division')[],
   customVariationInstructions?: string,
+  questionCategory?: 'computation' | 'word-problem' | 'conceptual' | 'application',
 ): Promise<QuestionResult> {
   const prompt = buildPrompt(
     goal,
@@ -154,6 +156,8 @@ async function generateWithOpenAI(
     allowedOperations,
     customVariationInstructions,
     undefined, // templateStructure not passed in this path
+    undefined, // previousQuestions not passed in this path
+    questionCategory, // Pass question category
   )
 
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -231,6 +235,7 @@ async function generateWithAnthropic(
   templateReference?: QuestionResult,
   allowedOperations?: ('addition' | 'subtraction' | 'multiplication' | 'division')[],
   customVariationInstructions?: string,
+  questionCategory?: 'computation' | 'word-problem' | 'conceptual' | 'application',
 ): Promise<QuestionResult> {
   const prompt = buildPrompt(
     goal,
@@ -241,6 +246,8 @@ async function generateWithAnthropic(
     allowedOperations,
     customVariationInstructions,
     undefined, // templateStructure not passed in this path
+    undefined, // previousQuestions not passed in this path
+    questionCategory, // Pass question category
   )
 
   const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -309,6 +316,9 @@ async function generateWithGoogle(
   templateReference?: QuestionResult,
   allowedOperations?: ('addition' | 'subtraction' | 'multiplication' | 'division')[],
   customVariationInstructions?: string,
+  templateStructure?: GoalTemplate,
+  previousQuestions?: QuestionResult[],
+  questionCategory?: 'computation' | 'word-problem' | 'conceptual' | 'application',
 ): Promise<QuestionResult> {
   const prompt = buildPrompt(
     goal,
@@ -318,7 +328,9 @@ async function generateWithGoogle(
     config.difficulty || 'medium',
     allowedOperations,
     customVariationInstructions,
-    undefined, // templateStructure not passed in this path
+    templateStructure, // Pass template structure for variety instructions
+    previousQuestions, // Pass previous questions to avoid duplicates
+    questionCategory, // Pass question category
   )
 
   // Try different models in order of preference
@@ -482,7 +494,9 @@ function buildPrompt(
   difficulty: 'easy' | 'medium' | 'hard' = 'medium',
   allowedOperations?: ('addition' | 'subtraction' | 'multiplication' | 'division')[],
   customVariationInstructions?: string,
-  templateStructure?: any, // NEW: Pass the full template with problemStructure
+  templateStructure?: GoalTemplate, // NEW: Pass the full template with problemStructure
+  previousQuestions?: QuestionResult[], // NEW: Previously generated questions to avoid
+  questionCategory?: 'computation' | 'word-problem' | 'conceptual' | 'application', // NEW: Question type
 ): string {
   // Name variety for each question
   const names = [
@@ -494,12 +508,119 @@ function buildPrompt(
   ]
   const studentName = names[questionNumber - 1]?.[Math.floor(Math.random() * 5)] || 'Student'
 
+  // Different number range suggestions for each question to force variety
+  const numberRangeSuggestions = [
+    'Use numbers between 5-15 (small range)',
+    'Use numbers between 20-40 (medium range)',
+    'Use numbers between 50-100 (larger range)',
+    'Use numbers between 2-8 (very small range)',
+    'Use numbers between 15-30 (medium-small range)',
+  ]
+  const suggestedNumberRange =
+    numberRangeSuggestions[questionNumber - 1] || 'Vary the numbers significantly'
+
+  // Different scenario types for each question to force variety
+  const scenarioSuggestions = [
+    'shopping/buying items',
+    'cooking/baking recipes',
+    'sports/games statistics',
+    'school/classroom activities',
+    'arts/crafts projects',
+  ]
+  // For question 2+, AVOID the previous scenarios
+  const extractedScenarios: (string | null)[] =
+    previousQuestions && previousQuestions.length > 0
+      ? previousQuestions.map((pq) => {
+          // Extract likely scenario from question
+          const q = pq.question.toLowerCase()
+          if (q.includes('bak') || q.includes('cook') || q.includes('recip'))
+            return 'cooking/baking'
+          if (q.includes('buy') || q.includes('shop') || q.includes('store')) return 'shopping'
+          if (q.includes('game') || q.includes('sport') || q.includes('play')) return 'sports'
+          if (q.includes('school') || q.includes('class') || q.includes('student')) return 'school'
+          if (q.includes('art') || q.includes('craft') || q.includes('draw')) return 'arts/crafts'
+          return null
+        })
+      : []
+  const avoidScenarios: string[] = extractedScenarios.filter((s): s is string => s !== null)
+
   // Build variety instructions from template's problemStructure
   let varietyInstructions = `
 ⚠️ THIS IS QUESTION #${questionNumber} - Use student name: ${studentName}
 
-🚨 CRITICAL: ENSURE VARIETY FOR QUESTION #${questionNumber}:
+🚨🚨🚨 CRITICAL VARIETY REQUIREMENTS FOR QUESTION #${questionNumber} 🚨🚨🚨
+
+⚠️ YOU MUST CREATE A COMPLETELY DIFFERENT QUESTION FROM ANY PREVIOUS QUESTIONS:
+
+1. **DIFFERENT ANSWER (MOST IMPORTANT!)**:
+   - The final answer MUST be different from previous questions
+   - ${previousQuestions && previousQuestions.length > 0 ? `Previous answers: ${previousQuestions.map((pq) => pq.answer).join(', ')} - DO NOT USE THESE!` : 'Ensure variety in final answers'}
+   - Calculate your numbers to ensure a UNIQUE answer
+   - DO NOT generate questions that result in the same answer
+
+2. **DIFFERENT SCENARIO/CONTEXT**:
+   - ${avoidScenarios.length > 0 ? `⚠️ DO NOT use these scenarios (already used): ${avoidScenarios.join(', ')}` : 'Use a unique real-world scenario'}
+   - Use a completely different real-world scenario
+   - Change the activity, situation, or context dramatically
+   - Examples of different scenarios: ${scenarioSuggestions.filter((s) => !avoidScenarios.some((avoid) => s.toLowerCase().includes(avoid.toLowerCase()))).join(', ')}
+   - DO NOT repeat similar scenarios
+
+3. **DIFFERENT NUMBERS**:
+   - ${suggestedNumberRange}
+   - ${previousQuestions && previousQuestions.length > 0 ? 'Avoid using numbers that appear in the previous questions shown above' : 'Use significantly different numbers'}
+   - Use significantly different numbers (not just slightly different)
+   - Vary number ranges dramatically
+   - Use different number patterns (avoid similar calculations)
+   - Ensure numbers lead to a DIFFERENT final answer
+
+4. **DIFFERENT ITEMS/OBJECTS**:
+   - Change the items, objects, or subjects in the problem
+   - If previous mentioned "skateboard", use "bike", "book", "game", "headphones", etc.
+   - Vary the context items completely
+
+5. **DIFFERENT STUDENT NAME**:
+   - Use the name provided: ${studentName}
+   - DO NOT reuse names from previous questions
 `
+
+  // Add previous questions section if they exist
+  let previousQuestionsSection = ''
+  if (previousQuestions && previousQuestions.length > 0) {
+    console.log(`🔍 Building prompt with ${previousQuestions.length} previous questions to avoid:`)
+    previousQuestions.forEach((pq, idx) => {
+      console.log(`   Q${idx + 1}: "${pq.question.substring(0, 80)}..." Answer: ${pq.answer}`)
+    })
+
+    previousQuestionsSection = `
+
+🚫🚫🚫 PREVIOUSLY GENERATED QUESTIONS - DO NOT REPEAT THESE 🚫🚫🚫
+
+The following questions have ALREADY been generated. Your new question MUST be completely different from ALL of these:
+
+${previousQuestions
+  .map(
+    (pq, idx) => `
+Question #${idx + 1}:
+"${pq.question.substring(0, 200)}${pq.question.length > 200 ? '...' : ''}"
+Answer: ${pq.answer}
+${pq.answerPrefix ? `Answer Prefix: ${pq.answerPrefix}` : ''}
+${pq.answerSuffix ? `Answer Suffix: ${pq.answerSuffix}` : ''}
+`,
+  )
+  .join('\n---\n')}
+
+⚠️ CRITICAL: Your new question MUST:
+- Have a DIFFERENT answer (${previousQuestions.length > 0 ? `The previous answers were: ${previousQuestions.map((pq) => pq.answer).join(', ')}. DO NOT use any of these answers!` : 'ensure each answer is unique'})
+- Use a COMPLETELY DIFFERENT scenario/context (${previousQuestions.length > 0 ? 'Look at the scenarios above - your scenario must be about something completely different' : 'vary the real-world context'})
+- Use SIGNIFICANTLY DIFFERENT numbers (${previousQuestions.length > 0 ? 'Use different number ranges and calculations that produce a different result' : 'ensure variety in calculations'})
+- Be about DIFFERENT items/objects/subjects (${previousQuestions.length > 0 ? 'Change the main subject matter entirely' : 'vary what the problem is about'})
+- Feel like a completely different problem, not just a minor variation
+
+${previousQuestions.length > 0 ? '⚠️⚠️⚠️ CRITICAL: DO NOT create questions similar to the ones shown above! They are provided so you can AVOID repeating those patterns, scenarios, numbers, and answers.' : ''}
+`
+  } else {
+    console.log(`ℹ️ No previous questions provided (questionNumber: ${questionNumber})`)
+  }
 
   // If template has problemStructure, use it!
   if (templateStructure?.problemStructure) {
@@ -532,9 +653,11 @@ ${ps.forbiddenPatterns.map((p: string) => `- DO NOT use "${p}"`).join('\n')}
   } else {
     // Fallback: generic variety instructions
     varietyInstructions += `
-- Vary the numbers significantly from the template
-- Change the context/scenario
+📊 ADDITIONAL VARIETY REQUIREMENTS:
+- Vary the numbers significantly from any template or previous questions
+- Change the context/scenario completely
 - Use different items, activities, or situations
+- Ensure the final answer is UNIQUE and different
 `
   }
 
@@ -586,7 +709,7 @@ Carefully analyze the template above to identify:
 2. PRESERVE THE MATHEMATICAL STRUCTURE:
    - Use the SAME mathematical operations in the SAME order
    - If template has "X out of Y, find percent", your question must have "X out of Y, find percent"
-   - Keep the same number of steps
+   ${questionCategory !== 'computation' ? '- Keep the same number of steps' : '- Computation problems are ALWAYS single-step (ignore any "number of steps" setting)'}
    - Keep the same calculation method
 
 3. VARIATION INSTRUCTIONS (What you CAN change):
@@ -628,9 +751,160 @@ The key: Look at what the template is ASKING FOR (percent? money? time?) and mak
         ? 'This is a PAPER-based assessment (manual grading). Generate questions that may require students to show work, write essays, or demonstrate skills that need teacher evaluation. Photo uploads and rubrics are appropriate.'
         : 'This is a HYBRID assessment (combination of digital and paper). Generate questions that can include both automated and manual components.'
 
+  // NEW: Question category specific guidance
+  let categoryGuidance = ''
+  if (questionCategory) {
+    switch (questionCategory) {
+      case 'computation':
+        categoryGuidance = `
+
+🧮 **QUESTION CATEGORY: COMPUTATION** 🧮
+
+CRITICAL: This goal is about DIRECT COMPUTATION, not word problems.
+
+✅ DO create:
+- Direct calculation problems with proper formatting
+- SINGLE-STEP direct operations (one calculation per problem)
+- Straightforward operations like "Calculate: 143 + 23" or "Evaluate: 12 × 5"
+- Equation solving (single-step)
+- Expression evaluation (single-step)
+
+❌ DO NOT create:
+- Word problems or story problems
+- Real-world scenarios or contexts
+- Problems that require reading a paragraph
+- Application problems in real-world situations
+- MULTI-STEP problems (this is computation, not word problems - each problem should be ONE direct calculation)
+
+⚠️ IMPORTANT: IGNORE any "number of steps" instruction. Computation problems are ALWAYS single-step direct calculations.
+
+📐 **FORMATTING REQUIREMENTS FOR MULTI-DIGIT OPERATIONS**:
+
+**For ADDITION (2+ digits) - Use STACKED/VERTICAL format**:
+CORRECT:
+$$\\\\begin{array}{r}
+  143 \\\\\\\\
++ \\\\underline{\\\\phantom{0}23} \\\\\\\\
+\\\\end{array}$$
+
+**For SUBTRACTION (2+ digits) - Use STACKED/VERTICAL format**:
+CORRECT:
+$$\\\\begin{array}{r}
+  143 \\\\\\\\
+- \\\\underline{\\\\phantom{0}23} \\\\\\\\
+\\\\end{array}$$
+
+**For MULTIPLICATION (2+ digits) - Use STACKED/VERTICAL format**:
+CORRECT:
+$$\\\\begin{array}{r}
+  143 \\\\\\\\
+\\\\times \\\\underline{\\\\phantom{00}5} \\\\\\\\
+\\\\end{array}$$
+
+**For DIVISION (2+ digits) - Use LONG DIVISION format**:
+CORRECT: $$5 \\\\overline{)143}$$
+or: $$23 \\\\overline{)143}$$
+
+**For single-digit or simple operations** - Use inline format:
+- CORRECT: Calculate: $5 + 3$
+- CORRECT: Calculate: $8 \\\\times 7$
+
+**For fractions** - Use fraction notation:
+- CORRECT: Calculate: $\\\\frac{3}{4} + \\\\frac{1}{2}$
+- CORRECT: Evaluate: $\\\\frac{2}{3} \\\\times \\\\frac{3}{4}$
+
+**For decimals** - Can use inline or stacked:
+- Simple: Calculate: $1.2 + 3.2$
+- Complex: Use stacked format like integers
+
+**For expressions with parentheses**:
+- CORRECT: Evaluate: $15 - (3 + 2) \\\\times 2$
+- CORRECT: Simplify: $(8 + 4) \\\\div 3$
+
+EXAMPLES:
+✅ CORRECT (multi-digit stacked):
+$$\\\\begin{array}{r}
+  456 \\\\\\\\
++ \\\\underline{278} \\\\\\\\
+\\\\end{array}$$
+
+✅ CORRECT (long division): $$12 \\\\overline{)144}$$
+
+✅ CORRECT (fraction): Calculate: $\\\\frac{3}{8} + \\\\frac{1}{4}$
+
+✅ CORRECT (simple): Calculate: $7 \\\\times 8$
+
+❌ WRONG: "Maria bought 3 books for $3.50 each. How much did she spend?" (This is a word problem, not computation)
+❌ WRONG: Using inline format for multi-digit: "Calculate: 143 + 23" (Should be stacked)
+
+**CRITICAL**: For any addition, subtraction, or multiplication with 2 or more digits in either number, ALWAYS use the stacked/vertical format shown above!`
+        break
+
+      case 'word-problem':
+        categoryGuidance = `
+
+📖 **QUESTION CATEGORY: WORD PROBLEM** 📖
+
+This goal requires WORD PROBLEMS with real-world context.
+
+✅ DO create:
+- Real-world scenarios (shopping, cooking, sports, school, etc.)
+- Story-based problems that require reading and interpretation
+- Multi-step problems in context
+- Application of math skills to practical situations
+
+❌ DO NOT create:
+- Direct computation without context (e.g., "Calculate: 5 + 3")
+- Abstract equation solving without a story
+
+EXAMPLES:
+✅ CORRECT: "Rose is baking cookies. Each batch needs 3 cups of flour. If she makes 4 batches, how many cups does she need?"
+✅ CORRECT: "Dylan bought 3 notebooks for $2.50 each. He paid with a $10 bill. How much change did he receive?"
+❌ WRONG: "Calculate: 3 × 4" (Too direct, no context)`
+        break
+
+      case 'conceptual':
+        categoryGuidance = `
+
+🧠 **QUESTION CATEGORY: CONCEPTUAL UNDERSTANDING** 🧠
+
+This goal tests UNDERSTANDING of concepts, not just calculation.
+
+✅ DO create:
+- Explanation questions (e.g., "Explain why...")
+- Identification/recognition questions
+- Comparison questions (e.g., "Which is greater and why?")
+- Pattern recognition
+- Demonstration of understanding
+
+EXAMPLES:
+✅ CORRECT: "Explain why $\\\\frac{1}{2}$ is equivalent to $\\\\frac{2}{4}$"
+✅ CORRECT: "Identify which operation you would use to solve this problem and explain why"
+❌ WRONG: "Calculate: 1/2 + 2/4" (This is computation, not conceptual)`
+        break
+
+      case 'application':
+        categoryGuidance = `
+
+🎯 **QUESTION CATEGORY: APPLICATION** 🎯
+
+This goal requires applying skills in context (but not necessarily full word problems).
+
+✅ DO create:
+- Application of procedures in context
+- Using skills to solve practical problems
+- Transfer of knowledge to new situations
+
+This is a middle ground between pure computation and full word problems.`
+        break
+    }
+  }
+
   // If we have a template, PUT IT FIRST and suppress conflicting variety instructions
   const promptStart = templateReference
     ? `🚨🚨🚨 CRITICAL INSTRUCTION - READ THIS FIRST 🚨🚨🚨
+
+${categoryGuidance ? `${categoryGuidance}\n\n⚠️⚠️⚠️ THE ABOVE QUESTION CATEGORY IS MANDATORY - YOU MUST FOLLOW IT! ⚠️⚠️⚠️\n` : ''}
 
 YOU HAVE BEEN PROVIDED WITH A TEMPLATE QUESTION.
 YOUR ONLY JOB IS TO CREATE A VARIATION OF THIS EXACT TEMPLATE.
@@ -665,15 +939,39 @@ Assessment Method: ${assessmentMethod.toUpperCase()}
 
 ${assessmentMethodGuidance}
 
-CRITICAL: ENSURE VARIETY - Question #${questionNumber}
-${questionNumber === 1 ? '- Use the first student name from this list: [Rose, Maria, Jesus, Aisha, Jaime, Kenji, Samantha, Aaliyah, Caiden, Mateo, Jayden, Aubree, Lucas, Sofia, Emma, Liam, Noah, Zara, Andre, Kai]' : ''}
-${questionNumber === 2 ? '- Use the second student name from this list: [Antoinette, Jamal, Israel, Gus, Victor, Diego, Liliana, Mika, Annabella, Carlos, Kevin, EJ, Kaylani, Mia, Elijah, Amara, Adrian, Leah, Dante, Nadia]' : ''}
-${questionNumber === 3 ? '- Use the third student name from this list: [Lexee, Fatima, Kwame, Jose, Josue, Zyphier, Daniel, Darnell, Michael, Esperanza, Aubrey, Carter, Matteo, Grace, Isaiah, Layla, Marco, Ruby, Ben, Zoe]' : ''}
-${questionNumber === 4 ? '- Use the fourth student name from this list: [Alonzo, Omar, Mikah, Xiomara, Olivia, Raj, Marcos, Lakisha, Steven, Hiroshi, Iker, William, Jazmine, Aria, Ethan, Camila, Rashid, Lily, Marcus, Yuki]' : ''}
-${questionNumber === 5 ? '- Use the fifth student name from this list: [Dylan, Amara, Lyra, Hassan, Maya, Rosa, Tucker, Chen, Elizabeth, Isaiah, Maria, Amy, Omar, Ava, Jackson, Sofia, Ahmed, Chloe, Jordan, Keisha]' : ''}
+🚨🚨🚨 CRITICAL VARIETY REQUIREMENTS - Question #${questionNumber} 🚨🚨🚨
 
-REMEMBER: You are creating a VARIATION of the template shown above. Change names and numbers, but DO NOT change the problem type or structure!`
-    : `Generate an assessment question based on this IEP goal:
+⚠️ THIS QUESTION MUST BE COMPLETELY DIFFERENT FROM ALL PREVIOUS QUESTIONS:
+
+1. **USE THIS STUDENT NAME**: ${studentName}
+   ${questionNumber === 1 ? '(First question - establish a unique scenario)' : ''}
+   ${questionNumber === 2 ? '(Second question - MUST have different answer and scenario from Q1)' : ''}
+   ${questionNumber === 3 ? '(Third question - MUST have different answer and scenario from Q1 and Q2)' : ''}
+   ${questionNumber === 4 ? '(Fourth question - MUST have different answer and scenario from Q1, Q2, and Q3)' : ''}
+   ${questionNumber === 5 ? '(Fifth question - MUST have different answer and scenario from Q1, Q2, Q3, and Q4)' : ''}
+
+2. **DIFFERENT ANSWER REQUIRED**:
+   - Calculate your numbers to ensure the answer is UNIQUE
+   - If this is question #${questionNumber}, make sure the answer is different from questions 1-${questionNumber - 1}
+   - DO NOT generate questions that result in the same answer value
+   - Example: If previous answer was "6", use numbers that result in "4", "8", "12", "15", etc. (NOT "6")
+
+3. **DIFFERENT SCENARIO REQUIRED**:
+   - Use a completely different context/situation
+   - Change the activity, setting, or problem type dramatically
+   - DO NOT reuse similar scenarios with just different names/numbers
+
+4. **DIFFERENT NUMBERS REQUIRED**:
+   - Use significantly different number ranges
+   - Vary the calculations to produce different results
+   - Avoid similar number patterns
+
+REMEMBER: You are creating a VARIATION of the template shown above.
+- ✅ DO: Change names, numbers, scenarios, and ensure DIFFERENT answer
+- ❌ DON'T: Change the problem type or structure
+- ❌ DON'T: Reuse similar scenarios or same answer values
+${previousQuestionsSection}`
+    : `${categoryGuidance ? `🚨🚨🚨 CRITICAL - READ THIS FIRST 🚨🚨🚨\n\n${categoryGuidance}\n\n⚠️⚠️⚠️ THE ABOVE QUESTION CATEGORY IS MANDATORY! ⚠️⚠️⚠️\nIF YOU CREATE A DIFFERENT TYPE OF QUESTION, IT WILL BE REJECTED!\n\n---\n\n` : ''}Generate an assessment question based on this IEP goal:
 
 Goal Title: ${goal.goalTitle}
 Goal Text: ${goal.goalText}
@@ -684,7 +982,8 @@ Question Number: ${questionNumber}
 Assessment Method: ${assessmentMethod.toUpperCase()}
 
 ${assessmentMethodGuidance}
-${varietyInstructions}`
+${varietyInstructions}
+${previousQuestionsSection}`
 
   return `${promptStart}
 ${operationConstraints}
@@ -696,7 +995,15 @@ Requirements:
 4. Make the question clear and appropriate for the student's grade level
 5. Provide a complete answer with explanation
 6. Consider the assessment method when deciding if photo uploads are needed
-7. ⚠️ CRITICAL: Each question must be UNIQUE - vary names, numbers, scenarios, and final answers
+7. ⚠️⚠️⚠️ CRITICAL: Each question must be COMPLETELY UNIQUE ⚠️⚠️⚠️
+   - DIFFERENT final answer (most important - calculate to ensure uniqueness)
+   - DIFFERENT scenario/context (completely different situation)
+   - DIFFERENT numbers (significantly different, not just slightly changed)
+   - DIFFERENT items/objects (change what the problem is about)
+   - DIFFERENT student name (use the name provided above)
+   - DO NOT create questions that are similar to previous ones
+   - DO NOT reuse the same answer value
+   - DO NOT copy scenarios, just change names/numbers slightly
 
 DIFFICULTY LEVEL: ${difficulty.toUpperCase()}
 ${
@@ -751,11 +1058,14 @@ IMPORTANT FORMATTING RULES:
 - Use plain text with line breaks (\\n) for multi-line questions
 - For lists, use numbered items (1), 2), 3)) or plain text, NOT markdown bullets
 - Keep the question text clean and readable without special formatting characters
-- CRITICAL: For all mathematical equations, expressions, and fractions, use LaTeX/KaTeX formatting.
+- **CRITICAL: ALL LaTeX/KaTeX expressions MUST be wrapped in dollar signs ($...$ or $$...$$)**
+- **NEVER write LaTeX commands without dollar signs - they will NOT render!**
 - Use $...$ for inline math (e.g., $x = 5$) and $$...$$ for standalone equations.
 - **IMPORTANT**: When using LaTeX commands in JSON, you MUST use DOUBLE BACKSLASHES.
-- Example: For fractions, use "$\\\\frac{1}{2}$" (double backslash)
-- Example: For square roots, use "$\\\\sqrt{25}$" (double backslash)
+- Example: For fractions, use "$\\\\frac{1}{2}$" (double backslash, WITH dollar signs)
+- Example: For square roots, use "$\\\\sqrt{25}$" (double backslash, WITH dollar signs)
+- **WRONG**: "Calculate \\\\frac{1}{2}" (no dollar signs - will NOT render!)
+- **CORRECT**: "Calculate $\\\\frac{1}{2}$" (with dollar signs - will render!)
 - This is because JSON strings treat single backslash as an escape character.
 - **CRITICAL FOR MONEY (DOLLAR AMOUNTS)**: Wrap dollar amounts in math mode with escaped dollar sign:
   * CORRECT: "$\\\\$18.25$" (renders as $18.25)
@@ -796,7 +1106,114 @@ Example for a money problem:
   "requiresPhoto": false
 }${templateSection}
 
+🚨🚨🚨 FINAL REMINDER - VARIETY IS CRITICAL 🚨🚨🚨
+
+Before generating your question, ask yourself:
+1. ✅ Is my final answer DIFFERENT from what would be in previous questions?
+2. ✅ Is my scenario/context COMPLETELY DIFFERENT (not just slightly changed)?
+3. ✅ Are my numbers SIGNIFICANTLY DIFFERENT (not just $32.25 vs $32.75)?
+4. ✅ Am I using a DIFFERENT student name (${studentName})?
+5. ✅ Are the items/objects in my problem DIFFERENT?
+
+If you answered NO to any of these, CHANGE YOUR QUESTION NOW!
+
+⚠️ DO NOT generate:
+- Questions with the same answer value
+- Questions with similar scenarios (e.g., "buying skateboard" repeated)
+- Questions with only slightly different numbers
+- Questions that are essentially copies with different names
+
+✅ DO generate:
+- Questions with UNIQUE answers
+- Questions with COMPLETELY different scenarios
+- Questions with SIGNIFICANTLY different numbers
+- Questions that feel fresh and different
+
 Now generate the question:`
+}
+
+/**
+ * Auto-wrap LaTeX expressions in dollar signs if they're not already wrapped
+ * Handles both escaped (\\frac) and unescaped (\frac) LaTeX commands
+ */
+function wrapLatexInDollars(text: string): string {
+  if (!text) return text
+
+  // Helper to check if a position is already inside dollar signs
+  const isInsideDollars = (str: string, pos: number): boolean => {
+    const before = str.substring(0, pos)
+    const dollarCount = (before.match(/\$/g) || []).length
+    return dollarCount % 2 === 1
+  }
+
+  let result = text
+
+  // Pattern 1: \\frac{}{} or \frac{}{} - most common (handles escaped backslashes from JSON)
+  result = result.replace(
+    /([^$])(\\{1,2}frac\{[^}]+\}\{[^}]+\})([^$])/g,
+    (match, before, latex, after, offset) => {
+      if (isInsideDollars(result, offset)) return match
+      return before + '$' + latex + '$' + after
+    },
+  )
+
+  // Pattern 2: \\sqrt{} or \sqrt{}
+  result = result.replace(
+    /([^$])(\\{1,2}sqrt\{[^}]+\})([^$])/g,
+    (match, before, latex, after, offset) => {
+      if (isInsideDollars(result, offset)) return match
+      return before + '$' + latex + '$' + after
+    },
+  )
+
+  // Pattern 3: \\begin{array}...\\end{array} (multi-line, handles escaped backslashes)
+  result = result.replace(
+    /([^$])(\\{1,2}begin\{array\}[^]*?\\{1,2}end\{array\})([^$])/gs,
+    (match, before, latex, after, offset) => {
+      if (isInsideDollars(result, offset)) return match
+      return before + '$$' + latex + '$$' + after
+    },
+  )
+
+  // Pattern 4: Other common LaTeX commands with braces (\\overline{}, etc.)
+  const singleArgCommands = ['overline', 'underline', 'phantom']
+  singleArgCommands.forEach((cmd) => {
+    result = result.replace(
+      new RegExp(`([^$])(\\\\{1,2}${cmd}\\{[^}]+\\})([^$])`, 'g'),
+      (match, before, latex, after, offset) => {
+        if (isInsideDollars(result, offset)) return match
+        return before + '$' + latex + '$' + after
+      },
+    )
+  })
+
+  // Pattern 5: Standalone LaTeX commands like \\times, \\div, \\pi (handles escaped)
+  const standaloneCommands = [
+    'times',
+    'div',
+    'pm',
+    'mp',
+    'pi',
+    'theta',
+    'alpha',
+    'beta',
+    'cdot',
+    'approx',
+    'neq',
+    'leq',
+    'geq',
+  ]
+  standaloneCommands.forEach((cmd) => {
+    result = result.replace(
+      new RegExp(`([^$\\\\])(\\\\{1,2}${cmd})([^$\\\\{])`, 'g'),
+      (match, before, latex, after, offset) => {
+        if (isInsideDollars(result, offset)) return match
+        return before + '$' + latex + '$' + after
+      },
+    )
+  })
+
+  return result
 }
 
 /**
@@ -804,7 +1221,7 @@ Now generate the question:`
  */
 function cleanQuestionText(text: string): string {
   if (!text) return text
-  return text
+  let cleaned = text
     .trim()
     .replace(/^\n+/, '') // Remove leading newlines
     .replace(/\n+$/, '') // Remove trailing newlines
@@ -815,6 +1232,11 @@ function cleanQuestionText(text: string): string {
     .replace(/\\\*/g, '*') // Convert escaped asterisks
     .replace(/^\*\s+/, '') // Remove any remaining leading markdown bullets
     .trim()
+
+  // Auto-wrap LaTeX expressions in dollar signs
+  cleaned = wrapLatexInDollars(cleaned)
+
+  return cleaned
 }
 
 /**

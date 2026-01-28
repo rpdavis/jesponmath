@@ -49,7 +49,7 @@
 
               <div class="detail-row">
                 <strong>Example Question:</strong>
-                <div class="example-question">{{ template.exampleQuestion }}</div>
+                <div class="example-question" v-html="renderQuestionPreview(template.exampleQuestion || '')"></div>
               </div>
 
               <div class="detail-row">
@@ -141,7 +141,11 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import type { Goal, GoalTemplate } from '@/types/iep'
+import { renderLatexInText } from '@/utils/latexUtils'
+
+const router = useRouter()
 
 const props = defineProps<{
   show: boolean
@@ -201,9 +205,36 @@ const hasNumberRanges = (problemStructure: any) => {
 }
 
 const openTemplateEditor = (templateId: string) => {
-  // Open template management in new tab
-  const url = `/admin/templates?edit=${templateId}`
-  window.open(url, '_blank')
+  console.log('🔧 DEBUG EDIT BUTTON CLICKED')
+  console.log('🔧 Template ID:', templateId)
+  console.log('🔧 Current route:', router.currentRoute.value)
+  
+  // Use full URL with origin to avoid cache issues
+  const baseUrl = window.location.origin
+  const fullUrl = `${baseUrl}/admin/templates?edit=${templateId}&_t=${Date.now()}`
+  
+  console.log('🔧 Full URL:', fullUrl)
+  console.log('🔧 Opening new window...')
+  
+  const newWindow = window.open(fullUrl, '_blank')
+  
+  if (newWindow) {
+    console.log('✅ Window opened successfully')
+  } else {
+    console.error('❌ Failed to open window - popups blocked?')
+    alert('Failed to open edit window. Please allow popups.')
+  }
+}
+
+// Render KaTeX preview for template questions
+const renderQuestionPreview = (text: string): string => {
+  if (!text) return ''
+  try {
+    return renderLatexInText(text)
+  } catch (error) {
+    console.error('Error rendering LaTeX preview:', error)
+    return text // Return plain text if rendering fails
+  }
 }
 </script>
 
@@ -375,6 +406,19 @@ const openTemplateEditor = (templateId: string) => {
   border-left: 4px solid #4caf50;
   font-size: 1rem;
   color: #333;
+  line-height: 1.6;
+}
+
+/* Hide MathML for visual rendering */
+.example-question .katex-mathml {
+  display: none;
+}
+
+/* Ensure KaTeX display math is block-level */
+.example-question .katex-display {
+  display: block !important;
+  text-align: center;
+  margin: 1em 0;
 }
 
 .example-answer {

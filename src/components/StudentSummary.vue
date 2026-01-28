@@ -637,7 +637,7 @@ const esaStandardsData = computed(() => {
     const scoringMethod = customStd?.scoringMethod || 'additive';
 
     // Collect all question attempts for this standard
-    const questionAttempts: { isCorrect: boolean; score: number }[] = [];
+    const questionAttempts: { isCorrect: boolean; score: number; maxPoints: number }[] = [];
 
     esaAssessments.forEach(assessment => {
       // Check if student has results for this assessment
@@ -661,7 +661,8 @@ const esaStandardsData = computed(() => {
             const score = response.pointsEarned || (response.isCorrect ? (question.points || 1) : 0);
             questionAttempts.push({
               isCorrect,
-              score
+              score,
+              maxPoints: question.points || 1
             });
           }
         }
@@ -838,7 +839,7 @@ const saStandardsData = computed(() => {
     const scoringMethod = customStd?.scoringMethod || 'additive';
 
     // Collect all question attempts for this standard
-    const questionAttempts: { isCorrect: boolean; score: number }[] = [];
+    const questionAttempts: { isCorrect: boolean; score: number; maxPoints: number }[] = [];
 
     saAssessments.forEach(assessment => {
       // Check if student has results for this assessment
@@ -862,7 +863,8 @@ const saStandardsData = computed(() => {
             const score = response.pointsEarned || (response.isCorrect ? (question.points || 1) : 0);
             questionAttempts.push({
               isCorrect,
-              score
+              score,
+              maxPoints: question.points || 1
             });
           }
         }

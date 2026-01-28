@@ -613,7 +613,7 @@ const getStudentStandardScore = (standard: string) => {
   const maxScore = customStd?.maxScore;
 
   // Collect all question attempts for this standard
-  const questionAttempts: { isCorrect: boolean; score: number }[] = [];
+  const questionAttempts: { isCorrect: boolean; score: number; maxPoints: number }[] = [];
 
   filteredAssessments.value.forEach(assessment => {
     // Check if student has results for this assessment
@@ -635,7 +635,8 @@ const getStudentStandardScore = (standard: string) => {
         if (response) {
           questionAttempts.push({
             isCorrect: response.isCorrect,
-            score: response.pointsEarned || (response.isCorrect ? question.points : 0)
+            score: response.pointsEarned || (response.isCorrect ? question.points : 0),
+            maxPoints: question.points
           });
         }
       }

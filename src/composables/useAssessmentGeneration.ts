@@ -221,13 +221,189 @@ export function useAssessmentGeneration(
     return 'short-answer'
   }
 
+  // Helper: Get template instructions for display
+  const getTemplateInstructions = (template: any): string => {
+    let instructions = '\n\n=== HOW TO SOLVE THESE PROBLEMS ===\n\n'
+    
+    if (template.directions) {
+      instructions += template.directions + '\n'
+    }
+    
+    if (template.khanAcademyVideoUrl) {
+      instructions += `\n🎥 Video Help: ${template.khanAcademyVideoUrl}\n`
+    }
+    
+    instructions += '\n=== YOUR QUESTIONS BEGIN BELOW ===\n'
+    
+    return instructions
+  }
+
   // Generate questions for goal
   const generateQuestionsForGoal = async (
     goal: Goal,
     approvedQuestion: PreviewQuestion | null,
   ): Promise<PreviewAssessment[]> => {
-    const numberOfQuestions = 5
+    const numberOfQuestions = 5 // Default for old system
     const assessments: PreviewAssessment[] = []
+    
+    // Check if goal has templates (NEW SYSTEM - always prioritize templates)
+    let templateWithQuestions = null
+    let needsToGenerateTemplateQuestions = false
+    
+    if (goal.preferredTemplateIds && goal.preferredTemplateIds.length > 0) {
+      try {
+        const { getTemplate } = await import('@/firebase/templateServices')
+        for (const templateId of goal.preferredTemplateIds) {
+          const template = await getTemplate(templateId)
+          if (template && template.isActive) {
+            // Check if template has questions defined
+            if (template.templateQuestions && template.templateQuestions.length > 0) {
+              templateWithQuestions = template
+              console.log('✅ Using existing template questions for', template.name)
+              console.log(`📋 Template has ${template.templateQuestions.length} questions`)
+            } else {
+              // Template exists but no questions - auto-generate them
+              console.log('⚠️ Template found but no questions defined. Auto-generating...')
+              templateWithQuestions = template
+              needsToGenerateTemplateQuestions = true
+            }
+            break
+          }
+        }
+      } catch (error) {
+        console.error('Error loading templates:', error)
+      }
+    }
+    
+    // AUTO-GENERATE template questions if template exists but questions are missing
+    if (templateWithQuestions && needsToGenerateTemplateQuestions) {
+      try {
+        console.log('🤖 Auto-generating template questions from template settings...')
+        const { generateTemplateQuestions } = await import('@/services/templateQuestionGenerator')
+        
+        const questionCount = templateWithQuestions.numberOfQuestions || 5
+        
+        // Generate questions using ALL template information
+        const generatedQuestions = await generateTemplateQuestions({
+          goalText: templateWithQuestions.goalTextTemplate || goal.goalText,
+          goalTitle: templateWithQuestions.name,
+          areaOfNeed: templateWithQuestions.areaOfNeed,
+          gradeLevel: templateWithQuestions.defaultGradeLevel,
+          standard: templateWithQuestions.defaultStandard,
+          numberOfQuestions: questionCount,
+          // NEW: Pass template-specific settings
+          exampleQuestion: templateWithQuestions.exampleQuestion,
+          exampleAnswer: templateWithQuestions.exampleAnswer,
+          exampleExplanation: templateWithQuestions.exampleExplanation,
+          customAIPrompt: templateWithQuestions.customAIPrompt,
+          questionCategory: templateWithQuestions.questionCategory,
+          allowedOperations: templateWithQuestions.allowedOperations,
+          problemStructure: templateWithQuestions.problemStructure,
+        })
+        
+        // Add generated questions to template (in memory, not saved to DB)
+        templateWithQuestions.templateQuestions = generatedQuestions
+        console.log(`✅ Auto-generated ${generatedQuestions.length} template questions`)
+      } catch (error) {
+        console.error('❌ Failed to auto-generate template questions:', error)
+        // Continue with old system as fallback
+        templateWithQuestions = null
+      }
+    }
+    
+    // NEW SYSTEM: Generate assessments from template questions
+    if (templateWithQuestions && templateWithQuestions.templateQuestions) {
+      const subject = getSubjectArea ? getSubjectArea(goal) : 'other'
+      
+      // First assessment: Use exact template questions
+      const firstAssessmentQuestions: PreviewQuestion[] = templateWithQuestions.templateQuestions.map((tq, index) => ({
+        id: tq.id || `q${index + 1}`,
+        questionText: tq.questionText,
+        questionType: tq.questionType,
+        correctAnswer: tq.correctAnswer,
+        acceptableAnswers: tq.acceptableAnswers || [],
+        acceptableAnswersString: tq.acceptableAnswers ? tq.acceptableAnswers.join(', ') : '',
+        points: tq.points,
+        explanation: tq.explanation,
+        standard: tq.standard,
+        options: tq.options,
+        acceptEquivalentFractions: tq.acceptEquivalentFractions,
+        matchingPairs: tq.matchingPairs,
+        itemsToRank: tq.itemsToRank,
+        correctOrder: tq.correctOrder,
+        orderingItems: tq.orderingItems,
+        correctHorizontalOrder: tq.correctHorizontalOrder,
+        blankFormat: tq.blankFormat,
+        _source: 'template' as const,
+      }))
+      
+      assessments.push({
+        title: `${goal.goalTitle} - Check #1`,
+        description: generateAssessmentDescription(goal, subject),
+        instructions: generateAssessmentInstructions(goal, subject) + getTemplateInstructions(templateWithQuestions),
+        questions: firstAssessmentQuestions,
+        totalPoints: firstAssessmentQuestions.reduce((sum, q) => sum + q.points, 0),
+      })
+      
+      // Second & Third assessments: Generate variations using AI
+      console.log('🤖 Generating 2 variations of template questions...')
+      try {
+        const { generateQuestionVariations } = await import('@/services/templateQuestionGenerator')
+        const templateQuestionsToVary = templateWithQuestions.templateQuestions!
+        const variations = await generateQuestionVariations(
+          templateQuestionsToVary,
+          goal.goalText,
+          2 // Generate 2 variations
+        )
+        
+        variations.forEach((variationQuestions, varIndex) => {
+          const questions: PreviewQuestion[] = variationQuestions.map((vq, index) => ({
+            id: vq.id || `q${index + 1}`,
+            questionText: vq.questionText,
+            questionType: vq.questionType,
+            correctAnswer: vq.correctAnswer,
+            acceptableAnswers: vq.acceptableAnswers || [],
+            acceptableAnswersString: vq.acceptableAnswers ? vq.acceptableAnswers.join(', ') : '',
+            points: vq.points,
+            explanation: vq.explanation,
+            standard: vq.standard,
+            options: vq.options,
+            acceptEquivalentFractions: vq.acceptEquivalentFractions,
+            matchingPairs: vq.matchingPairs,
+            itemsToRank: vq.itemsToRank,
+            correctOrder: vq.correctOrder,
+            orderingItems: vq.orderingItems,
+            correctHorizontalOrder: vq.correctHorizontalOrder,
+            blankFormat: vq.blankFormat,
+            _source: 'ai-with-template-reference' as const,
+          }))
+          
+          assessments.push({
+            title: `${goal.goalTitle} - Check #${varIndex + 2}`,
+            description: generateAssessmentDescription(goal, subject),
+            instructions: generateAssessmentInstructions(goal, subject) + getTemplateInstructions(templateWithQuestions),
+            questions: questions,
+            totalPoints: questions.reduce((sum, q) => sum + q.points, 0),
+          })
+        })
+      } catch (error) {
+        console.error('Error generating variations:', error)
+        // Fallback: duplicate the template questions with slight modifications
+        for (let i = 2; i <= 3; i++) {
+          assessments.push({
+            title: `${goal.goalTitle} - Check #${i}`,
+            description: generateAssessmentDescription(goal, subject),
+            instructions: generateAssessmentInstructions(goal, subject) + getTemplateInstructions(templateWithQuestions) + '\n\n⚠️ Note: AI variation failed, using template questions.',
+            questions: firstAssessmentQuestions.map(q => ({ ...q, id: q.id.replace(/q(\d+)/, `q$1_${i}`) })),
+            totalPoints: firstAssessmentQuestions.reduce((sum, q) => sum + q.points, 0),
+          })
+        }
+      }
+      
+      return assessments
+    }
+
+    // OLD SYSTEM: Generate questions using AI from scratch (fallback for templates without templateQuestions)
 
     for (let i = 1; i <= 3; i++) {
       const questions: PreviewQuestion[] = []

@@ -130,6 +130,15 @@
               <span v-for="op in template.allowedOperations" :key="op" class="operation-badge">{{ op }}</span>
             </span>
           </div>
+          <div v-if="template.questionCategory" class="template-field">
+            <strong>📝 Question Category:</strong>
+            <span class="category-badge">
+              {{ template.questionCategory === 'computation' ? '🧮 Computation' :
+                 template.questionCategory === 'word-problem' ? '📖 Word Problem' :
+                 template.questionCategory === 'conceptual' ? '🧠 Conceptual' :
+                 template.questionCategory === 'application' ? '🎯 Application' : template.questionCategory }}
+            </span>
+          </div>
           <div class="template-field">
             <strong>🔗 Linked Goals:</strong>
             <div v-if="getLinkedGoals(template.id).length > 0" class="linked-goals-list">
@@ -239,11 +248,11 @@ Example: 'Given five one-step word problems involving a percentage read aloud, M
     </div>
 
     <!-- Create/Edit Modal -->
-    <div v-if="showCreateModal || showEditModal" class="modal-overlay" @click="closeModals">
+    <div v-if="showCreateModal || showEditModal" class="modal-overlay" @click="handleOverlayClick">
       <div class="modal-content" @click.stop>
         <div class="modal-header">
           <h2>{{ showEditModal ? 'Edit Template' : 'Create New Template' }}</h2>
-          <button @click="closeModals" class="btn-close">✕</button>
+          <button @click="handleCloseModal" class="btn-close" title="Close">✕</button>
         </div>
 
         <form @submit.prevent="saveTemplate" class="template-form">
@@ -377,7 +386,7 @@ Example: 'Given five one-step word problems involving a percentage read aloud, M
           </div>
 
           <div v-if="formData.subject === 'math'" class="form-group">
-            <label>Allowed Operations (Math Only) - Optional</label>
+            <label>🔒 Allowed Operations (Math Only) - Optional</label>
             <div class="checkbox-group">
               <label class="checkbox-label">
                 <input
@@ -413,9 +422,25 @@ Example: 'Given five one-step word problems involving a percentage read aloud, M
               </label>
             </div>
             <small class="form-hint">
-              🔒 Restrict which operations can be used in generated questions. If no operations are selected, all operations will be allowed.
+              🔒 Restrict which operations can be used in generated questions.
+            </small>
+          </div>
+
+          <div class="form-group">
+            <label>📝 Question Category (Recommended)</label>
+            <select v-model="formData.questionCategory">
+              <option value="">Auto-detect from goal text</option>
+              <option value="computation">🧮 Computation - Direct calculations (stacked format)</option>
+              <option value="word-problem">📖 Word Problem - Real-world scenarios with context</option>
+              <option value="conceptual">🧠 Conceptual - Understanding and explanation</option>
+              <option value="application">🎯 Application - Apply skills in context</option>
+            </select>
+            <small class="form-hint">
+              <strong>⚠️ IMPORTANT:</strong> This setting overrides auto-detection and ensures the AI creates the correct question type.
+              <br><br>
+              <strong>Computation:</strong> For goals about "operations", "calculate", "compute". Creates direct problems like "143 + 23" in stacked format.
               <br>
-              <strong>Example:</strong> Select only "Addition" and "Subtraction" to create two-step word problems using only those operations.
+              <strong>Word Problem:</strong> For goals with "word problem", "real-world", or "scenario". Creates story-based problems.
             </small>
           </div>
 
@@ -489,7 +514,7 @@ Example: 'Given five one-step word problems involving a percentage read aloud, M
                 placeholder="Enter explanation for the example question..."
               ></textarea>
             </div>
-            
+
             <div class="form-group">
               <label>🎥 Khan Academy Video URL (Optional)</label>
               <input
@@ -510,7 +535,7 @@ Example: 'Given five one-step word problems involving a percentage read aloud, M
             <p class="section-description">Define how AI should vary questions while keeping the same structure. This prevents AI from changing the problem type.</p>
 
             <div class="form-row">
-              <div class="form-group">
+              <div class="form-group" v-if="formData.questionCategory !== 'computation'">
                 <label>Number of Steps</label>
                 <select v-model.number="formData.problemStructure.numberOfSteps">
                   <option :value="undefined">Not specified</option>
@@ -520,6 +545,11 @@ Example: 'Given five one-step word problems involving a percentage read aloud, M
                   <option :value="4">4 Steps</option>
                 </select>
                 <small class="form-hint">For word problems: how many steps to solve?</small>
+              </div>
+              <div v-else class="form-group">
+                <small class="form-hint" style="color: #666; font-style: italic;">
+                  ℹ️ Computation problems are single-step direct calculations. No multi-step needed.
+                </small>
               </div>
             </div>
 
@@ -554,7 +584,7 @@ Example: 'Given five one-step word problems involving a percentage read aloud, M
             <div class="number-ranges-group">
               <label>Number Ranges for Each Question</label>
               <small class="form-hint">Specify different number ranges for questions 1-5 to ensure variety.</small>
-              
+
               <div class="form-group">
                 <label>Question 1</label>
                 <input
@@ -563,7 +593,7 @@ Example: 'Given five one-step word problems involving a percentage read aloud, M
                   placeholder="e.g., 15/20 (75%) or $45-$55, saved $10-$18"
                 />
               </div>
-              
+
               <div class="form-group">
                 <label>Question 2</label>
                 <input
@@ -572,7 +602,7 @@ Example: 'Given five one-step word problems involving a percentage read aloud, M
                   placeholder="e.g., 18/24 (75%) or $70-$90, saved $30-$42"
                 />
               </div>
-              
+
               <div class="form-group">
                 <label>Question 3</label>
                 <input
@@ -581,7 +611,7 @@ Example: 'Given five one-step word problems involving a percentage read aloud, M
                   placeholder="e.g., 22/25 (88%) or $35-$48, saved $12-$20"
                 />
               </div>
-              
+
               <div class="form-group">
                 <label>Question 4</label>
                 <input
@@ -590,7 +620,7 @@ Example: 'Given five one-step word problems involving a percentage read aloud, M
                   placeholder="e.g., 12/15 (80%) or $95-$120, saved $48-$65"
                 />
               </div>
-              
+
               <div class="form-group">
                 <label>Question 5</label>
                 <input
@@ -629,6 +659,46 @@ Example: 'Keep the X out of Y structure. Always ask What percent?. Vary the cont
             </div>
           </div>
 
+          <!-- NEW: Template Questions Editor -->
+          <div class="form-section">
+            <h3 class="section-title">📝 Template Questions (NEW System)</h3>
+            <p class="section-description">
+              Define template questions that will be used to generate assessments.
+              The AI will create variations of these questions for each Progress Assessment.
+            </p>
+
+            <div class="form-group">
+              <label>Number of Questions (1-20)</label>
+              <input
+                v-model.number="formData.numberOfQuestions"
+                type="number"
+                min="1"
+                max="20"
+                placeholder="5"
+                class="form-input"
+                style="max-width: 150px;"
+              />
+              <small class="form-hint">Default is 5. Specify how many questions this template should have.</small>
+            </div>
+
+            <TemplateQuestionEditor
+              v-model="formData.templateQuestions"
+              :number-of-questions="formData.numberOfQuestions || 5"
+              :goal-text="formData.goalTextTemplate"
+              :goal-title="formData.name"
+              :area-of-need="formData.areaOfNeed"
+              :grade-level="formData.defaultGradeLevel"
+              :standard="formData.defaultStandard"
+              :question-category="formData.questionCategory"
+              :example-question="formData.exampleQuestion"
+              :example-answer="formData.exampleAnswer"
+              :example-explanation="formData.exampleExplanation"
+              :custom-a-i-prompt="formData.customAIPrompt"
+              :allowed-operations="formData.allowedOperations"
+              :problem-structure="formData.problemStructure"
+            />
+          </div>
+
           <div class="form-group">
             <label>Example Goal (optional)</label>
             <textarea
@@ -649,7 +719,7 @@ Example: 'Keep the X out of Y structure. Always ask What percent?. Vary the cont
           </div>
 
           <div class="modal-actions">
-            <button type="button" @click="closeModals" class="btn btn-secondary">
+            <button type="button" @click="handleCloseModal" class="btn btn-secondary">
               Cancel
             </button>
             <button type="submit" class="btn btn-primary" :disabled="saving">
@@ -732,6 +802,7 @@ Example: 'Keep the X out of Y structure. Always ask What percent?. Vary the cont
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import {
   getAllTemplates,
@@ -741,13 +812,17 @@ import {
   activateTemplate,
   deactivateTemplate,
   generateGoalFromTemplate,
+  getTemplate,
 } from '@/firebase/templateServices'
 import { getActiveRubrics } from '@/firebase/rubricServices'
 import { getAllGoals } from '@/firebase/goalServices'
 import { generateTemplateDraft } from '@/services/templateDraftGenerator'
-import type { GoalTemplate, Rubric, Goal } from '@/types/iep'
+import TemplateQuestionEditor from './TemplateQuestionEditor.vue'
+import type { GoalTemplate, Rubric, Goal, TemplateQuestion } from '@/types/iep'
 
 const authStore = useAuthStore()
+const route = useRoute()
+const router = useRouter()
 
 // State
 const loading = ref(false)
@@ -762,6 +837,9 @@ const showDraftGeneratorModal = ref(false)
 const editingTemplate = ref<GoalTemplate | null>(null)
 const previewTemplateData = ref<GoalTemplate | null>(null)
 const availableRubrics = ref<Rubric[]>([])
+const hasUnsavedChanges = ref(false) // Track unsaved changes
+
+const initialFormData = ref<typeof formData.value | null>(null) // Store initial form state
 
 // Draft Generator State
 const draftGenerating = ref(false)
@@ -800,8 +878,13 @@ const formData = ref({
   exampleAlternativeAnswers: '',
   exampleExplanation: '',
   khanAcademyVideoUrl: '',
+  // NEW: Template questions (5 questions that define this template)
+  templateQuestions: [] as TemplateQuestion[],
+  numberOfQuestions: 5, // Default to 5 questions
   // Operation constraints for math
   allowedOperations: [] as ('addition' | 'subtraction' | 'multiplication' | 'division')[],
+  // Question category override (NEW)
+  questionCategory: '' as '' | 'computation' | 'word-problem' | 'conceptual' | 'application',
   // Problem structure fields (NEW)
   problemStructure: {
     numberOfSteps: undefined as 1 | 2 | 3 | 4 | undefined,
@@ -901,10 +984,13 @@ const resetForm = () => {
     exampleQuestion: '',
     exampleAnswer: '',
     exampleAlternativeAnswers: '',
-    exampleExplanation: '',
-    khanAcademyVideoUrl: '',
-    allowedOperations: [],
-    problemStructure: {
+  exampleExplanation: '',
+  khanAcademyVideoUrl: '',
+  templateQuestions: [] as TemplateQuestion[],
+  numberOfQuestions: 5,
+  allowedOperations: [],
+  questionCategory: '',
+  problemStructure: {
       numberOfSteps: undefined,
       questionTypesText: '',
       contextTypesText: '',
@@ -933,10 +1019,10 @@ const loadRubrics = async () => {
 
 const editTemplate = (template: GoalTemplate) => {
   editingTemplate.value = template
-  
+
   // Helper to convert array to comma-separated string
   const arrayToText = (arr?: string[]) => (arr || []).join(', ')
-  
+
   formData.value = {
     name: template.name,
     subject: template.subject,
@@ -958,6 +1044,8 @@ const editTemplate = (template: GoalTemplate) => {
     exampleAlternativeAnswers: template.exampleAlternativeAnswers || '',
     exampleExplanation: template.exampleExplanation || '',
     khanAcademyVideoUrl: template.khanAcademyVideoUrl || '',
+    templateQuestions: template.templateQuestions || [],
+    numberOfQuestions: template.numberOfQuestions || 5,
     allowedOperations: template.allowedOperations || [],
     problemStructure: {
       numberOfSteps: template.problemStructure?.numberOfSteps,
@@ -973,6 +1061,7 @@ const editTemplate = (template: GoalTemplate) => {
       forbiddenPatternsText: arrayToText(template.problemStructure?.forbiddenPatterns),
     },
     customAIPrompt: template.customAIPrompt || '',
+    questionCategory: template.questionCategory || '', // NEW: Load question category
     isActive: template.isActive,
   }
   showEditModal.value = true
@@ -990,7 +1079,7 @@ const saveTemplate = async () => {
         .filter((s) => s)
 
     // Build template data, only including fields that have values (not empty strings for optional fields)
-    const templateData: any = {
+    const templateData: Partial<GoalTemplate> & { name: string; subject: string; areaOfNeed: string; goalTitleTemplate: string; goalTextTemplate: string; assessmentMethod: string; isActive: boolean; createdBy: string } = {
       name: formData.value.name,
       subject: formData.value.subject,
       areaOfNeed: formData.value.areaOfNeed,
@@ -1023,17 +1112,34 @@ const saveTemplate = async () => {
     if (formData.value.allowedOperations && formData.value.allowedOperations.length > 0)
       templateData.allowedOperations = formData.value.allowedOperations
 
+    // Add template questions if provided
+    if (formData.value.templateQuestions && formData.value.templateQuestions.length > 0) {
+      // Clean up helper fields before saving
+      templateData.templateQuestions = formData.value.templateQuestions.map(q => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { acceptableAnswersString, optionsString, ...cleanQuestion } = q as TemplateQuestion & { acceptableAnswersString?: string; optionsString?: string }
+        return cleanQuestion
+      })
+      // Save the number of questions
+      templateData.numberOfQuestions = formData.value.numberOfQuestions || formData.value.templateQuestions.length
+    }
+
+    // Add question category if specified
+    if (formData.value.questionCategory) templateData.questionCategory = formData.value.questionCategory
+
     // Add problem structure if any fields are filled
     const ps = formData.value.problemStructure
+    // For computation problems, ignore numberOfSteps (they're always single-step)
+    const shouldIncludeSteps = formData.value.questionCategory !== 'computation' && ps.numberOfSteps
     if (
-      ps.numberOfSteps ||
+      shouldIncludeSteps ||
       ps.questionTypesText ||
       ps.contextTypesText ||
       ps.numberRanges.question1 ||
       ps.forbiddenPatternsText
     ) {
       templateData.problemStructure = {
-        ...(ps.numberOfSteps && { numberOfSteps: ps.numberOfSteps }),
+        ...(shouldIncludeSteps && { numberOfSteps: ps.numberOfSteps }),
         ...(ps.questionTypesText && { questionTypes: textToArray(ps.questionTypesText) }),
         ...(ps.contextTypesText && { contextTypes: textToArray(ps.contextTypesText) }),
         numberRanges: {
@@ -1057,6 +1163,7 @@ const saveTemplate = async () => {
     }
 
     await loadTemplates()
+    hasUnsavedChanges.value = false // Reset flag after successful save
     closeModals()
   } catch (error) {
     console.error('Error saving template:', error)
@@ -1109,7 +1216,7 @@ const createFromPreview = () => {
 const createFromTemplate = (t: GoalTemplate) => {
   // Helper to convert array to comma-separated string
   const arrayToText = (arr?: string[]) => (arr || []).join(', ')
-  
+
   formData.value = {
     name: `Copy of ${t.name}`,
     subject: t.subject,
@@ -1131,7 +1238,10 @@ const createFromTemplate = (t: GoalTemplate) => {
     exampleAlternativeAnswers: t.exampleAlternativeAnswers || '',
     exampleExplanation: t.exampleExplanation || '',
     khanAcademyVideoUrl: t.khanAcademyVideoUrl || '',
+    templateQuestions: t.templateQuestions ? [...t.templateQuestions] : [],
+    numberOfQuestions: t.numberOfQuestions || 5,
     allowedOperations: t.allowedOperations || [],
+    questionCategory: t.questionCategory || '', // NEW: Include question category
     problemStructure: {
       numberOfSteps: t.problemStructure?.numberOfSteps,
       questionTypesText: arrayToText(t.problemStructure?.questionTypes),
@@ -1156,9 +1266,52 @@ const closeModals = () => {
   showEditModal.value = false
   showPreviewModal.value = false
   resetForm()
+  hasUnsavedChanges.value = false
+  initialFormData.value = null
 }
 
-// Draft Generator Methods
+// Handle close with unsaved changes check
+const handleCloseModal = () => {
+  if (hasUnsavedChanges.value) {
+    const confirmed = confirm(
+      '⚠️ You have unsaved changes!\n\nAre you sure you want to close without saving? All changes will be lost.'
+    )
+    if (!confirmed) {
+      return // Don't close
+    }
+  }
+  closeModals()
+}
+
+// Handle overlay click (clicking outside modal)
+const handleOverlayClick = (event: MouseEvent) => {
+  // Only close if clicking directly on overlay, not on modal content
+  if ((event.target as HTMLElement).classList.contains('modal-overlay')) {
+    handleCloseModal()
+  }
+}
+
+// Track form data changes
+watch(
+  formData,
+  (newValue) => {
+    if (initialFormData.value) {
+      // Check if form has changed from initial state
+      hasUnsavedChanges.value = JSON.stringify(newValue) !== JSON.stringify(initialFormData.value)
+    }
+  },
+  { deep: true }
+)
+
+// Watch for modal opening to capture initial state
+watch([showCreateModal, showEditModal], ([createOpen, editOpen]) => {
+  if (createOpen || editOpen) {
+    // Capture initial state when modal opens
+    initialFormData.value = JSON.parse(JSON.stringify(formData.value))
+    hasUnsavedChanges.value = false
+    loadRubrics()
+  }
+})
 const closeDraftGenerator = () => {
   showDraftGeneratorModal.value = false
   draftInput.value = {
@@ -1175,7 +1328,7 @@ const generateDraft = async () => {
     draftError.value = ''
 
     console.log('🤖 Generating template draft from goal...')
-    
+
     const draft = await generateTemplateDraft(
       draftInput.value.goalText,
       draftInput.value.goalTitle,
@@ -1209,7 +1362,10 @@ const generateDraft = async () => {
       exampleAlternativeAnswers: '',
       exampleExplanation: draft.exampleExplanation || '',
       khanAcademyVideoUrl: '',
+      templateQuestions: [],
+      numberOfQuestions: 5,
       allowedOperations: draft.allowedOperations || [],
+      questionCategory: draft.questionCategory || '', // NEW: Include question category from draft
       problemStructure: {
         numberOfSteps: draft.problemStructure.numberOfSteps,
         questionTypesText: arrayToText(draft.problemStructure.questionTypes),
@@ -1231,6 +1387,9 @@ const generateDraft = async () => {
     closeDraftGenerator()
     showCreateModal.value = true
 
+    // Show success message
+    alert('✅ Template draft generated!\n\n📝 Review and edit the fields below, then click "Save Template" when ready.\n\n💡 Tip: For goals assessing multiple skills (decimals, fractions, integers), you can edit the number ranges, question types, and allowed operations to customize the template.')
+
     alert('✅ Template draft generated! Review and edit the fields, then save.')
   } catch (error) {
     console.error('❌ Draft generation failed:', error)
@@ -1245,15 +1404,26 @@ const truncateText = (text: string, maxLength: number): string => {
   return text.length > maxLength ? text.substring(0, maxLength) + '...' : text
 }
 
-const formatDate = (timestamp: any): string => {
+const formatDate = (timestamp: { toDate?: () => Date } | Date | string | null | undefined): string => {
   if (!timestamp) return 'Unknown'
-  const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp)
+
+  let date: Date
+  if (timestamp instanceof Date) {
+    date = timestamp
+  } else if (typeof timestamp === 'string') {
+    date = new Date(timestamp)
+  } else if (typeof timestamp === 'object' && 'toDate' in timestamp && timestamp.toDate) {
+    date = timestamp.toDate()
+  } else {
+    return 'Unknown'
+  }
+
   return date.toLocaleDateString()
 }
 
 // Get goals that have this template assigned
 const getLinkedGoals = (templateId: string): Goal[] => {
-  return goals.value.filter(goal => 
+  return goals.value.filter(goal =>
     goal.preferredTemplateIds && goal.preferredTemplateIds.includes(templateId)
   )
 }
@@ -1277,18 +1447,46 @@ const loadGoals = async () => {
   }
 }
 
-// Lifecycle
-// Watch for modal opening to reload rubrics
-watch([showCreateModal, showEditModal], ([createOpen, editOpen]) => {
-  if (createOpen || editOpen) {
-    loadRubrics()
+// Clear numberOfSteps when questionCategory is set to computation
+watch(() => formData.value.questionCategory, (newCategory) => {
+  if (newCategory === 'computation') {
+    formData.value.problemStructure.numberOfSteps = undefined
   }
 })
 
-onMounted(() => {
-  loadTemplates()
-  loadRubrics()
-  loadGoals()
+onMounted(async () => {
+  console.log('🔧 DEBUG TEMPLATE MANAGEMENT MOUNTED')
+  console.log('🔧 Current route:', route)
+  console.log('🔧 Query params:', route.query)
+  console.log('🔧 Edit param:', route.query.edit)
+
+  await loadTemplates()
+  await loadRubrics()
+  await loadGoals()
+
+  // Check if we should open a specific template for editing
+  const editTemplateId = route.query.edit as string | undefined
+  if (editTemplateId) {
+    console.log('📝 Opening template for editing from URL:', editTemplateId)
+    try {
+      const template = await getTemplate(editTemplateId)
+      console.log('🔧 Template loaded:', template)
+      if (template) {
+        console.log('✅ Calling editTemplate()...')
+        editTemplate(template)
+        // Clear the query parameter from URL without reloading
+        router.replace({ query: {} })
+      } else {
+        console.warn('❌ Template not found:', editTemplateId)
+        alert('Template not found or you do not have access to it.')
+      }
+    } catch (error) {
+      console.error('❌ Error loading template from URL:', error)
+      alert('Failed to load template for editing.')
+    }
+  } else {
+    console.log('ℹ️ No edit param in URL')
+  }
 })
 </script>
 

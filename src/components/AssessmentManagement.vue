@@ -84,6 +84,14 @@
           <option value="SA">Standard Assessment (SA)</option>
           <option value="Other">Other</option>
         </select>
+        <select v-model="quarterFilter" class="filter-select">
+          <option value="current">Current Quarter ({{ currentQuarterLabel }})</option>
+          <option v-for="period in academicYearSettings?.periods || []" :key="period.id" :value="period.id">
+            {{ period.shortName }} - {{ period.name }} ({{ formatQuarterDateRange(period) }})
+          </option>
+          <option value="all">All Quarters</option>
+          <option value="unassigned">Unassigned (No Quarter)</option>
+        </select>
       </div>
       <p class="filter-note">💡 Progress Assessments (PA) are managed separately in <router-link to="/progress-assessment-management">Progress Assessment Management</router-link></p>
       <div class="bulk-actions">
@@ -124,7 +132,7 @@
       <div v-else-if="filteredAssessments.length === 0" class="empty-state">
         <div class="empty-icon">📝</div>
         <h3>No Assessments Found</h3>
-        <p v-if="searchQuery || statusFilter || gradeFilter || categoryFilter">
+        <p v-if="searchQuery || statusFilter || gradeFilter || categoryFilter || quarterFilter !== 'current'">
           No assessments match your current filters.
         </p>
         <p v-else>
@@ -194,34 +202,17 @@
 
             <!-- Assigned Students -->
             <div class="assigned-students">
-              <div class="assigned-students-header">
-                <strong>Assigned to: {{ getAssignedStudents(assessment).length }} student(s)</strong>
-                <button 
-                  v-if="permissions.isAdmin && getAssignedStudents(assessment).length > 0"
-                  @click.stop="openBulkTeacherFixModal(assessment.id)" 
-                  class="bulk-fix-teacher-btn"
-                  title="Fix All Teacher Assignments"
-                >
-                  🔧 Fix All
-                </button>
-              </div>
-              <div v-if="getAssignedStudents(assessment).length > 0" class="student-list">
-                <div 
-                  v-for="student in getAssignedStudents(assessment)" 
-                  :key="student.uid"
-                  class="student-assignment-row"
-                >
-                  <span class="student-tag">
-                    {{ student.firstName }} {{ student.lastName }}
-                  </span>
-                  <button 
-                    v-if="permissions.isAdmin"
-                    @click.stop="openTeacherFixModal(assessment.id, student.uid)" 
-                    class="fix-teacher-btn"
-                    title="Fix Teacher Assignment"
+              <div v-if="getAssignedStudents(assessment).length > 0" class="assigned-students-summary">
+                <strong>Assigned to {{ getAssignedStudents(assessment).length }} student(s)</strong>
+                <div class="period-breakdown">
+                  <span 
+                    v-for="(periodInfo, index) in getPeriodBreakdown(assessment)" 
+                    :key="periodInfo.period"
+                    class="period-stat"
                   >
-                    🔧
-                  </button>
+                    <template v-if="index > 0"> | </template>
+                    {{ periodInfo.period }}: {{ periodInfo.assigned }}/{{ periodInfo.total }}
+                  </span>
                 </div>
               </div>
               <div v-else class="no-assignments">
@@ -408,101 +399,11 @@
     <!-- Messages -->
     <div v-if="error" class="error-message">{{ error }}</div>
     <div v-if="success" class="success-message">{{ success }}</div>
-
-    <!-- Teacher Assignment Fix Modal (Single Student) -->
-    <div v-if="showTeacherFixModal && fixingAssignment && !isBulkFix" class="modal-overlay" @click.self="closeTeacherFixModal">
-      <div class="modal" @click.stop>
-        <div class="modal-header">
-          <h3>🔧 Fix Teacher Assignment</h3>
-          <button @click="closeTeacherFixModal" class="close-btn">×</button>
-        </div>
-        <div class="modal-content">
-          <p class="info-text">
-            This assessment was assigned by the wrong teacher. Select the correct teacher below.
-            <strong>Note:</strong> This will update both the assignment record and the assessment's creator, so the teacher can see the assessment and its results. Completed assessment results will not be affected.
-          </p>
-          
-          <div class="form-group">
-            <label>Current Teacher:</label>
-            <div class="current-teacher">
-              {{ getTeacherName(fixingAssignment.currentTeacherUid) || 'Unknown' }}
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label>Select Correct Teacher:</label>
-            <select v-model="selectedTeacherUid" class="form-select">
-              <option value="">-- Select Teacher --</option>
-              <option v-for="teacher in teachers" :key="teacher.uid" :value="teacher.uid">
-                {{ teacher.firstName }} {{ teacher.lastName }} ({{ teacher.email }})
-              </option>
-            </select>
-          </div>
-        </div>
-        <div class="modal-actions">
-          <button @click="closeTeacherFixModal" class="cancel-btn" :disabled="fixing">
-            Cancel
-          </button>
-          <button 
-            @click="fixTeacherAssignment" 
-            class="assign-btn"
-            :disabled="!selectedTeacherUid || fixing || selectedTeacherUid === fixingAssignment.currentTeacherUid"
-          >
-            {{ fixing ? 'Updating...' : 'Update Teacher' }}
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Bulk Teacher Assignment Fix Modal (All Students) -->
-    <div v-if="showTeacherFixModal && fixingAssessment && isBulkFix" class="modal-overlay" @click.self="closeTeacherFixModal">
-      <div class="modal" @click.stop>
-        <div class="modal-header">
-          <h3>🔧 Fix All Teacher Assignments</h3>
-          <button @click="closeTeacherFixModal" class="close-btn">×</button>
-        </div>
-        <div class="modal-content">
-          <p class="info-text">
-            This will update the teacher assignment for <strong>all {{ fixingAssessment.studentCount }} student(s)</strong> assigned to this assessment.
-            <strong>Note:</strong> This will update all assignment records and the assessment's creator, so the teacher can see the assessment and its results. Completed assessment results will not be affected.
-          </p>
-          
-          <div class="form-group">
-            <label>Current Teacher:</label>
-            <div class="current-teacher">
-              {{ getTeacherName(fixingAssessment.currentTeacherUid) || 'Unknown' }}
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label>Select Correct Teacher:</label>
-            <select v-model="selectedTeacherUid" class="form-select">
-              <option value="">-- Select Teacher --</option>
-              <option v-for="teacher in teachers" :key="teacher.uid" :value="teacher.uid">
-                {{ teacher.firstName }} {{ teacher.lastName }} ({{ teacher.email }})
-              </option>
-            </select>
-          </div>
-        </div>
-        <div class="modal-actions">
-          <button @click="closeTeacherFixModal" class="cancel-btn" :disabled="fixing">
-            Cancel
-          </button>
-          <button 
-            @click="fixBulkTeacherAssignment" 
-            class="assign-btn"
-            :disabled="!selectedTeacherUid || fixing || selectedTeacherUid === fixingAssessment.currentTeacherUid"
-          >
-            {{ fixing ? 'Updating...' : `Update All ${fixingAssessment.studentCount} Assignment(s)` }}
-          </button>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/authStore';
 import { usePermissions } from '@/composables/usePermissions';
@@ -520,10 +421,12 @@ import {
 } from '@/firebase/iepServices';
 import { 
   getAssessmentAssignments,
-  updateAssignmentTeacher,
-  getAssignment,
-  bulkUpdateAssignmentTeacher
+  getAutoDetectedAcademicPeriod,
+  initializeAcademicPeriodCache
 } from '@/firebase/assignmentServices';
+import { loadAcademicPeriodSettings as loadSettings } from '@/firebase/appSettingsService';
+import { getCurrentAcademicYear, generateAcademicYear, getCurrentPeriod } from '@/types/academicPeriods';
+import type { AcademicYear, AcademicPeriod } from '@/types/academicPeriods';
 import { getAllTeachers } from '@/firebase/userServices';
 import type { Assessment, AssessmentAssignment } from '@/types/iep';
 import type { Student as FirebaseStudent, Teacher } from '@/types/users';
@@ -544,8 +447,11 @@ const searchQuery = ref('');
 const statusFilter = ref('');
 const gradeFilter = ref('');
 const categoryFilter = ref('');
+const quarterFilter = ref('current'); // Default to current quarter
 const currentPage = ref(1);
 const pageSize = 12;
+const academicYearSettings = ref<AcademicYear | null>(null);
+const quarterLabels = ref<Record<string, string>>({});
 
 const loading = ref(true);
 const loadingStudents = ref(true);
@@ -558,14 +464,44 @@ const success = ref('');
 // Modal state
 const showBulkAssignModal = ref(false);
 const showBulkDeleteModal = ref(false);
-const showTeacherFixModal = ref(false);
-const fixingAssignment = ref<{ assessmentId: string; studentUid: string; currentTeacherUid: string } | null>(null);
-const fixingAssessment = ref<{ assessmentId: string; currentTeacherUid: string; studentCount: number } | null>(null);
-const selectedTeacherUid = ref('');
 const fixing = ref(false);
-const isBulkFix = ref(false);
 
 // Computed properties
+const currentQuarterLabel = computed(() => {
+  // Use loaded settings if available, otherwise fall back to detection
+  let quarter: string;
+  
+  if (academicYearSettings.value) {
+    // Use the loaded settings to determine current quarter
+    const currentPeriod = getCurrentPeriod(academicYearSettings.value);
+    quarter = currentPeriod?.id || getAutoDetectedAcademicPeriod();
+  } else {
+    // Fall back to detection (will use defaults until cache loads)
+    quarter = getAutoDetectedAcademicPeriod();
+  }
+  
+  if (quarterLabels.value[quarter]) {
+    return quarterLabels.value[quarter];
+  }
+  const labels: Record<string, string> = {
+    'q1': 'Q1',
+    'q2': 'Q2',
+    'q3': 'Q3',
+    'q4': 'Q4',
+    'all': 'All Year'
+  };
+  return labels[quarter] || quarter;
+});
+
+// Format quarter date range for display
+const formatQuarterDateRange = (period: AcademicPeriod): string => {
+  const startMonth = period.startDate.toLocaleDateString('en-US', { month: 'short' });
+  const startDay = period.startDate.getDate();
+  const endMonth = period.endDate.toLocaleDateString('en-US', { month: 'short' });
+  const endDay = period.endDate.getDate();
+  return `${startMonth} ${startDay}-${endMonth} ${endDay}`;
+};
+
 const filteredAssessments = computed(() => {
   let filtered = assessments.value;
   
@@ -599,6 +535,32 @@ const filteredAssessments = computed(() => {
     filtered = filtered.filter(assessment => 
       assessment.category === categoryFilter.value
     );
+  }
+  
+  // Quarter filter
+  if (quarterFilter.value && quarterFilter.value !== 'all') {
+    if (quarterFilter.value === 'current') {
+      // Use loaded settings if available
+      let currentQuarter: string;
+      if (academicYearSettings.value) {
+        const currentPeriod = getCurrentPeriod(academicYearSettings.value);
+        currentQuarter = currentPeriod?.id || getAutoDetectedAcademicPeriod();
+      } else {
+        currentQuarter = getAutoDetectedAcademicPeriod();
+      }
+      filtered = filtered.filter(assessment => 
+        assessment.academicPeriod === currentQuarter
+      );
+    } else if (quarterFilter.value === 'unassigned') {
+      filtered = filtered.filter(assessment => 
+        !assessment.academicPeriod || assessment.academicPeriod === undefined || assessment.academicPeriod === null
+      );
+    } else {
+      // Filter by specific quarter (q1, q2, q3, q4)
+      filtered = filtered.filter(assessment => 
+        assessment.academicPeriod === quarterFilter.value
+      );
+    }
   }
   
   return filtered.sort((a, b) => 
@@ -739,6 +701,50 @@ const getAssignedStudents = (assessment: Assessment): FirebaseStudent[] => {
       assignment.studentUid === student.uid
     );
   });
+};
+
+const getPeriodBreakdown = (assessment: Assessment) => {
+  const assignedStudents = getAssignedStudents(assessment);
+  
+  // Group students by period
+  const periodMap = new Map<string, { assigned: number; total: number }>();
+  
+  // First, count all students in each period (from availableStudents)
+  availableStudents.value.forEach(student => {
+    const period = student.period || 'No Period';
+    if (!periodMap.has(period)) {
+      periodMap.set(period, { assigned: 0, total: 0 });
+    }
+    periodMap.get(period)!.total++;
+  });
+  
+  // Then count assigned students in each period
+  assignedStudents.forEach(student => {
+    const period = student.period || 'No Period';
+    if (periodMap.has(period)) {
+      periodMap.get(period)!.assigned++;
+    }
+  });
+  
+  // Convert to array and sort by period
+  const breakdown = Array.from(periodMap.entries())
+    .map(([period, counts]) => ({
+      period,
+      assigned: counts.assigned,
+      total: counts.total
+    }))
+    .filter(item => item.assigned > 0) // Only show periods with assigned students
+    .sort((a, b) => {
+      // Sort numerically if possible, otherwise alphabetically
+      const aNum = parseInt(a.period);
+      const bNum = parseInt(b.period);
+      if (!isNaN(aNum) && !isNaN(bNum)) {
+        return aNum - bNum;
+      }
+      return a.period.localeCompare(b.period);
+    });
+  
+  return breakdown;
 };
 
 const viewAssessment = (assessment: Assessment) => {
@@ -992,155 +998,51 @@ const getTeacherName = (teacherUid: string): string => {
   return `${teacher.firstName} ${teacher.lastName}`;
 };
 
-const openTeacherFixModal = async (assessmentId: string, studentUid: string) => {
+// Load academic period settings
+const loadAcademicPeriodSettings = async () => {
   try {
-    // Get the current assignment to find the assignedBy teacher
-    const assignment = await getAssignment(assessmentId, studentUid);
-    
-    if (!assignment) {
-      error.value = 'Assignment not found. This assessment may not be assigned to this student.';
-      setTimeout(() => { error.value = ''; }, 3000);
-      return;
+    const settings = await loadSettings();
+    if (settings) {
+      academicYearSettings.value = settings;
+      // Build quarter labels map
+      const labels: Record<string, string> = {};
+      settings.periods.forEach(period => {
+        labels[period.id] = period.shortName;
+      });
+      quarterLabels.value = labels;
+      console.log('✅ Loaded academic period settings for quarter filter');
+    } else {
+      // Use defaults if no settings found
+      const yearString = getCurrentAcademicYear();
+      const defaultYear = generateAcademicYear(yearString, 'quarters');
+      academicYearSettings.value = defaultYear;
+      const labels: Record<string, string> = {
+        'q1': 'Q1',
+        'q2': 'Q2',
+        'q3': 'Q3',
+        'q4': 'Q4'
+      };
+      quarterLabels.value = labels;
+      console.log('📝 Using default academic period settings');
     }
-
-    fixingAssignment.value = {
-      assessmentId,
-      studentUid,
-      currentTeacherUid: assignment.assignedBy
-    };
-    fixingAssessment.value = null;
-    isBulkFix.value = false;
-    selectedTeacherUid.value = assignment.assignedBy;
-    showTeacherFixModal.value = true;
-  } catch (err: any) {
-    console.error('Error opening teacher fix modal:', err);
-    error.value = 'Error loading assignment details. Please try again.';
-    setTimeout(() => { error.value = ''; }, 3000);
-  }
-};
-
-const openBulkTeacherFixModal = async (assessmentId: string) => {
-  try {
-    // Get all assignments for this assessment to find the assignedBy teacher
-    const assignments = await getAssessmentAssignments(assessmentId);
     
-    if (assignments.length === 0) {
-      error.value = 'No assignments found for this assessment.';
-      setTimeout(() => { error.value = ''; }, 3000);
-      return;
-    }
-
-    // Get the most common teacher (in case there are different teachers)
-    const teacherCounts: Record<string, number> = {};
-    assignments.forEach(a => {
-      teacherCounts[a.assignedBy] = (teacherCounts[a.assignedBy] || 0) + 1;
-    });
-    
-    const mostCommonTeacher = Object.keys(teacherCounts).reduce((a, b) => 
-      teacherCounts[a] > teacherCounts[b] ? a : b
-    );
-
-    fixingAssessment.value = {
-      assessmentId,
-      currentTeacherUid: mostCommonTeacher,
-      studentCount: assignments.length
-    };
-    fixingAssignment.value = null;
-    isBulkFix.value = true;
-    selectedTeacherUid.value = mostCommonTeacher;
-    showTeacherFixModal.value = true;
-  } catch (err: any) {
-    console.error('Error opening bulk teacher fix modal:', err);
-    error.value = 'Error loading assignment details. Please try again.';
-    setTimeout(() => { error.value = ''; }, 3000);
+    // Initialize cache for getAutoDetectedAcademicPeriod
+    await initializeAcademicPeriodCache();
+  } catch (error) {
+    console.error('❌ Error loading academic period settings:', error);
   }
 };
 
-const closeTeacherFixModal = () => {
-  showTeacherFixModal.value = false;
-  fixingAssignment.value = null;
-  fixingAssessment.value = null;
-  isBulkFix.value = false;
-  selectedTeacherUid.value = '';
-};
-
-const fixTeacherAssignment = async () => {
-  if (!fixingAssignment.value || !selectedTeacherUid.value) return;
-  
-  if (selectedTeacherUid.value === fixingAssignment.value.currentTeacherUid) {
-    error.value = 'Please select a different teacher.';
-    setTimeout(() => { error.value = ''; }, 3000);
-    return;
-  }
-
-  if (!confirm(`Are you sure you want to change the assigned teacher from "${getTeacherName(fixingAssignment.value.currentTeacherUid)}" to "${getTeacherName(selectedTeacherUid.value)}"?\n\nThis will update the assignment record.`)) {
-    return;
-  }
-
-  try {
-    fixing.value = true;
-    error.value = '';
-    
-    await updateAssignmentTeacher(
-      fixingAssignment.value.assessmentId,
-      fixingAssignment.value.studentUid,
-      selectedTeacherUid.value
-    );
-
-    // Reload assignment data to reflect the change
-    await loadAssignmentData();
-
-    success.value = '✅ Teacher assignment updated successfully!';
-    setTimeout(() => { success.value = ''; }, 3000);
-    closeTeacherFixModal();
-  } catch (err: any) {
-    console.error('Error fixing teacher assignment:', err);
-    error.value = 'Error updating teacher assignment. Please try again.';
-    setTimeout(() => { error.value = ''; }, 3000);
-  } finally {
-    fixing.value = false;
-  }
-};
-
-const fixBulkTeacherAssignment = async () => {
-  if (!fixingAssessment.value || !selectedTeacherUid.value) return;
-  
-  if (selectedTeacherUid.value === fixingAssessment.value.currentTeacherUid) {
-    error.value = 'Please select a different teacher.';
-    setTimeout(() => { error.value = ''; }, 3000);
-    return;
-  }
-
-  if (!confirm(`Are you sure you want to change the assigned teacher from "${getTeacherName(fixingAssessment.value.currentTeacherUid)}" to "${getTeacherName(selectedTeacherUid.value)}" for ALL ${fixingAssessment.value.studentCount} student(s)?\n\nThis will update all assignment records for this assessment.`)) {
-    return;
-  }
-
-  try {
-    fixing.value = true;
-    error.value = '';
-    
-    const updatedCount = await bulkUpdateAssignmentTeacher(
-      fixingAssessment.value.assessmentId,
-      selectedTeacherUid.value
-    );
-
-    // Reload assignment data to reflect the change
-    await loadAssignmentData();
-
-    success.value = `✅ Successfully updated ${updatedCount} teacher assignment(s)!`;
-    setTimeout(() => { success.value = ''; }, 3000);
-    closeTeacherFixModal();
-  } catch (err: any) {
-    console.error('Error fixing bulk teacher assignment:', err);
-    error.value = 'Error updating teacher assignments. Please try again.';
-    setTimeout(() => { error.value = ''; }, 3000);
-  } finally {
-    fixing.value = false;
-  }
-};
+// Reset page when filters change
+watch([searchQuery, statusFilter, gradeFilter, categoryFilter, quarterFilter], () => {
+  currentPage.value = 1;
+});
 
 // Load data on component mount
 onMounted(async () => {
+  // Initialize academic period cache and load settings first
+  await loadAcademicPeriodSettings();
+  
   // Load assessments and students first, then assignments (which depends on assessments)
   await Promise.all([
     loadAssessments(),
@@ -1510,35 +1412,34 @@ onMounted(async () => {
   border-radius: 8px;
 }
 
-.assigned-students-header {
+.assigned-students-summary {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.assigned-students-summary strong {
+  color: #1f2937;
+  font-size: 0.9rem;
+}
+
+.period-breakdown {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  font-size: 0.85rem;
+  color: #4b5563;
+  line-height: 1.5;
+}
+
+.period-stat {
+  white-space: nowrap;
 }
 
 .assigned-students strong,
 .accommodations strong {
   color: #1f2937;
   font-size: 0.9rem;
-}
-
-.bulk-fix-teacher-btn {
-  background: #f6e05e;
-  color: #744210;
-  border: none;
-  padding: 6px 12px;
-  border-radius: 6px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.bulk-fix-teacher-btn:hover {
-  background: #fbd38d;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(246, 224, 94, 0.3);
 }
 
 .student-list {
@@ -1569,22 +1470,6 @@ onMounted(async () => {
   border-radius: 4px;
   font-size: 0.7rem;
   font-weight: 500;
-}
-
-.fix-teacher-btn {
-  background: #f6e05e;
-  color: #744210;
-  border: none;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.fix-teacher-btn:hover {
-  background: #fbd38d;
-  transform: scale(1.1);
 }
 
 .accommodation-tag {

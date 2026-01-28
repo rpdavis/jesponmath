@@ -1,0 +1,102 @@
+{
+  "title": "Multi-Digit Operations Assessment",
+  "description": "Assessment of multi-digit addition, subtraction, multiplication, and division skills with decimals and fractions",
+  "goalId": "YOUR_GOAL_ID_HERE",
+  "category": "PA",
+  "gradeLevel": 7,
+  "academicPeriod": "all",
+  
+  "instructions": "Solve each problem. Show your work for full credit. Take a picture of your completed work.",
+  "accommodations": [],
+  
+  "allowFileUpload": true,
+  "requireFileUpload": true,
+  "fileUploadInstructions": "Take a clear photo of your work showing all calculations and steps.",
+  "maxFileSize": 10,
+  "allowedFileTypes": ["jpg,jpeg,png", "pdf"],
+  "photoOrientation": "portrait",
+  
+  "requireMultiplePages": false,
+  "requiredPageCount": 1,
+  "pageLabels": [],
+  "allowExtraPages": true,
+  
+  "allowRetakes": false,
+  "maxRetakes": 0,
+  "retakeMode": "separate",
+  "retakeInstructions": "",
+  
+  "timeLimit": 0,
+  "standard": "",
+  
+  "questions": [
+    {
+      "questionText": "Solve:\n\n$$\\begin{array}{r}\n456 \\\\\n+ \\underline{278} \\\\\n\\end{array}$$",
+      "questionType": "short-answer",
+      "correctAnswer": "734",
+      "answerPrefix": "",
+      "answerSuffix": "",
+      "acceptableAnswers": ["734"],
+      "explanation": "456 + 278 = 734",
+      "points": 10,
+      "standard": "7.NS.A.2",
+      "standards": ["7.NS.A.2"],
+      "requiresPhoto": false
+    },
+    {
+      "questionText": "Solve:\n\n$$\\begin{array}{r}\n52.30 \\\\\n+ \\underline{18.75} \\\\\n\\end{array}$$",
+      "questionType": "short-answer",
+      "correctAnswer": "71.05",
+      "answerPrefix": "",
+      "answerSuffix": "",
+      "acceptableAnswers": ["71.05", "71.1"],
+      "explanation": "52.30 + 18.75 = 71.05",
+      "points": 10,
+      "standard": "7.NS.A.2",
+      "standards": ["7.NS.A.2"],
+      "requiresPhoto": false
+    },
+    {
+      "questionText": "Solve:\n\n$$\\begin{array}{r}\n34 \\\\\n\\times \\underline{\\phantom{0}6} \\\\\n\\end{array}$$",
+      "questionType": "short-answer",
+      "correctAnswer": "204",
+      "answerPrefix": "",
+      "answerSuffix": "",
+      "acceptableAnswers": ["204"],
+      "explanation": "34 × 6 = 204",
+      "points": 10,
+      "standard": "7.NS.A.2",
+      "standards": ["7.NS.A.2"],
+      "requiresPhoto": false
+    },
+    {
+      "questionText": "Solve:\n\n$$6 \\overline{)294}$$",
+      "questionType": "short-answer",
+      "correctAnswer": "49",
+      "answerPrefix": "",
+      "answerSuffix": "",
+      "acceptableAnswers": ["49"],
+      "explanation": "294 ÷ 6 = 49",
+      "points": 10,
+      "standard": "7.NS.A.2",
+      "standards": ["7.NS.A.2"],
+      "requiresPhoto": false
+    },
+    {
+      "questionText": "Solve:\n\n$$\\begin{array}{r}\n\\frac{3}{4} \\\\\n+ \\underline{\\frac{1}{2}} \\\\\n\\end{array}$$",
+      "questionType": "fraction",
+      "correctAnswer": "5/4",
+      "acceptEquivalentFractions": true,
+      "correctFractionAnswers": [
+        {"numerator": 5, "denominator": 4},
+        "5/4"
+      ],
+      "acceptableAnswers": ["5/4", "1.25", "1 1/4"],
+      "explanation": "Convert to common denominator: 3/4 + 2/4 = 5/4",
+      "points": 10,
+      "standard": "7.NS.A.1",
+      "standards": ["7.NS.A.1"],
+      "requiresPhoto": false
+    }
+  ]
+}

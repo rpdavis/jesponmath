@@ -228,16 +228,30 @@ export const updateAssessment = async (
   assessmentData: Partial<Omit<Assessment, 'id' | 'createdAt' | 'updatedAt'>>,
 ) => {
   try {
+    console.log('🔍 DEBUG - updateAssessment called with ID:', assessmentId)
+    console.log('🔍 DEBUG - Incoming assessmentData fields:')
+    console.log('  - academicPeriod:', assessmentData.academicPeriod)
+    console.log('  - assignDate:', assessmentData.assignDate)
+    console.log('  - dueDate:', assessmentData.dueDate)
+    
     // Remove undefined values before updating (Firestore doesn't allow undefined)
     const cleanedData = removeUndefined({
       ...assessmentData,
       updatedAt: serverTimestamp(),
     })
     
+    console.log('🔍 DEBUG - After removeUndefined, cleanedData fields:')
+    console.log('  - academicPeriod:', cleanedData.academicPeriod)
+    console.log('  - assignDate:', cleanedData.assignDate)
+    console.log('  - dueDate:', cleanedData.dueDate)
+    console.log('🔍 DEBUG - Full cleanedData object:', JSON.stringify(cleanedData, null, 2))
+    
     const docRef = doc(db, 'assessments', assessmentId)
+    console.log('🔍 DEBUG - About to call updateDoc...')
     await updateDoc(docRef, cleanedData)
+    console.log('✅ DEBUG - updateDoc completed successfully')
   } catch (error) {
-    console.error('Error updating assessment:', error)
+    console.error('❌ Error updating assessment:', error)
     throw error
   }
 }

@@ -218,6 +218,88 @@
             <div class="question-content">
               <div class="question-text" v-html="renderLatexInText(currentQuestion.questionText)"></div>
 
+              <!-- Composite Question (Sub-Questions) -->
+              <div v-if="currentQuestion.subQuestions && currentQuestion.subQuestions.length > 0" class="composite-question">
+                <div class="composite-info">
+                  <span class="composite-badge">{{ currentQuestion.subQuestionScoringMode === 'all-or-nothing' ? '🔗 All parts must be correct' : '📊 Partial credit available' }}</span>
+                </div>
+                
+                <div 
+                  v-for="(subQ, subIndex) in currentQuestion.subQuestions" 
+                  :key="subQ.id"
+                  class="sub-question"
+                >
+                  <div class="sub-question-header">
+                    <span class="sub-question-label">{{ subQ.partLabel }}</span>
+                    <span class="sub-question-weight">{{ (subQ.pointWeight * currentQuestion.points).toFixed(1) }} pts</span>
+                  </div>
+                  
+                  <div class="sub-question-content">
+                    <div class="sub-question-text" v-html="renderLatexInText(subQ.questionText)"></div>
+                    
+                    <!-- Sub-question Answer Inputs -->
+                    <!-- Multiple Choice -->
+                    <div v-if="subQ.questionType === 'multiple-choice' && subQ.options" class="answer-options sub-answer">
+                      <label
+                        v-for="(option, optIndex) in subQ.options"
+                        :key="optIndex"
+                        class="option-label"
+                      >
+                        <input
+                          type="radio"
+                          :name="`sub-question-${subQ.id}`"
+                          :value="optIndex.toString()"
+                          v-model="answers[subQ.id]"
+                        >
+                        <span v-html="renderLatexInText(option)"></span>
+                      </label>
+                    </div>
+                    
+                    <!-- True/False -->
+                    <div v-else-if="subQ.questionType === 'true-false'" class="true-false-options sub-answer">
+                      <label class="option-label">
+                        <input
+                          type="radio"
+                          :name="`sub-question-${subQ.id}`"
+                          value="true"
+                          v-model="answers[subQ.id]"
+                        >
+                        <span>True</span>
+                      </label>
+                      <label class="option-label">
+                        <input
+                          type="radio"
+                          :name="`sub-question-${subQ.id}`"
+                          value="false"
+                          v-model="answers[subQ.id]"
+                        >
+                        <span>False</span>
+                      </label>
+                    </div>
+                    
+                    <!-- Short Answer -->
+                    <div v-else-if="subQ.questionType === 'short-answer'" class="answer-input sub-answer">
+                      <RichTextAnswerInput
+                        :key="subQ.id"
+                        v-model="answers[subQ.id] as string"
+                        placeholder="Enter your answer..."
+                        :compact="true"
+                      />
+                    </div>
+                    
+                    <!-- Fraction -->
+                    <div v-else-if="subQ.questionType === 'fraction'" class="fraction-question sub-answer">
+                      <FractionInput
+                        v-model="answers[subQ.id] as Fraction"
+                        class="fraction-answer"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Regular Question Types (only show if NOT composite) -->
+              <template v-else>
               <!-- Multiple Choice -->
               <div v-if="currentQuestion.questionType === 'multiple-choice'" class="answer-options">
                 <label
@@ -417,6 +499,8 @@
                   💡 Tip: Drag items from the bottom to the ordering area above. Items will be numbered in the order you place them.
                 </p>
               </div>
+              </template>
+              <!-- End of regular question types -->
             </div>
           </div>
 
@@ -492,7 +576,7 @@ import AlgebraTiles from '@/components/AlgebraTiles.vue';
 import type { Assessment, AssessmentQuestion, FractionAnswer } from '@/types/iep';
 import { checkFractionAnswer, type Fraction } from '@/utils/fractionUtils';
 import { parseStandards, formatStandardsForDisplay } from '@/utils/standardsUtils';
-import { areAnswersEquivalent, convertHtmlAnswerToText, debugAnswerConversion } from '@/utils/answerUtils';
+import { areAnswersEquivalent, areAnswersEquivalentBasic, areFractionsEquivalent, convertHtmlAnswerToText, debugAnswerConversion } from '@/utils/answerUtils';
 import { renderLatexInText } from '@/utils/latexUtils';
 
 const router = useRouter();
@@ -1003,8 +1087,19 @@ const submitAssessment = async () => {
           const trimmedUserAnswer = userAnswer.trim();
           const trimmedCorrectAnswer = question.correctAnswer.trim();
 
-          // Use the enhanced answer comparison that handles HTML fractions
-          isCorrect = areAnswersEquivalent(trimmedUserAnswer, trimmedCorrectAnswer);
+          // For short-answer questions, check if equivalent fractions should be accepted
+          const shouldCheckFractions = question.questionType === 'short-answer' && question.acceptEquivalentFractions;
+
+          // Use basic comparison (no fraction equivalence) first
+          isCorrect = areAnswersEquivalentBasic(trimmedUserAnswer, trimmedCorrectAnswer);
+
+          // If basic check failed and equivalent fractions are enabled, check fraction equivalence
+          if (!isCorrect && shouldCheckFractions) {
+            if (areFractionsEquivalent(trimmedUserAnswer, trimmedCorrectAnswer)) {
+              isCorrect = true;
+              console.log(`✅ Short answer matched equivalent fraction`);
+            }
+          }
 
           // Debug logging for answer comparison
           console.log(`📝 Answer Comparison for Question ${index + 1}:`, {
@@ -1013,6 +1108,7 @@ const submitAssessment = async () => {
             trimmedAnswer: trimmedUserAnswer,
             convertedAnswer: convertHtmlAnswerToText(trimmedUserAnswer),
             correctAnswer: trimmedCorrectAnswer,
+            acceptEquivalentFractions: shouldCheckFractions,
             isCorrect: isCorrect
           });
 
@@ -1020,10 +1116,19 @@ const submitAssessment = async () => {
           if (!isCorrect && question.acceptableAnswers && question.acceptableAnswers.length > 0) {
             for (const acceptableAnswer of question.acceptableAnswers) {
               const trimmedAcceptableAnswer = acceptableAnswer.trim();
-              if (areAnswersEquivalent(trimmedUserAnswer, trimmedAcceptableAnswer)) {
+              // Use basic comparison for acceptable answers too
+              if (areAnswersEquivalentBasic(trimmedUserAnswer, trimmedAcceptableAnswer)) {
                 isCorrect = true;
                 console.log(`✅ Matched acceptable answer: "${trimmedAcceptableAnswer}" (original: "${acceptableAnswer}")`);
                 break;
+              }
+              // If equivalent fractions enabled, also check fraction equivalence
+              if (!isCorrect && shouldCheckFractions) {
+                if (areFractionsEquivalent(trimmedUserAnswer, trimmedAcceptableAnswer)) {
+                  isCorrect = true;
+                  console.log(`✅ Matched acceptable answer as equivalent fraction: "${trimmedAcceptableAnswer}"`);
+                  break;
+                }
               }
             }
           }
@@ -1033,7 +1138,84 @@ const submitAssessment = async () => {
         }
       }
 
-      const pointsEarned = isCorrect ? question.points : 0;
+      // Calculate points earned - handle composite questions
+      let pointsEarned = 0;
+      
+      if (question.subQuestions && question.subQuestions.length > 0) {
+        // This is a composite question - score based on sub-questions
+        const subQuestionResults = question.subQuestions.map(subQ => {
+          const subAnswer = answers.value[subQ.id] || '';
+          let subIsCorrect = false;
+          
+          // Check sub-question answer based on its type
+          if (subQ.questionType === 'multiple-choice') {
+            subIsCorrect = subAnswer === subQ.correctAnswer;
+          } else if (subQ.questionType === 'true-false') {
+            subIsCorrect = subAnswer === subQ.correctAnswer;
+          } else if (subQ.questionType === 'fraction') {
+            if (subQ.correctAnswer && typeof subAnswer === 'object') {
+              const fractionAnswers = Array.isArray(subQ.correctAnswer) ? subQ.correctAnswer : [subQ.correctAnswer];
+              subIsCorrect = checkFractionAnswer(subAnswer as Fraction, fractionAnswers);
+            }
+          } else if (subQ.questionType === 'short-answer') {
+            if (typeof subAnswer === 'string' && typeof subQ.correctAnswer === 'string') {
+              subIsCorrect = areAnswersEquivalent(subAnswer.trim(), subQ.correctAnswer.trim());
+              
+              // Check acceptable answers
+              if (!subIsCorrect && subQ.acceptableAnswers && subQ.acceptableAnswers.length > 0) {
+                for (const acceptableAnswer of subQ.acceptableAnswers) {
+                  if (areAnswersEquivalent(subAnswer.trim(), acceptableAnswer.trim())) {
+                    subIsCorrect = true;
+                    break;
+                  }
+                }
+              }
+            }
+          }
+          
+          return {
+            subQuestionId: subQ.id,
+            isCorrect: subIsCorrect,
+            pointWeight: subQ.pointWeight
+          };
+        });
+        
+        // Calculate final points based on scoring mode
+        if (question.subQuestionScoringMode === 'all-or-nothing') {
+          // All parts must be correct to earn ANY points
+          const allCorrect = subQuestionResults.every(result => result.isCorrect);
+          pointsEarned = allCorrect ? question.points : 0;
+          isCorrect = allCorrect;
+          
+          console.log(`🔗 Composite question (all-or-nothing):`, {
+            questionId: question.id,
+            totalParts: subQuestionResults.length,
+            correctParts: subQuestionResults.filter(r => r.isCorrect).length,
+            allCorrect,
+            pointsEarned
+          });
+        } else {
+          // Proportional scoring - earn credit for each correct part
+          const earnedWeight = subQuestionResults
+            .filter(result => result.isCorrect)
+            .reduce((sum, result) => sum + result.pointWeight, 0);
+          
+          pointsEarned = earnedWeight * question.points;
+          isCorrect = earnedWeight === 1; // Only fully correct if all parts are correct
+          
+          console.log(`📊 Composite question (proportional):`, {
+            questionId: question.id,
+            totalParts: subQuestionResults.length,
+            correctParts: subQuestionResults.filter(r => r.isCorrect).length,
+            earnedWeight,
+            maxPoints: question.points,
+            pointsEarned
+          });
+        }
+      } else {
+        // Regular single question
+        pointsEarned = isCorrect ? question.points : 0;
+      }
 
       console.log(`🔍 Question ${index + 1} (${question.questionType}):`, {
         questionId: question.id,
@@ -3113,5 +3295,95 @@ onMounted(() => {
 .answer-with-prefix-suffix.has-prefix-suffix :deep(.text-editor) {
   font-size: 1.1rem;
   font-weight: 500;
+}
+
+/* Composite Question Styles */
+.composite-question {
+  margin-top: 1.5rem;
+  padding: 1.5rem;
+  background: #f8fafc;
+  border: 2px solid #cbd5e1;
+  border-radius: 12px;
+}
+
+.composite-info {
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.composite-badge {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  background: #dbeafe;
+  color: #1e40af;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.sub-question {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.sub-question:last-child {
+  margin-bottom: 0;
+}
+
+.sub-question-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.sub-question-label {
+  font-weight: 700;
+  font-size: 1.0625rem;
+  color: #1e293b;
+}
+
+.sub-question-weight {
+  padding: 0.25rem 0.75rem;
+  background: #d1fae5;
+  color: #065f46;
+  border-radius: 12px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.sub-question-content {
+  margin-top: 0.75rem;
+}
+
+.sub-question-text {
+  margin-bottom: 1rem;
+  color: #334155;
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.sub-answer {
+  margin-top: 0.75rem;
+}
+
+.sub-answer.answer-options {
+  background: #fafafa;
+  padding: 0.75rem;
+  border-radius: 6px;
+}
+
+.sub-answer.answer-input,
+.sub-answer.fraction-question {
+  background: white;
+  padding: 0.5rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
 }
 </style>

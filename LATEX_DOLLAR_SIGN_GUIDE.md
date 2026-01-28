@@ -1,5 +1,16 @@
 # How to Show Dollar Signs in Questions (KaTeX/LaTeX Guide)
 
+## 🆕 NEW: Long Division Support!
+
+JepsonMath now has built-in support for long division notation! See the [Long Division Guide](docs/LATEX_LONG_DIVISION_GUIDE.md) or [Quick Reference](docs/LONG_DIVISION_QUICK_REFERENCE.md).
+
+**Quick example:**
+```
+$\longdiv{45}{345}$  produces: 45)‾345
+```
+
+---
+
 ## The Problem
 The app uses `$` to denote math mode in LaTeX/KaTeX. When you type `$5.00`, the system thinks you're starting a math expression, which can cause rendering issues.
 

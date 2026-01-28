@@ -1,11 +1,12 @@
 /**
  * AI Template Draft Generator
- * 
+ *
  * This service uses AI to analyze goal text and generate a draft template
  * with structured fields (numberOfSteps, questionTypes, contextTypes, etc.)
  */
 
 import type { GoalTemplate } from '@/types/iep'
+import { getAIModel, AI_TEMPERATURES, AI_TOKEN_LIMITS } from '@/config/aiModels'
 
 export interface TemplateDraft {
   // Basic info
@@ -13,18 +14,29 @@ export interface TemplateDraft {
   subject: 'math' | 'ela' | 'other'
   topic: string
   description: string
-  
+
   // Example question
   exampleQuestion: string
   exampleAnswer: string
   exampleExplanation?: string
-  
+
   // NEW: Student-facing directions
   directions?: string
-  
+
   // NEW: Word problem frame type
-  problemFrameType?: 'combine' | 'change' | 'compare' | 'missing-part' | 'equal-groups' | 'comparison' | 'multi-step' | 'other'
-  
+  problemFrameType?:
+    | 'combine'
+    | 'change'
+    | 'compare'
+    | 'missing-part'
+    | 'equal-groups'
+    | 'comparison'
+    | 'multi-step'
+    | 'other'
+
+  // NEW: Question category
+  questionCategory?: 'computation' | 'word-problem' | 'conceptual' | 'application'
+
   // Structured fields
   problemStructure: {
     numberOfSteps?: 1 | 2 | 3 | 4
@@ -39,7 +51,7 @@ export interface TemplateDraft {
     }
     forbiddenPatterns?: string[]
   }
-  
+
   allowedOperations?: ('addition' | 'subtraction' | 'multiplication' | 'division')[]
   customAIPrompt?: string
 }
@@ -100,34 +112,49 @@ For EACH template, analyze and include:
    - Specific topic
    - **Variant**: If this is one of multiple types, specify which (e.g., "whole-numbers", "fractions", "decimals")
 
-2. **Example Question**
+2. **Question Category** (CRITICAL)
+   - Determine if this goal is about:
+     * **"computation"** = Direct calculation, solve equations, evaluate expressions (NO word problems/stories)
+       - Keywords: "compute", "calculate", "solve equation", "evaluate", "simplify", "apply properties of operations"
+       - Example: "Apply properties of operations to add, subtract, multiply and divide rational numbers"
+     * **"word-problem"** = Story-based, real-world scenarios requiring reading and interpretation
+       - Keywords: "word problem", "real-world", "scenario", "story problem"
+       - Example: "Solve multi-step word problems involving money"
+     * **"conceptual"** = Understanding/explanation, not just calculation
+       - Keywords: "explain", "demonstrate understanding", "identify", "recognize"
+       - Example: "Explain why two fractions are equivalent"
+     * **"application"** = Apply skills in context (middle ground between computation and word problems)
+       - Keywords: "apply", "use in context", "practical problem"
+       - Example: "Apply the formula for area to find the area of rectangles"
+
+3. **Example Question**
    - Create ONE example question for THIS specific type
    - Include a correct answer
    - Add a brief explanation
 
-3. **Problem Structure**
+4. **Problem Structure**
    - Number of steps required to solve (1-4)
    - Question type variations (e.g., for percentages: "find-percent", "find-part", "find-whole")
    - Context types that fit this problem - **LIST AT LEAST 8-10 DIFFERENT CONTEXTS** for maximum variety (e.g., "quiz", "basketball", "pizza", "homework", "spelling-test", "soccer-goals", "cookie-sales", "video-game-levels", "book-pages-read", "days-attended")
 
-4. **Number Variation Strategy**
+5. **Number Variation Strategy**
    - Suggest different number ranges for questions 1-5 (appropriate for THIS type)
    - List any number patterns that should be FORBIDDEN (too common/repetitive)
 
-5. **Operations**
+6. **Operations**
    - Which math operations are allowed? (addition, subtraction, multiplication, division)
 
-6. **Custom AI Instructions**
+7. **Custom AI Instructions**
    - Brief instructions on how to vary this question type while keeping the structure
    - **IMPORTANT**: Specify that this template is ONLY for this specific type (e.g., "ONLY use whole numbers, never fractions or decimals")
 
-7. **Student Directions** (NEW)
+8. **Student Directions** (NEW)
    - Create step-by-step directions for students on HOW to solve this type of problem
    - Should be 3-5 clear steps
    - Written in student-friendly language
    - Example: "1. Read the problem carefully and identify what you need to find. 2. Multiply the cost of each item by the quantity. 3. Add all the costs together. 4. Subtract from the amount paid to find the change."
 
-8. **Word Problem Frame Type** (NEW)
+9. **Word Problem Frame Type** (NEW)
    - Identify which story structure/frame this problem follows:
      * "combine" = Two or more groups put together to find total (part + part = total)
      * "change" = Start with amount, then change happens (start ± change = final)
@@ -148,6 +175,7 @@ Return your analysis as a JSON object with this exact structure:
       "topic": "Specific topic (e.g., 'multi-step word problems')",
       "variant": "The specific type variant (e.g., 'whole-numbers', 'fractions', 'decimals') or null",
       "description": "Brief description including which variant this template is for",
+      "questionCategory": "computation" | "word-problem" | "conceptual" | "application",
       "exampleQuestion": "The example question text for THIS variant",
       "exampleAnswer": "The correct answer",
       "exampleExplanation": "Brief explanation of solution",
@@ -181,6 +209,7 @@ EXAMPLE for goal "solve problems with whole numbers, fractions, OR decimals":
       "subject": "math",
       "topic": "multi-step word problems",
       "description": "Multi-step word problems using only whole numbers",
+      "questionCategory": "word-problem",
       "exampleQuestion": "Sarah bought 3 notebooks for $2 each and 5 pens for $1 each. How much did she spend in total?",
       "exampleAnswer": "$11",
       "exampleExplanation": "3 × $2 = $6, 5 × $1 = $5, $6 + $5 = $11",
@@ -207,6 +236,7 @@ EXAMPLE for goal "solve problems with whole numbers, fractions, OR decimals":
       "subject": "math",
       "topic": "multi-step word problems",
       "description": "Multi-step word problems using fractions",
+      "questionCategory": "word-problem",
       "exampleQuestion": "A recipe calls for 2 1/2 cups of flour. If you want to make half the recipe, how much flour do you need?",
       "exampleAnswer": "1 1/4 cups",
       "directions": "How to solve fraction word problems:\n1. Read the problem and identify the fractions involved.\n2. Determine what operation you need (multiply, divide, add, or subtract).\n3. Find common denominators if adding or subtracting.\n4. Simplify your answer to lowest terms.",
@@ -218,10 +248,45 @@ EXAMPLE for goal "solve problems with whole numbers, fractions, OR decimals":
       "subject": "math",
       "topic": "multi-step word problems",
       "description": "Multi-step word problems using decimals",
+      "questionCategory": "word-problem",
       "exampleQuestion": "Gas costs $3.45 per gallon. If you pump 8.5 gallons, how much will you pay?",
       "exampleAnswer": "$29.33",
       "directions": "How to solve decimal money problems:\n1. Read the problem and identify the decimal numbers.\n2. Line up the decimal points when adding or subtracting.\n3. When multiplying, count total decimal places in your answer.\n4. Round money answers to two decimal places (cents).",
       "customAIPrompt": "ONLY use decimals (money, measurements). NEVER use whole numbers alone or fractions. Use realistic decimal values for money (e.g., $3.45, $12.99) and measurements (e.g., 8.5 gallons, 12.3 pounds)."
+    }
+  ]
+}
+
+EXAMPLE for goal "Apply properties of operations to add, subtract, multiply and divide rational numbers":
+{
+  "templates": [
+    {
+      "name": "Rational Number Operations - Direct Computation",
+      "variant": null,
+      "subject": "math",
+      "topic": "operations with rational numbers",
+      "description": "Direct computation with rational numbers (fractions and decimals) using properties of operations",
+      "questionCategory": "computation",
+      "exampleQuestion": "Calculate: $\\\\frac{3}{4} + \\\\frac{1}{2}$",
+      "exampleAnswer": "$\\\\frac{5}{4}$ or $1\\\\frac{1}{4}$",
+      "exampleExplanation": "Convert to common denominator: $\\\\frac{3}{4} + \\\\frac{2}{4} = \\\\frac{5}{4}$",
+      "directions": "How to compute with rational numbers:\n1. Identify the operation required.\n2. For fractions: Find common denominators if needed.\n3. For decimals: Line up decimal points.\n4. Apply the operation and simplify your answer.",
+      "problemFrameType": "other",
+      "problemStructure": {
+        "numberOfSteps": 1,
+        "questionTypes": ["add-fractions", "subtract-fractions", "multiply-fractions", "divide-fractions", "add-decimals", "subtract-decimals", "multiply-decimals", "divide-decimals"],
+        "contextTypes": [],
+        "numberRanges": {
+          "question1": "Simple fractions (halves, thirds, quarters) and decimals (0.1-1.0)",
+          "question2": "Mixed numbers and decimals (1.0-5.0)",
+          "question3": "Fractions with denominators up to 12, decimals (0.01-10.0)",
+          "question4": "More complex fractions, decimals with 2 decimal places",
+          "question5": "Challenge problems with negative rational numbers"
+        },
+        "forbiddenPatterns": ["word problems", "story contexts", "real-world scenarios"]
+      },
+      "allowedOperations": ["addition", "subtraction", "multiplication", "division"],
+      "customAIPrompt": "Create DIRECT COMPUTATION problems ONLY. NO word problems. NO stories. NO real-world contexts. Just pure calculation. Use format like 'Calculate:', 'Solve:', or 'Evaluate:'. For multi-digit operations, use stacked format. For fractions, use LaTeX fraction notation."
     }
   ]
 }
@@ -241,10 +306,10 @@ IMPORTANT:
     const generateWithGemini = httpsCallable(functions, 'generateWithGemini')
 
     const result = await generateWithGemini({
-      model: 'gemini-2.0-flash',
+      model: getAIModel('TEMPLATE_DRAFTS'),
       prompt,
-      temperature: 0.4,
-      maxTokens: 3000, // Increased for multiple templates
+      temperature: AI_TEMPERATURES.LOW,
+      maxTokens: AI_TOKEN_LIMITS.LONG, // Increased for multiple templates
       apiKey,
     })
 
@@ -257,7 +322,7 @@ IMPORTANT:
     // Parse the JSON response
     const content = data.content
     console.log('📄 Raw AI response (first 500 chars):', content.substring(0, 500))
-    
+
     // Extract JSON (may be wrapped in markdown)
     let jsonText = content.trim()
     const jsonMatch = jsonText.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/)
@@ -268,7 +333,7 @@ IMPORTANT:
     console.log('🔍 Extracted JSON (first 500 chars):', jsonText.substring(0, 500))
 
     const parsed = JSON.parse(jsonText)
-    
+
     // Handle both old format (single template) and new format (array of templates)
     let templates: any[]
     if (parsed.templates && Array.isArray(parsed.templates)) {
@@ -286,9 +351,12 @@ IMPORTANT:
       subject: t.subject,
       topic: t.topic,
       description: t.description || '',
+      questionCategory: t.questionCategory, // NEW: Include question category from AI
       exampleQuestion: t.exampleQuestion,
       exampleAnswer: t.exampleAnswer,
       exampleExplanation: t.exampleExplanation,
+      directions: t.directions, // NEW: Include student directions
+      problemFrameType: t.problemFrameType, // NEW: Include problem frame type
       problemStructure: {
         numberOfSteps: t.problemStructure?.numberOfSteps,
         questionTypes: t.problemStructure?.questionTypes || [],

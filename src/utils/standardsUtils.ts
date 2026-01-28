@@ -18,7 +18,8 @@ export interface StandardScoreResult {
  */
 export interface QuestionAttempt {
   isCorrect: boolean
-  score: number
+  score: number // Points earned (actual score)
+  maxPoints: number // Maximum points possible for this question
 }
 
 /**
@@ -28,26 +29,24 @@ export interface QuestionAttempt {
  * It supports three scoring methods:
  *
  * 1. **keepTop**: Takes the top scoring attempts up to maxScore limit
- *    - Sorts attempts by score (highest first)
+ *    - Sorts attempts by points earned (highest first)
  *    - Takes top N attempts where N = maxScore
- *    - Denominator is fixed at maxScore
+ *    - Sums actual points earned vs points possible from those attempts
  *    - Use case: "Best N out of M attempts"
  *
  * 2. **average**: Calculates average percentage across all attempts
- *    - Each attempt is either 100% (correct) or 0% (incorrect)
+ *    - Each attempt calculates percentage = (score / maxPoints) * 100
  *    - Returns average of all attempt percentages
- *    - Denominator is total number of attempts
  *    - Use case: "Overall performance across all attempts"
  *
- * 3. **additive** (default): Counts all attempts, both capped at maxScore
- *    - Numerator (correct) is capped at maxScore unless allowExtraCredit is true
- *    - Denominator is capped at maxScore if set, otherwise uses total attempts
- *    - Does NOT filter attempts (unlike keepTop) - all attempts count
+ * 3. **additive** (default): Sums all points earned vs all points possible
+ *    - Numerator: sum of all points earned (capped at maxScore if set)
+ *    - Denominator: sum of all points possible (or maxScore if set)
  *    - Use case: "Total correct out of total attempted, capped at max possible"
  *
- * @param questionAttempts - Array of question attempts with isCorrect and score
+ * @param questionAttempts - Array of question attempts with score and maxPoints
  * @param customStandard - Custom standard metadata (contains maxScore and scoringMethod)
- * @returns StandardScoreResult with correct, total, and percentage
+ * @returns StandardScoreResult with correct (points earned), total (points possible), and percentage
  */
 export function calculateStandardScore(
   questionAttempts: QuestionAttempt[],
@@ -67,43 +66,48 @@ export function calculateStandardScore(
 
   if (scoringMethod === 'keepTop') {
     // Keep Top Score: Takes highest scoring attempts up to maxScore limit
-    // Sort all question attempts by score (best first)
+    // Sort all question attempts by points earned (best first)
     const sortedAttempts = [...questionAttempts].sort((a, b) => b.score - a.score)
 
     if (maxScore && maxScore > 0) {
       // Take top maxScore questions (best performance)
       const topAttempts = sortedAttempts.slice(0, maxScore)
-      correct = topAttempts.filter((attempt) => attempt.isCorrect).length
-      total = maxScore // Use maxScore as fixed denominator
+      correct = topAttempts.reduce((sum, attempt) => sum + attempt.score, 0)
+      total = topAttempts.reduce((sum, attempt) => sum + attempt.maxPoints, 0)
       percentage = total > 0 ? Math.round((correct / total) * 100) : 0
     } else {
       // No max score set - use all attempts
-      correct = sortedAttempts.filter((attempt) => attempt.isCorrect).length
-      total = sortedAttempts.length
+      correct = sortedAttempts.reduce((sum, attempt) => sum + attempt.score, 0)
+      total = sortedAttempts.reduce((sum, attempt) => sum + attempt.maxPoints, 0)
       percentage = total > 0 ? Math.round((correct / total) * 100) : 0
     }
   } else if (scoringMethod === 'average') {
     // Average Scores: Calculate average percentage across all attempts
-    const attemptPercentages = questionAttempts.map((attempt) => (attempt.isCorrect ? 100 : 0))
+    const attemptPercentages = questionAttempts.map((attempt) => {
+      if (attempt.maxPoints === 0) return 0
+      return (attempt.score / attempt.maxPoints) * 100
+    })
     percentage = Math.round(
       attemptPercentages.reduce((sum: number, pct: number) => sum + pct, 0) /
         attemptPercentages.length,
     )
-    correct = Math.round((percentage / 100) * questionAttempts.length)
-    total = questionAttempts.length
+    // Calculate representative correct/total based on average percentage
+    const totalMaxPoints = questionAttempts.reduce((sum, a) => sum + a.maxPoints, 0)
+    correct = Math.round((percentage / 100) * totalMaxPoints * 10) / 10 // Round to 1 decimal
+    total = totalMaxPoints
   } else {
-    // Additive (default): All attempts count, both numerator and denominator capped at maxScore
-    // IMPORTANT: Unlike keepTop, this does NOT sort or slice attempts
-    // By default, both correct and total are capped at maxScore (no extra credit)
-    const rawCorrect = questionAttempts.filter((attempt) => attempt.isCorrect).length
+    // Additive (default): All attempts count, both numerator and denominator considered
+    // Sum all points earned and all points possible
+    const rawCorrect = questionAttempts.reduce((sum, attempt) => sum + attempt.score, 0)
+    const rawTotal = questionAttempts.reduce((sum, attempt) => sum + attempt.maxPoints, 0)
     const allowExtraCredit = customStandard?.allowExtraCredit || false
 
     // Cap numerator at maxScore unless extra credit is allowed
     correct =
       maxScore && maxScore > 0 && !allowExtraCredit ? Math.min(rawCorrect, maxScore) : rawCorrect
 
-    // Cap denominator at maxScore if set
-    total = maxScore && maxScore > 0 ? maxScore : questionAttempts.length
+    // Cap denominator at maxScore if set, otherwise use actual total
+    total = maxScore && maxScore > 0 ? maxScore : rawTotal
     percentage = total > 0 ? Math.round((correct / total) * 100) : 0
   }
 

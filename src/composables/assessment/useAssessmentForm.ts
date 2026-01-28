@@ -111,19 +111,29 @@ export function useAssessmentForm(initialData?: Partial<Assessment>) {
 
   const updateAssignDate = (event: Event) => {
     const input = event.target as HTMLInputElement
+    console.log('🔍 DEBUG DATES - updateAssignDate called')
+    console.log('  - Input value:', input.value)
     if (input.value) {
       assessment.value.assignDate = new Date(input.value)
+      console.log('  - Set assignDate to:', assessment.value.assignDate)
+      console.log('  - Date ISO string:', assessment.value.assignDate.toISOString())
     } else {
       assessment.value.assignDate = undefined
+      console.log('  - Cleared assignDate (set to undefined)')
     }
   }
 
   const updateDueDate = (event: Event) => {
     const input = event.target as HTMLInputElement
+    console.log('🔍 DEBUG DATES - updateDueDate called')
+    console.log('  - Input value:', input.value)
     if (input.value) {
       assessment.value.dueDate = new Date(input.value)
+      console.log('  - Set dueDate to:', assessment.value.dueDate)
+      console.log('  - Date ISO string:', assessment.value.dueDate.toISOString())
     } else {
       assessment.value.dueDate = undefined
+      console.log('  - Cleared dueDate (set to undefined)')
     }
   }
 

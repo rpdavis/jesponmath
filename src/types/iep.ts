@@ -119,6 +119,27 @@ export interface FractionAnswer {
   denominator: number
 }
 
+export interface AssessmentSubQuestion {
+  id: string
+  partLabel: string // "Part A", "Part B", etc.
+  questionText: string
+  questionType:
+    | 'multiple-choice'
+    | 'short-answer'
+    | 'essay'
+    | 'true-false'
+    | 'fill-blank'
+    | 'matching'
+    | 'fraction'
+    | 'rank-order'
+    | 'checkbox'
+  options?: string[] // For multiple choice
+  correctAnswer: string | string[]
+  acceptableAnswers?: string[] // Alternative acceptable answers
+  pointWeight: number // Fraction of parent question's total points (e.g., 0.5 = half)
+  explanation?: string
+}
+
 export interface AssessmentQuestion {
   id: string
   questionText: string
@@ -166,6 +187,10 @@ export interface AssessmentQuestion {
   // For fill-blank questions
   blankFormat?: string // Format string with ___ as placeholder (e.g., "___ minutes" or "Answer: ___ dollars")
   blankPosition?: 'before' | 'after' | 'inline' // Position of blank relative to unit/text
+  
+  // Multi-part/Composite question support (NEW)
+  subQuestions?: AssessmentSubQuestion[] // Parts A, B, C, etc. for linked questions
+  subQuestionScoringMode?: 'all-or-nothing' | 'proportional' // How to score sub-questions
 }
 
 export interface AssessmentResult {
@@ -361,6 +386,45 @@ export function categorizeMathGoal(areaOfNeed: string, standard: string): MathGo
   return MathGoalType.WORD_PROBLEMS // Default
 }
 
+// Template Question - A single question within a goal template
+export interface TemplateQuestion {
+  id: string // Unique ID for this question within the template
+  questionText: string // The actual question text (can include LaTeX)
+  questionType:
+    | 'multiple-choice'
+    | 'short-answer'
+    | 'essay'
+    | 'true-false'
+    | 'fill-blank'
+    | 'matching'
+    | 'fraction'
+    | 'rank-order'
+    | 'checkbox'
+    | 'horizontal-ordering'
+    | 'algebra-tiles'
+  correctAnswer: string | string[] // The correct answer(s)
+  acceptableAnswers?: string[] // Alternative acceptable answers
+  acceptEquivalentFractions?: boolean // For fraction questions
+  points: number // Points for this question
+  explanation?: string // Explanation of the answer
+  standard?: string // Standard(s) for this question
+  // For multiple choice
+  options?: string[]
+  // For matching
+  matchingPairs?: { left: string; right: string }[]
+  // For rank-order
+  itemsToRank?: string[]
+  correctOrder?: string[]
+  // For horizontal ordering
+  orderingItems?: string[]
+  correctHorizontalOrder?: string[]
+  // For fill-blank
+  blankFormat?: string
+  // Helper fields for UI editing (not saved to database)
+  acceptableAnswersString?: string // Comma-separated list for editing
+  optionsString?: string // Multi-line string for editing
+}
+
 // Goal Template System
 export interface GoalTemplate {
   id: string // Document ID in Firestore
@@ -395,6 +459,9 @@ export interface GoalTemplate {
   // Operation constraints for math goals
   allowedOperations?: ('addition' | 'subtraction' | 'multiplication' | 'division')[] // Restrict which operations can be used in questions
 
+  // NEW: Question category override (highest priority)
+  questionCategory?: 'computation' | 'word-problem' | 'conceptual' | 'application' // Explicit question type - overrides auto-detection
+
   // Goal connections - NEW: Track which goals use this template
   linkedGoalIds?: string[] // Array of goal IDs that have this template assigned (for reference/cleanup)
 
@@ -402,11 +469,15 @@ export interface GoalTemplate {
   description?: string // Template description/notes
   exampleGoal?: string // Example of a goal created from this template
 
-  // Example question fields - MOST IMPORTANT for accurate question generation
+  // DEPRECATED: Old single-example approach (kept for backward compatibility)
   exampleQuestion?: string // Example question text
   exampleAnswer?: string // Example correct answer
   exampleAlternativeAnswers?: string // Comma-separated alternative answers
   exampleExplanation?: string // Example explanation
+  
+  // NEW: Template questions - actual questions that define this template
+  templateQuestions?: TemplateQuestion[] // Array of template questions that users can edit
+  numberOfQuestions?: number // Number of questions in template (1-20, default 5)
   
   // NEW: Student-facing directions on how to solve this type of problem
   directions?: string // Step-by-step directions for students (e.g., "1. Read the problem carefully. 2. Identify what you need to find...")
@@ -417,7 +488,7 @@ export interface GoalTemplate {
   // NEW: Word problem frame type (for providing student-friendly solving frameworks)
   problemFrameType?: 'combine' | 'change' | 'compare' | 'missing-part' | 'equal-groups' | 'comparison' | 'multi-step' | 'other' // The story structure/frame of the word problem
 
-  // NEW: Structured problem characteristics for AI generation
+  // DEPRECATED: Old structured problem characteristics (kept for backward compatibility)
   problemStructure?: {
     numberOfSteps?: 1 | 2 | 3 | 4 // For word problems: how many steps to solve
     questionTypes?: string[] // e.g., ["find-part", "find-whole", "find-percent"], ["increase", "decrease"], ["compare"], ["missing-addend"]
@@ -433,7 +504,7 @@ export interface GoalTemplate {
     forbiddenPatterns?: string[] // e.g., ["8/10", "9/10"], ["$25 saved", "$65 cost"]
   }
 
-  // NEW: Custom AI prompt for variation instructions
+  // DEPRECATED: Custom AI prompt (kept for backward compatibility)
   customAIPrompt?: string // Custom instructions for AI on how to vary this template
 
   usageCount?: number // How many times this template has been used

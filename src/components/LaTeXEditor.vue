@@ -2,8 +2,8 @@
   <div class="latex-editor">
     <!-- Toolbar with common LaTeX expressions -->
     <div class="latex-toolbar">
-      <button 
-        v-for="symbol in commonSymbols" 
+      <button
+        v-for="symbol in commonSymbols"
         :key="symbol.name"
         type="button"
         @click="insertSymbol(symbol.latex)"
@@ -12,10 +12,10 @@
       >
         {{ symbol.display }}
       </button>
-      
+
       <div class="toolbar-divider"></div>
-      
-      <button 
+
+      <button
         type="button"
         @click="showHelp = !showHelp"
         class="help-btn"
@@ -27,7 +27,7 @@
 
     <!-- Text editor with auto-completion -->
     <div class="editor-container">
-      <textarea 
+      <textarea
         ref="textareaRef"
         v-model="localValue"
         @input="handleInput"
@@ -37,14 +37,14 @@
         class="latex-textarea"
         :rows="rows"
       ></textarea>
-      
+
       <!-- Auto-completion dropdown -->
-      <div 
+      <div
         v-if="showAutoComplete && filteredSuggestions.length > 0"
         class="autocomplete-dropdown"
         :style="dropdownStyle"
       >
-        <div 
+        <div
           v-for="(suggestion, index) in filteredSuggestions"
           :key="suggestion.latex"
           @mousedown="selectSuggestion(suggestion)"
@@ -82,6 +82,14 @@
           </ul>
         </div>
         <div class="help-section">
+          <h5>🆕 Long Division:</h5>
+          <ul>
+            <li><code>\longdiv{45}{345}</code> → 45)‾345</li>
+            <li><code>\ldiv{12}{144}</code> → simpler version</li>
+            <li>See <a href="/docs/LONG_DIVISION_QUICK_REFERENCE.md" target="_blank">full guide</a></li>
+          </ul>
+        </div>
+        <div class="help-section">
           <h5>Common Functions:</h5>
           <ul>
             <li><code>\sqrt{x}</code> → square root</li>
@@ -98,6 +106,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onMounted } from 'vue'
 import katex from 'katex'
+import { renderLatexInText as renderLatexFromUtils } from '@/utils/latexUtils'
 
 interface Props {
   modelValue: string
@@ -132,6 +141,7 @@ const dropdownStyle = ref({})
 const commonSymbols = [
   { name: 'dollar', latex: '\\$', display: '$', description: 'Dollar sign' },
   { name: 'fraction', latex: '\\frac{}{}', display: '½', description: 'Fraction' },
+  { name: 'longdiv', latex: '\\longdiv{}{}', display: ')‾', description: 'Long division (NEW!)' },
   { name: 'superscript', latex: '^{}', display: 'x²', description: 'Superscript' },
   { name: 'subscript', latex: '_{}', display: 'x₁', description: 'Subscript' },
   { name: 'sqrt', latex: '\\sqrt{}', display: '√', description: 'Square root' },
@@ -149,16 +159,20 @@ const commonSymbols = [
 
 // Auto-completion suggestions
 const latexSuggestions = [
+  // NEW: Long division macros
+  { latex: '\\longdiv{}{}', description: 'Long division (divisor, dividend)' },
+  { latex: '\\ldiv{}{}', description: 'Simple long division' },
+
   // Fractions and roots
   { latex: '\\frac{}{)', description: 'Fraction' },
   { latex: '\\sqrt{}', description: 'Square root' },
   { latex: '\\sqrt[3]{}', description: 'Cube root' },
   { latex: '\\sqrt[n]{}', description: 'nth root' },
-  
+
   // Superscripts and subscripts
   { latex: '^{}', description: 'Superscript' },
   { latex: '_{}', description: 'Subscript' },
-  
+
   // Trigonometric functions
   { latex: '\\sin', description: 'Sine' },
   { latex: '\\cos', description: 'Cosine' },
@@ -166,12 +180,12 @@ const latexSuggestions = [
   { latex: '\\cot', description: 'Cotangent' },
   { latex: '\\sec', description: 'Secant' },
   { latex: '\\csc', description: 'Cosecant' },
-  
+
   // Logarithms
   { latex: '\\log', description: 'Logarithm' },
   { latex: '\\ln', description: 'Natural logarithm' },
   { latex: '\\log_{}', description: 'Logarithm with base' },
-  
+
   // Calculus
   { latex: '\\lim_{x \\to }', description: 'Limit' },
   { latex: '\\int', description: 'Integral' },
@@ -180,7 +194,7 @@ const latexSuggestions = [
   { latex: '\\prod_{i=1}^{n}', description: 'Product' },
   { latex: '\\frac{d}{dx}', description: 'Derivative' },
   { latex: '\\frac{\\partial}{\\partial x}', description: 'Partial derivative' },
-  
+
   // Greek letters
   { latex: '\\alpha', description: 'Alpha (α)' },
   { latex: '\\beta', description: 'Beta (β)' },
@@ -194,7 +208,7 @@ const latexSuggestions = [
   { latex: '\\sigma', description: 'Sigma (σ)' },
   { latex: '\\phi', description: 'Phi (φ)' },
   { latex: '\\omega', description: 'Omega (ω)' },
-  
+
   // Symbols
   { latex: '\\infty', description: 'Infinity (∞)' },
   { latex: '\\pm', description: 'Plus/minus (±)' },
@@ -207,7 +221,7 @@ const latexSuggestions = [
   { latex: '\\neq', description: 'Not equal (≠)' },
   { latex: '\\approx', description: 'Approximately (≈)' },
   { latex: '\\equiv', description: 'Equivalent (≡)' },
-  
+
   // Arrows
   { latex: '\\rightarrow', description: 'Right arrow (→)' },
   { latex: '\\leftarrow', description: 'Left arrow (←)' },
@@ -215,7 +229,7 @@ const latexSuggestions = [
   { latex: '\\Rightarrow', description: 'Double right arrow (⇒)' },
   { latex: '\\Leftarrow', description: 'Double left arrow (⇐)' },
   { latex: '\\Leftrightarrow', description: 'Double left-right arrow (⇔)' },
-  
+
   // Sets
   { latex: '\\in', description: 'Element of (∈)' },
   { latex: '\\notin', description: 'Not element of (∉)' },
@@ -224,7 +238,7 @@ const latexSuggestions = [
   { latex: '\\cup', description: 'Union (∪)' },
   { latex: '\\cap', description: 'Intersection (∩)' },
   { latex: '\\emptyset', description: 'Empty set (∅)' },
-  
+
   // Brackets
   { latex: '\\left( \\right)', description: 'Parentheses' },
   { latex: '\\left[ \\right]', description: 'Square brackets' },
@@ -235,9 +249,9 @@ const latexSuggestions = [
 // Computed
 const filteredSuggestions = computed(() => {
   if (!currentQuery.value) return []
-  
+
   const query = currentQuery.value.toLowerCase()
-  return latexSuggestions.filter(suggestion => 
+  return latexSuggestions.filter(suggestion =>
     suggestion.latex.toLowerCase().includes(query) ||
     suggestion.description.toLowerCase().includes(query)
   ).slice(0, 8) // Limit to 8 suggestions
@@ -258,14 +272,14 @@ watch(localValue, (newValue) => {
 const handleInput = () => {
   const textarea = textareaRef.value
   if (!textarea) return
-  
+
   const cursorPos = textarea.selectionStart
   cursorPosition.value = cursorPos
-  
+
   // Check for LaTeX command trigger
   const textBeforeCursor = localValue.value.substring(0, cursorPos)
   const lastBackslash = textBeforeCursor.lastIndexOf('\\')
-  
+
   if (lastBackslash !== -1 && lastBackslash >= cursorPos - 20) {
     const potentialCommand = textBeforeCursor.substring(lastBackslash)
     if (potentialCommand.length > 1 && !potentialCommand.includes(' ')) {
@@ -283,7 +297,7 @@ const handleInput = () => {
 
 const handleKeydown = (event: KeyboardEvent) => {
   if (!showAutoComplete.value) return
-  
+
   switch (event.key) {
     case 'ArrowDown':
       event.preventDefault()
@@ -309,21 +323,21 @@ const handleKeydown = (event: KeyboardEvent) => {
 const selectSuggestion = (suggestion: typeof latexSuggestions[0]) => {
   const textarea = textareaRef.value
   if (!textarea) return
-  
+
   const cursorPos = cursorPosition.value
   const textBeforeCursor = localValue.value.substring(0, cursorPos)
   const lastBackslash = textBeforeCursor.lastIndexOf('\\')
-  
+
   if (lastBackslash !== -1) {
     const beforeCommand = localValue.value.substring(0, lastBackslash)
     const afterCursor = localValue.value.substring(cursorPos)
-    
+
     localValue.value = beforeCommand + suggestion.latex + afterCursor
-    
+
     // Position cursor appropriately
     nextTick(() => {
       const newCursorPos = lastBackslash + suggestion.latex.length
-      
+
       // If the suggestion has {}, position cursor inside the first {}
       const firstBrace = suggestion.latex.indexOf('{}')
       if (firstBrace !== -1) {
@@ -331,24 +345,24 @@ const selectSuggestion = (suggestion: typeof latexSuggestions[0]) => {
       } else {
         textarea.setSelectionRange(newCursorPos, newCursorPos)
       }
-      
+
       textarea.focus()
     })
   }
-  
+
   showAutoComplete.value = false
 }
 
 const insertSymbol = (latex: string) => {
   const textarea = textareaRef.value
   if (!textarea) return
-  
+
   const cursorPos = textarea.selectionStart
   const textBefore = localValue.value.substring(0, cursorPos)
   const textAfter = localValue.value.substring(textarea.selectionEnd)
-  
+
   localValue.value = textBefore + latex + textAfter
-  
+
   nextTick(() => {
     // Position cursor inside first {} if present
     const firstBrace = latex.indexOf('{}')
@@ -374,11 +388,11 @@ const updateDropdownPosition = () => {
   nextTick(() => {
     const textarea = textareaRef.value
     if (!textarea) return
-    
+
     const rect = textarea.getBoundingClientRect()
     const lineHeight = 20 // Approximate line height
     const lines = localValue.value.substring(0, cursorPosition.value).split('\n').length
-    
+
     dropdownStyle.value = {
       top: `${(lines - 1) * lineHeight + 25}px`,
       left: '10px',
@@ -499,31 +513,9 @@ function normalizeForKatex(text: string): Segment[] {
   })
 }
 
+// Use the shared rendering function from utils (includes custom macros like \longdiv)
 const renderLatexInText = (text: string): string => {
-  if (!text) return ''
-  
-  try {
-    const segments = normalizeForKatex(text)
-    
-    return segments.map(seg => {
-      if (seg.type === 'text') {
-        return seg.raw
-      }
-      
-      try {
-        return katex.renderToString(seg.raw, {
-          displayMode: seg.display,
-          throwOnError: false,
-          strict: false
-        })
-      } catch {
-        return seg.display ? `$$${seg.raw}$$` : `$${seg.raw}$`
-      }
-    }).join('')
-  } catch (error) {
-    console.warn('LaTeX rendering error:', error)
-    return text
-  }
+  return renderLatexFromUtils(text)
 }
 
 onMounted(() => {
@@ -756,19 +748,19 @@ onMounted(() => {
     gap: 2px;
     padding: 6px;
   }
-  
+
   .symbol-btn {
     min-width: 24px;
     height: 24px;
     font-size: 12px;
     padding: 2px 4px;
   }
-  
+
   .help-content {
     grid-template-columns: 1fr;
     gap: 12px;
   }
-  
+
   .autocomplete-dropdown {
     min-width: 200px;
   }

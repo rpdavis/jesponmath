@@ -1,0 +1,99 @@
+{
+  "title": "Multi-step Word Problems - Set 1",
+  "description": "Assessment of multi-step word problem skills with money, fractions, and operations",
+  "goalId": "YOUR_GOAL_ID_HERE",
+  "category": "PA",
+  "gradeLevel": 7,
+  "academicPeriod": "q2",
+  
+  "instructions": "Answer each question to the best of your ability. Show your work for full credit.",
+  "accommodations": [],
+  
+  "allowFileUpload": true,
+  "requireFileUpload": true,
+  "fileUploadInstructions": "Take a clear photo of your work showing all calculations and steps.",
+  "maxFileSize": 10,
+  "allowedFileTypes": ["jpg,jpeg,png", "pdf"],
+  "photoOrientation": "landscape",
+  
+  "requireMultiplePages": false,
+  "requiredPageCount": 2,
+  "pageLabels": ["Problems 1-2", "Problems 3-5"],
+  "allowExtraPages": true,
+  
+  "allowRetakes": false,
+  "maxRetakes": 1,
+  "retakeMode": "separate",
+  "retakeInstructions": "You may retake this assessment to improve your score.",
+  
+  "timeLimit": 0,
+  "standard": "",
+  
+  "questions": [
+    {
+      "questionText": "Rose buys a book for $\\$18.25$ and a magazine for $\\$9.50$. If she pays with a $\\$30$ bill, how much change will she receive?",
+      "questionType": "short-answer",
+      "correctAnswer": "2.25",
+      "answerPrefix": "$",
+      "answerSuffix": "",
+      "acceptableAnswers": ["2.25", "$2.25", "2.3"],
+      "explanation": "Add costs: $18.25 + $9.50 = $27.75. Then: $30.00 - $27.75 = $2.25",
+      "points": 10,
+      "standard": "7.NS.A.3",
+      "standards": ["7.NS.A.3"],
+      "requiresPhoto": false
+    },
+    {
+      "questionText": "Jamal scored 15 points in the first game, 23 in the second, and twice as many in the third as the first two combined. How many total points did he score?",
+      "questionType": "short-answer",
+      "correctAnswer": "114",
+      "answerPrefix": "",
+      "answerSuffix": " points",
+      "acceptableAnswers": ["114", "114 points"],
+      "explanation": "First two games: 15 + 23 = 38. Third game: 38 × 2 = 76. Total: 38 + 76 = 114",
+      "points": 10,
+      "standard": "7.EE.A.1",
+      "standards": ["7.EE.A.1"],
+      "requiresPhoto": true
+    },
+    {
+      "questionText": "Calculate: $\\frac{3}{4} + \\frac{1}{2}$",
+      "questionType": "fraction",
+      "correctAnswer": "5/4",
+      "acceptEquivalentFractions": true,
+      "correctFractionAnswers": [
+        {"numerator": 5, "denominator": 4},
+        "1 1/4"
+      ],
+      "acceptableAnswers": ["5/4", "1.25", "1 1/4"],
+      "explanation": "Convert 1/2 to 2/4, then add: 3/4 + 2/4 = 5/4 = 1 1/4",
+      "points": 10,
+      "standard": "5.NF.A.1",
+      "standards": ["5.NF.A.1"]
+    },
+    {
+      "questionText": "Order from least to greatest: $|-45|$, $-17$, $|53|$, $-24$",
+      "questionType": "horizontal-ordering",
+      "orderingItems": ["|-45|", "-17", "|53|", "-24"],
+      "correctHorizontalOrder": ["-24", "-17", "|-45|", "|53|"],
+      "orderDirection": "ascending",
+      "correctAnswer": "",
+      "acceptableAnswers": [],
+      "explanation": "Evaluate absolute values first: |-45| = 45, |53| = 53. Then order: -24, -17, 45, 53",
+      "points": 10,
+      "standard": "7.NS.A.1",
+      "standards": ["7.NS.A.1"]
+    },
+    {
+      "questionText": "Which operations would you use to solve this problem? \"Maria has $35. She wants to buy 3 books that cost $8 each. How much money will she have left?\"",
+      "questionType": "checkbox",
+      "options": ["Addition", "Subtraction", "Multiplication", "Division"],
+      "correctAnswers": ["Subtraction", "Multiplication"],
+      "correctAnswer": "",
+      "explanation": "First multiply to find total cost (3 × $8), then subtract from $35",
+      "points": 10,
+      "standard": "4.OA.A.3",
+      "standards": ["4.OA.A.3"]
+    }
+  ]
+}

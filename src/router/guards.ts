@@ -60,22 +60,46 @@ export const roleGuard = (allowedRoles: UserRole[]) => {
   ) => {
     const authStore = useAuthStore();
     
+    // Wait for auth to initialize (same as authGuard)
+    let attempts = 0;
+    const maxAttempts = 100; // 5 seconds max wait
+    
+    while (authStore.isLoading && attempts < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, 50));
+      attempts++;
+    }
+    
     console.log('🛡️ Role Guard:', {
       to: to.path,
+      toFull: to.fullPath,
       userRole: authStore.userRole,
-      allowedRoles
+      currentUserRole: authStore.currentUser?.role,
+      allowedRoles,
+      allowedRolesString: JSON.stringify(allowedRoles),
+      isAuthenticated: authStore.isAuthenticated,
+      isLoading: authStore.isLoading,
+      attempts
     });
     
     if (!authStore.isAuthenticated || !authStore.currentUser?.role) {
-      console.log('🚫 Not authenticated for role guard');
+      console.log('🚫 Not authenticated for role guard - redirecting to login');
       next('/login');
       return;
     }
     
     const userRole = authStore.currentUser.role;
+    const isAllowed = allowedRoles.includes(userRole);
     
-    if (!allowedRoles.includes(userRole)) {
+    console.log('🔍 Role check:', {
+      userRole,
+      allowedRoles,
+      isAllowed,
+      includesCheck: `allowedRoles.includes("${userRole}") = ${isAllowed}`
+    });
+    
+    if (!isAllowed) {
       console.log('🚫 Role not allowed:', userRole, 'Required:', allowedRoles);
+      console.log('🚫 Redirecting to /');
       
       // Always redirect to home - let home page show appropriate content
       next('/');

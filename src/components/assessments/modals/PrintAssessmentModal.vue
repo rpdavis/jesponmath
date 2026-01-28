@@ -10,6 +10,20 @@
         <div class="print-options">
           <h3>Print Options</h3>
 
+          <div class="layout-option">
+            <label><strong>Layout:</strong></label>
+            <div class="radio-group">
+              <label class="radio-label">
+                <input type="radio" v-model="columnLayout" value="1">
+                <span>1 Column (3 problems per page)</span>
+              </label>
+              <label class="radio-label">
+                <input type="radio" v-model="columnLayout" value="2">
+                <span>2 Columns (6 problems per page)</span>
+              </label>
+            </div>
+          </div>
+
           <label class="option-checkbox">
             <input type="checkbox" v-model="includeExplanations">
             <span>Include question explanations on printed version</span>
@@ -47,6 +61,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import type { AssessmentFormData } from '@/composables/assessment/useAssessmentForm'
+import { renderLatexInText } from '@/utils/latexUtils'
 
 interface Props {
   assessment: AssessmentFormData
@@ -62,6 +77,7 @@ const emit = defineEmits<Emits>()
 const includeExplanations = ref(false)
 const includeStandards = ref(true)
 const includeAnswerKey = ref(false)
+const columnLayout = ref<'1' | '2'>('1') // Default to 1 column
 
 const totalPoints = computed(() => {
   return props.assessment.questions.reduce((sum, q) => sum + (q.points || 0), 0)
@@ -78,17 +94,24 @@ const handlePrint = () => {
   printWindow.document.write(printContent)
   printWindow.document.close()
 
+  // Wait for CSS to load, then print
   printWindow.onload = () => {
-    printWindow.focus()
-    printWindow.print()
+    setTimeout(() => {
+      printWindow.focus()
+      printWindow.print()
+    }, 300)
   }
 }
 
 const generatePrintHTML = (): string => {
   const questions = props.assessment.questions
-  const halfPoint = Math.ceil(questions.length / 2)
-  const page1Questions = questions.slice(0, halfPoint)
-  const page2Questions = questions.slice(halfPoint)
+  const questionsPerPage = columnLayout.value === '1' ? 3 : 6
+
+  // Split questions into pages
+  const pages: any[][] = []
+  for (let i = 0; i < questions.length; i += questionsPerPage) {
+    pages.push(questions.slice(i, i + questionsPerPage))
+  }
 
   return `
 <!DOCTYPE html>
@@ -97,6 +120,7 @@ const generatePrintHTML = (): string => {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${props.assessment.title} - Print</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css" crossorigin="anonymous">
   <style>
     @media print {
       @page {
@@ -157,12 +181,22 @@ const generatePrintHTML = (): string => {
       margin-right: 0;
     }
 
+    ${columnLayout.value === '2' ? `
+    .questions-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      column-gap: 30px;
+    }
+    ` : ''}
+
     .question {
       margin-bottom: 20px;
       padding: 10px;
       border: 1px solid #ddd;
       border-radius: 4px;
       background: #f9f9f9;
+      ${columnLayout.value === '2' ? 'break-inside: avoid;' : ''}
     }
 
     .question-header {
@@ -201,14 +235,14 @@ const generatePrintHTML = (): string => {
 
     .answer-space {
       border: 1px solid #000;
-      min-height: 80px;
+      min-height: ${columnLayout.value === '1' ? '80px' : '50px'};
       padding: 10px;
       background: white;
       margin-top: 10px;
     }
 
     .answer-space.large {
-      min-height: 120px;
+      min-height: ${columnLayout.value === '1' ? '120px' : '80px'};
     }
 
     .options {
@@ -252,17 +286,34 @@ const generatePrintHTML = (): string => {
       border-top: 1px solid #ccc;
       padding-top: 10px;
     }
+
+    /* Hide KaTeX MathML (accessibility content) */
+    .katex-mathml {
+      position: absolute;
+      clip: rect(1px, 1px, 1px, 1px);
+      padding: 0;
+      border: 0;
+      height: 1px;
+      width: 1px;
+      overflow: hidden;
+    }
   </style>
 </head>
 <body>
-  <!-- Page 1 -->
+  ${pages.map((pageQuestions, pageIndex) => {
+    const isFirstPage = pageIndex === 0
+    const isLastPage = pageIndex === pages.length - 1
+    const startIndex = pageIndex * questionsPerPage
+
+    return `
   <div class="page">
     <div class="header">
-      <h1>${props.assessment.title}</h1>
-      <div class="info">Grade ${props.assessment.gradeLevel} • ${props.assessment.category || 'Assessment'}</div>
-      ${props.assessment.timeLimit ? `<div class="info">Time Limit: ${props.assessment.timeLimit} minutes</div>` : ''}
+      <h1>${props.assessment.title}${!isFirstPage ? ' (continued)' : ''}</h1>
+      ${isFirstPage ? `<div class="info">Grade ${props.assessment.gradeLevel} • ${props.assessment.category || 'Assessment'}</div>` : ''}
+      ${isFirstPage && props.assessment.timeLimit ? `<div class="info">Time Limit: ${props.assessment.timeLimit} minutes</div>` : ''}
     </div>
 
+    ${isFirstPage ? `
     <div class="student-info">
       <div class="field">Name: _______________________</div>
       <div class="field">Date: _______________________</div>
@@ -271,27 +322,19 @@ const generatePrintHTML = (): string => {
 
     ${props.assessment.instructions ? `
     <div class="instructions">
-      <strong>Instructions:</strong> ${props.assessment.instructions}
+      <strong>Instructions:</strong> ${renderLatexInText(props.assessment.instructions)}
     </div>
     ` : ''}
+    ` : ''}
 
-    ${page1Questions.map((q, index) => renderQuestion(q, index)).join('')}
-
-    ${page2Questions.length === 0 ? `<div class="footer">Total: ${questions.length} Questions • ${totalPoints.value} Points</div>` : ''}
-  </div>
-
-  ${page2Questions.length > 0 ? `
-  <!-- Page 2 -->
-  <div class="page">
-    <div class="header">
-      <h1>${props.assessment.title} (continued)</h1>
+    <div class="${columnLayout.value === '2' ? 'questions-container' : ''}">
+      ${pageQuestions.map((q, idx) => renderQuestion(q, startIndex + idx)).join('')}
     </div>
 
-    ${page2Questions.map((q, index) => renderQuestion(q, halfPoint + index)).join('')}
-
-    <div class="footer">Total: ${questions.length} Questions • ${totalPoints.value} Points</div>
+    ${isLastPage ? `<div class="footer">Total: ${questions.length} Questions • ${totalPoints.value} Points</div>` : ''}
   </div>
-  ` : ''}
+    `
+  }).join('')}
 </body>
 </html>
   `.trim()
@@ -304,7 +347,7 @@ const renderQuestion = (q: any, index: number): string => {
         <span class="question-number">${index + 1}.</span>
         <span class="question-points">(${q.points} ${q.points === 1 ? 'point' : 'points'})</span>
       </div>
-      <div class="question-text">${q.questionText}</div>
+      <div class="question-text">${renderLatexInText(q.questionText || '')}</div>
       ${includeStandards.value && q.standard ? `<div class="standard-tag">Standard: ${q.standard}</div>` : ''}
   `
 
@@ -314,7 +357,7 @@ const renderQuestion = (q: any, index: number): string => {
     q.options.forEach((opt: string, i: number) => {
       html += `
         <div class="option">
-          <span class="option-label">${String.fromCharCode(65 + i)})</span> ${opt}
+          <span class="option-label">${String.fromCharCode(65 + i)})</span> ${renderLatexInText(opt || '')}
         </div>
       `
     })
@@ -334,7 +377,7 @@ const renderQuestion = (q: any, index: number): string => {
 
   // Include explanation if option is checked
   if (includeExplanations.value && q.explanation) {
-    html += `<div class="question-description">📝 ${q.explanation}</div>`
+    html += `<div class="question-description">📝 ${renderLatexInText(q.explanation)}</div>`
   }
 
   // Include answer key if option is checked (teacher copy)
@@ -348,7 +391,7 @@ const renderQuestion = (q: any, index: number): string => {
     } else {
       answer = q.correctAnswer as string
     }
-    html += `<div class="answer-key"><strong>Answer:</strong> ${answer}</div>`
+    html += `<div class="answer-key"><strong>Answer:</strong> ${renderLatexInText(answer)}</div>`
   }
 
   html += `</div>`
@@ -427,6 +470,56 @@ const renderQuestion = (q: any, index: number): string => {
 .print-options h3 {
   margin: 0 0 1rem 0;
   font-size: 1.125rem;
+  color: #374151;
+}
+
+.layout-option {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: #f3f4f6;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.layout-option label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: #374151;
+  font-size: 0.9375rem;
+}
+
+.radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.radio-label {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: white;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 2px solid transparent;
+}
+
+.radio-label:hover {
+  border-color: #3b82f6;
+  background: #eff6ff;
+}
+
+.radio-label input[type="radio"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #3b82f6;
+}
+
+.radio-label span {
+  font-size: 0.9375rem;
   color: #374151;
 }
 

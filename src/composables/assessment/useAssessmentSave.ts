@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import { serverTimestamp } from 'firebase/firestore'
+import { serverTimestamp, Timestamp } from 'firebase/firestore'
 import {
   createAssessment,
   updateAssessment,
@@ -86,30 +86,96 @@ export function useAssessmentSave() {
       }
 
       // Prepare assessment data with academic period
-      const assessmentData = {
+      // Determine academicPeriod value
+      console.log('🔍 DEBUG QUARTER - Starting quarter processing...')
+      console.log('🔍 DEBUG QUARTER - Input selectedQuarter:', options.selectedQuarter)
+      console.log('🔍 DEBUG QUARTER - Type of selectedQuarter:', typeof options.selectedQuarter)
+      
+      let academicPeriodValue: string | undefined
+      if (!options.selectedQuarter || options.selectedQuarter === 'auto') {
+        academicPeriodValue = getAutoDetectedAcademicPeriod()
+        console.log('🔍 DEBUG QUARTER - Using auto-detect, result:', academicPeriodValue)
+      } else if (options.selectedQuarter === 'all') {
+        academicPeriodValue = 'all'
+        console.log('🔍 DEBUG QUARTER - Using "all" year')
+      } else if (options.selectedQuarter && ['q1', 'q2', 'q3', 'q4'].includes(options.selectedQuarter)) {
+        academicPeriodValue = options.selectedQuarter
+        console.log('🔍 DEBUG QUARTER - Using specific quarter:', academicPeriodValue)
+      } else {
+        // Fallback: use auto-detect for invalid values
+        academicPeriodValue = getAutoDetectedAcademicPeriod()
+        console.log('🔍 DEBUG QUARTER - Invalid value, falling back to auto-detect:', academicPeriodValue)
+      }
+
+      console.log(`📅 Save - selectedQuarter: "${options.selectedQuarter}", academicPeriod: "${academicPeriodValue}"`)
+
+      // Convert Date objects to Firestore Timestamps
+      console.log('🔍 DEBUG DATES - Original assignDate:', options.assessmentData.assignDate)
+      console.log('🔍 DEBUG DATES - Original dueDate:', options.assessmentData.dueDate)
+      console.log('🔍 DEBUG DATES - assignDate type:', typeof options.assessmentData.assignDate)
+      console.log('🔍 DEBUG DATES - dueDate type:', typeof options.assessmentData.dueDate)
+      
+      const assessmentData: any = {
         ...options.assessmentData,
         createdBy: options.currentUserUid,
         updatedAt: serverTimestamp(),
-        academicPeriod:
-          options.selectedQuarter === 'auto'
-            ? getAutoDetectedAcademicPeriod()
-            : options.selectedQuarter === 'all'
-              ? 'all'
-              : options.selectedQuarter,
+        academicPeriod: academicPeriodValue,
       }
 
+      console.log('🔍 DEBUG QUARTER - Assessment data BEFORE timestamp conversion:')
+      console.log('  - academicPeriod:', assessmentData.academicPeriod)
+      console.log('  - assignDate:', assessmentData.assignDate)
+      console.log('  - dueDate:', assessmentData.dueDate)
+
+      // Convert assignDate to Timestamp if it exists
+      if (assessmentData.assignDate instanceof Date) {
+        assessmentData.assignDate = Timestamp.fromDate(assessmentData.assignDate)
+        console.log(`📅 Converted assignDate to Timestamp: ${assessmentData.assignDate.toDate()}`)
+      } else if (assessmentData.assignDate === undefined || assessmentData.assignDate === null) {
+        // Explicitly set to undefined to remove it if it was cleared
+        console.log('📅 assignDate is undefined/null, removing from data')
+        assessmentData.assignDate = undefined
+      } else {
+        console.log('⚠️ WARNING: assignDate is not a Date object:', assessmentData.assignDate)
+      }
+
+      // Convert dueDate to Timestamp if it exists
+      if (assessmentData.dueDate instanceof Date) {
+        assessmentData.dueDate = Timestamp.fromDate(assessmentData.dueDate)
+        console.log(`📅 Converted dueDate to Timestamp: ${assessmentData.dueDate.toDate()}`)
+      } else if (assessmentData.dueDate === undefined || assessmentData.dueDate === null) {
+        // Explicitly set to undefined to remove it if it was cleared
+        console.log('📅 dueDate is undefined/null, removing from data')
+        assessmentData.dueDate = undefined
+      } else {
+        console.log('⚠️ WARNING: dueDate is not a Date object:', assessmentData.dueDate)
+      }
+
+      console.log('🔍 DEBUG QUARTER - Assessment data AFTER timestamp conversion:')
+      console.log('  - academicPeriod:', assessmentData.academicPeriod)
+      console.log('  - assignDate:', assessmentData.assignDate)
+      console.log('  - dueDate:', assessmentData.dueDate)
+
       // Remove student-specific fields from template
-      delete (assessmentData as any).studentSeisId
-      delete (assessmentData as any).studentUid
+      delete assessmentData.studentSeisId
+      delete assessmentData.studentUid
 
       let savedAssessmentId: string
 
       if (options.isEditing) {
         // EDITING MODE
         console.log('✏️ EDITING MODE: Updating assessment')
+        console.log('🔍 DEBUG - Data being sent to updateAssessment:')
+        console.log('  - assessmentId:', options.assessmentId)
+        console.log('  - academicPeriod:', assessmentData.academicPeriod)
+        console.log('  - assignDate:', assessmentData.assignDate)
+        console.log('  - dueDate:', assessmentData.dueDate)
+        console.log('🔍 DEBUG - Full assessmentData object:', JSON.stringify(assessmentData, null, 2))
 
         await updateAssessment(options.assessmentId, assessmentData)
         savedAssessmentId = options.assessmentId
+        
+        console.log('✅ updateAssessment call completed for ID:', savedAssessmentId)
 
         // Manage student assignments
         const currentlyAssigned = await getAssessmentAssignments(options.assessmentId)

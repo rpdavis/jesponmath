@@ -394,7 +394,7 @@ const router = createRouter({
       path: '/admin/templates',
       name: 'goal-template-management',
       component: GoalTemplateManagement,
-      beforeEnter: [authGuard, adminGuard],
+      beforeEnter: [authGuard, teacherGuard], // Teachers need access to edit templates
     },
     {
       path: '/admin/rubrics',

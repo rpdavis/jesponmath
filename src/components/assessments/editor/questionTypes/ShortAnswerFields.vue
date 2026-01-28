@@ -32,6 +32,19 @@
       </small>
     </div>
 
+    <div class="form-group">
+      <label class="checkbox-label">
+        <input
+          type="checkbox"
+          v-model="question.acceptEquivalentFractions"
+        >
+        🔢 Accept equivalent fractions (e.g., 1/2 = 2/4 = 3/6)
+      </label>
+      <small class="form-help">
+        When enabled, students get credit for any equivalent fraction, even if not simplified
+      </small>
+    </div>
+
     <div class="form-row">
       <div class="form-group">
         <label>Answer Prefix (optional)</label>
@@ -99,5 +112,16 @@ const addAlternative = () => {
 
 .add-button:hover {
   background: #e5e7eb;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+  cursor: pointer;
 }
 </style>

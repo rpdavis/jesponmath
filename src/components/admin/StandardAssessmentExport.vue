@@ -374,7 +374,7 @@ const getStandardScoreForStudent = (
   const scoringMethod = customStd?.scoringMethod || 'additive'
 
   // Collect all question attempts for this standard across all assessments
-  const questionAttempts: { isCorrect: boolean; score: number }[] = []
+  const questionAttempts: { isCorrect: boolean; score: number; maxPoints: number }[] = []
 
   const studentResults = assessmentResults.value.get(student.uid) || []
 
@@ -396,7 +396,8 @@ const getStandardScoreForStudent = (
         if (response) {
           questionAttempts.push({
             isCorrect: !!(response.isCorrect || (response.pointsEarned && response.pointsEarned > 0)),
-            score: response.pointsEarned || (response.isCorrect ? question.points : 0)
+            score: response.pointsEarned || (response.isCorrect ? question.points : 0),
+            maxPoints: question.points
           })
         }
       }
@@ -501,7 +502,7 @@ const getTotalStandardScore = (
   const scoringMethod = customStd?.scoringMethod || 'additive'
 
   // Collect all question attempts for this standard across all assessments
-  const questionAttempts: { isCorrect: boolean; score: number }[] = []
+  const questionAttempts: { isCorrect: boolean; score: number; maxPoints: number }[] = []
 
   const studentResults = assessmentResults.value.get(student.uid) || []
 
@@ -523,7 +524,8 @@ const getTotalStandardScore = (
         if (response) {
           questionAttempts.push({
             isCorrect: !!(response.isCorrect || (response.pointsEarned && response.pointsEarned > 0)),
-            score: response.pointsEarned || (response.isCorrect ? question.points : 0)
+            score: response.pointsEarned || (response.isCorrect ? question.points : 0),
+            maxPoints: question.points
           })
         }
       }

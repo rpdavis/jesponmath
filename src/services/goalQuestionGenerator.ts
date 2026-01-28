@@ -16,6 +16,7 @@
 
 import type { Goal, GoalTemplate } from '@/types/iep'
 import { generateQuestionWithAI } from './aiQuestionGenerator'
+import { getAIModel } from '@/config/aiModels'
 
 /**
  * Helper function to format math expressions for KaTeX
@@ -38,6 +39,7 @@ export interface QuestionResult {
   requiresPhoto?: boolean
   source?: 'template' | 'ai' | 'ai-with-template-reference' | 'fallback' // Track generation source
   aiError?: string // AI error message if generation failed
+  questionCategory?: 'computation' | 'word-problem' | 'conceptual' | 'application' // NEW: Question type
 }
 
 export interface GoalDetection {
@@ -57,6 +59,7 @@ export interface GoalDetection {
   isFraction: boolean
   isDecimal: boolean
   operationTypes: string[]
+  questionCategory: 'computation' | 'word-problem' | 'conceptual' | 'application' // NEW: Question type
 }
 
 export type GenerationMethod = 'template' | 'ai-gemini' | 'ai-openai' | 'hybrid'
@@ -67,6 +70,7 @@ export interface GeneratorConfig {
   openaiApiKey?: string
   useAIIfTemplateFails?: boolean // For hybrid mode
   difficulty?: 'easy' | 'medium' | 'hard'
+  previousQuestions?: QuestionResult[] // Previously generated questions to avoid duplicates
 }
 
 /**
@@ -242,6 +246,58 @@ export function detectGoalCharacteristics(
     }
   }
 
+  // NEW: Detect question category
+  let questionCategory: 'computation' | 'word-problem' | 'conceptual' | 'application' =
+    'word-problem' // Default to word-problem
+
+  // Prioritize explicit keywords for category
+  if (
+    goalText.includes('computation') ||
+    goalText.includes('calculate') ||
+    goalText.includes('solve equation') ||
+    goalText.includes('evaluate expression') ||
+    goalText.includes('properties of operations')
+  ) {
+    questionCategory = 'computation'
+  } else if (
+    goalText.includes('explain') ||
+    goalText.includes('demonstrate understanding') ||
+    goalText.includes('identify') ||
+    goalText.includes('recognize')
+  ) {
+    questionCategory = 'conceptual'
+  } else if (
+    goalText.includes('apply') ||
+    goalText.includes('use in context') ||
+    goalText.includes('practical problem')
+  ) {
+    questionCategory = 'application'
+  } else if (
+    goalText.includes('word problem') ||
+    goalText.includes('real-world') ||
+    goalText.includes('scenario') ||
+    goalText.includes('story problem')
+  ) {
+    questionCategory = 'word-problem'
+  }
+
+  // Refine category based on other detections
+  if (subject === 'math') {
+    if (isWordProblem || isMultiStepScenario) {
+      questionCategory = 'word-problem'
+    } else if (
+      isEvaluateExpression ||
+      needsNumericalExpression ||
+      needsAlgebraicExpression ||
+      operationTypes.length > 0
+    ) {
+      // If it's clearly about operations/expressions and not a word problem, lean towards computation
+      if (questionCategory !== 'conceptual' && questionCategory !== 'application') {
+        questionCategory = 'computation'
+      }
+    }
+  }
+
   return {
     subject,
     topic, // NEW: Include detected topic
@@ -259,6 +315,7 @@ export function detectGoalCharacteristics(
     isFraction,
     isDecimal,
     operationTypes,
+    questionCategory, // NEW: Include detected question category
   }
 }
 
@@ -1295,6 +1352,7 @@ export async function generateQuestionForGoal(
   config: GeneratorConfig = { method: 'hybrid' },
 ): Promise<QuestionResult> {
   console.log(`🔄 Generating question #${questionNumber} for goal: ${goal.goalTitle}`)
+  console.log(`   Previous questions in config: ${config.previousQuestions?.length || 0}`)
 
   // STEP 1: Check for EXPLICITLY ASSIGNED templates only
   let savedTemplate: GoalTemplate | null = null
@@ -1383,7 +1441,7 @@ export async function generateQuestionForGoal(
           const aiConfig = {
             provider: 'google' as 'google' | 'openai',
             apiKey: config.geminiApiKey || import.meta.env.VITE_GEMINI_API_KEY || '',
-            model: 'gemini-flash-latest',
+            model: getAIModel('GOAL_QUESTIONS'),
             difficulty: config.difficulty || 'medium',
           }
 
@@ -1401,6 +1459,14 @@ export async function generateQuestionForGoal(
 
             // Pass allowedOperations from template to detection
             const detection = detectGoalCharacteristics(goal, savedTemplate.allowedOperations)
+
+            // Use template's explicit questionCategory if provided, otherwise use detected
+            const finalQuestionCategory =
+              savedTemplate.questionCategory || detection.questionCategory
+            console.log(
+              `📋 Question category: ${finalQuestionCategory} (${savedTemplate.questionCategory ? 'from template' : 'auto-detected'})`,
+            )
+
             const aiResult = await generateQuestionWithAI(
               goal,
               detection.subject,
@@ -1410,6 +1476,8 @@ export async function generateQuestionForGoal(
               savedTemplate.allowedOperations, // Pass allowed operations to AI
               savedTemplate.customAIPrompt, // Pass custom prompt from template
               savedTemplate, // Pass FULL template with problemStructure
+              config.previousQuestions, // Pass previous questions to avoid duplicates
+              finalQuestionCategory, // Pass question category (template overrides detection)
             )
             console.log('🤖 AI returned question:', aiResult.question)
             console.log('🤖 AI source:', aiResult.source)
@@ -1459,7 +1527,7 @@ export async function generateQuestionForGoal(
     const aiConfig = {
       provider: 'google' as 'google' | 'openai',
       apiKey: config.geminiApiKey || import.meta.env.VITE_GEMINI_API_KEY || '',
-      model: 'gemini-2.0-flash',
+      model: getAIModel('GOAL_QUESTIONS'),
       difficulty: config.difficulty || 'medium',
     }
 
@@ -1478,6 +1546,10 @@ export async function generateQuestionForGoal(
       questionNumber,
       aiConfig,
       undefined, // No template - generate from goal text
+      undefined, // No allowed operations
+      undefined, // No custom instructions
+      undefined, // No template structure
+      config.previousQuestions, // Pass previous questions to avoid duplicates
     )
     console.log('✅ AI generated question:', aiResult.question.substring(0, 100))
     return {
