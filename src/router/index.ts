@@ -28,6 +28,7 @@ import GoalImporter from '@/components/admin/GoalImporter.vue'
 import GoalFixer from '@/components/admin/GoalFixer.vue'
 import StudentTeacherFixer from '@/components/admin/StudentTeacherFixer.vue'
 import GoalQuestionDebugger from '@/components/admin/GoalQuestionDebugger.vue'
+import BackslashAnswerDetector from '@/components/admin/BackslashAnswerDetector.vue'
 import GoalTemplateAnalyzer from '@/components/admin/GoalTemplateAnalyzer.vue'
 import GoalTemplateManagement from '@/components/admin/GoalTemplateManagement.vue'
 import RubricManagement from '@/components/admin/RubricManagement.vue'
@@ -95,6 +96,12 @@ const router = createRouter({
       name: 'take-assessment',
       component: AssessmentTaking,
       beforeEnter: authGuard,
+    },
+    {
+      path: '/assessment/:assessmentId/results',
+      name: 'assessment-results-overview',
+      component: () => import('@/components/assessments/AssessmentResultsOverview.vue'),
+      beforeEnter: [authGuard, teacherGuard],
     },
     {
       path: '/assessment/:assessmentId/results/:resultId',
@@ -314,7 +321,7 @@ const router = createRouter({
       component: StudentSummary,
       beforeEnter: [authGuard, teacherGuard], // Teachers can view any student's summary
     },
-    
+
     // Student Resources
     {
       path: '/resources/word-problem-frames',
@@ -431,6 +438,12 @@ const router = createRouter({
       name: 'category-migration',
       component: CategoryMigration,
       beforeEnter: [authGuard, adminGuard], // Admin only for database migrations
+    },
+    {
+      path: '/admin/backslash-detector',
+      name: 'backslash-detector',
+      component: BackslashAnswerDetector,
+      beforeEnter: [authGuard, adminGuard],
     },
     {
       path: '/admin/system',

@@ -223,9 +223,9 @@
                 <div class="composite-info">
                   <span class="composite-badge">{{ currentQuestion.subQuestionScoringMode === 'all-or-nothing' ? '🔗 All parts must be correct' : '📊 Partial credit available' }}</span>
                 </div>
-                
-                <div 
-                  v-for="(subQ, subIndex) in currentQuestion.subQuestions" 
+
+                <div
+                  v-for="(subQ, subIndex) in currentQuestion.subQuestions"
                   :key="subQ.id"
                   class="sub-question"
                 >
@@ -233,10 +233,10 @@
                     <span class="sub-question-label">{{ subQ.partLabel }}</span>
                     <span class="sub-question-weight">{{ (subQ.pointWeight * currentQuestion.points).toFixed(1) }} pts</span>
                   </div>
-                  
+
                   <div class="sub-question-content">
                     <div class="sub-question-text" v-html="renderLatexInText(subQ.questionText)"></div>
-                    
+
                     <!-- Sub-question Answer Inputs -->
                     <!-- Multiple Choice -->
                     <div v-if="subQ.questionType === 'multiple-choice' && subQ.options" class="answer-options sub-answer">
@@ -254,7 +254,7 @@
                         <span v-html="renderLatexInText(option)"></span>
                       </label>
                     </div>
-                    
+
                     <!-- True/False -->
                     <div v-else-if="subQ.questionType === 'true-false'" class="true-false-options sub-answer">
                       <label class="option-label">
@@ -276,7 +276,7 @@
                         <span>False</span>
                       </label>
                     </div>
-                    
+
                     <!-- Short Answer -->
                     <div v-else-if="subQ.questionType === 'short-answer'" class="answer-input sub-answer">
                       <RichTextAnswerInput
@@ -286,7 +286,7 @@
                         :compact="true"
                       />
                     </div>
-                    
+
                     <!-- Fraction -->
                     <div v-else-if="subQ.questionType === 'fraction'" class="fraction-question sub-answer">
                       <FractionInput
@@ -1089,9 +1089,11 @@ const submitAssessment = async () => {
 
           // For short-answer questions, check if equivalent fractions should be accepted
           const shouldCheckFractions = question.questionType === 'short-answer' && question.acceptEquivalentFractions;
+          // Check if any variable should be accepted
+          const shouldAcceptAnyVariable = question.questionType === 'short-answer' && question.acceptAnyVariable;
 
           // Use basic comparison (no fraction equivalence) first
-          isCorrect = areAnswersEquivalentBasic(trimmedUserAnswer, trimmedCorrectAnswer);
+          isCorrect = areAnswersEquivalentBasic(trimmedUserAnswer, trimmedCorrectAnswer, shouldAcceptAnyVariable);
 
           // If basic check failed and equivalent fractions are enabled, check fraction equivalence
           if (!isCorrect && shouldCheckFractions) {
@@ -1109,6 +1111,7 @@ const submitAssessment = async () => {
             convertedAnswer: convertHtmlAnswerToText(trimmedUserAnswer),
             correctAnswer: trimmedCorrectAnswer,
             acceptEquivalentFractions: shouldCheckFractions,
+            acceptAnyVariable: shouldAcceptAnyVariable,
             isCorrect: isCorrect
           });
 
@@ -1117,7 +1120,7 @@ const submitAssessment = async () => {
             for (const acceptableAnswer of question.acceptableAnswers) {
               const trimmedAcceptableAnswer = acceptableAnswer.trim();
               // Use basic comparison for acceptable answers too
-              if (areAnswersEquivalentBasic(trimmedUserAnswer, trimmedAcceptableAnswer)) {
+              if (areAnswersEquivalentBasic(trimmedUserAnswer, trimmedAcceptableAnswer, shouldAcceptAnyVariable)) {
                 isCorrect = true;
                 console.log(`✅ Matched acceptable answer: "${trimmedAcceptableAnswer}" (original: "${acceptableAnswer}")`);
                 break;
@@ -1140,13 +1143,13 @@ const submitAssessment = async () => {
 
       // Calculate points earned - handle composite questions
       let pointsEarned = 0;
-      
+
       if (question.subQuestions && question.subQuestions.length > 0) {
         // This is a composite question - score based on sub-questions
         const subQuestionResults = question.subQuestions.map(subQ => {
           const subAnswer = answers.value[subQ.id] || '';
           let subIsCorrect = false;
-          
+
           // Check sub-question answer based on its type
           if (subQ.questionType === 'multiple-choice') {
             subIsCorrect = subAnswer === subQ.correctAnswer;
@@ -1160,7 +1163,7 @@ const submitAssessment = async () => {
           } else if (subQ.questionType === 'short-answer') {
             if (typeof subAnswer === 'string' && typeof subQ.correctAnswer === 'string') {
               subIsCorrect = areAnswersEquivalent(subAnswer.trim(), subQ.correctAnswer.trim());
-              
+
               // Check acceptable answers
               if (!subIsCorrect && subQ.acceptableAnswers && subQ.acceptableAnswers.length > 0) {
                 for (const acceptableAnswer of subQ.acceptableAnswers) {
@@ -1172,21 +1175,21 @@ const submitAssessment = async () => {
               }
             }
           }
-          
+
           return {
             subQuestionId: subQ.id,
             isCorrect: subIsCorrect,
             pointWeight: subQ.pointWeight
           };
         });
-        
+
         // Calculate final points based on scoring mode
         if (question.subQuestionScoringMode === 'all-or-nothing') {
           // All parts must be correct to earn ANY points
           const allCorrect = subQuestionResults.every(result => result.isCorrect);
           pointsEarned = allCorrect ? question.points : 0;
           isCorrect = allCorrect;
-          
+
           console.log(`🔗 Composite question (all-or-nothing):`, {
             questionId: question.id,
             totalParts: subQuestionResults.length,
@@ -1199,10 +1202,10 @@ const submitAssessment = async () => {
           const earnedWeight = subQuestionResults
             .filter(result => result.isCorrect)
             .reduce((sum, result) => sum + result.pointWeight, 0);
-          
+
           pointsEarned = earnedWeight * question.points;
           isCorrect = earnedWeight === 1; // Only fully correct if all parts are correct
-          
+
           console.log(`📊 Composite question (proportional):`, {
             questionId: question.id,
             totalParts: subQuestionResults.length,

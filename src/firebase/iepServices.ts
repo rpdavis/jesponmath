@@ -183,7 +183,7 @@ export const createAssessment = async (
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     })
-    
+
     const docRef = await addDoc(collection(db, 'assessments'), cleanedData)
     return docRef.id
   } catch (error) {
@@ -233,19 +233,19 @@ export const updateAssessment = async (
     console.log('  - academicPeriod:', assessmentData.academicPeriod)
     console.log('  - assignDate:', assessmentData.assignDate)
     console.log('  - dueDate:', assessmentData.dueDate)
-    
+
     // Remove undefined values before updating (Firestore doesn't allow undefined)
     const cleanedData = removeUndefined({
       ...assessmentData,
       updatedAt: serverTimestamp(),
     })
-    
+
     console.log('🔍 DEBUG - After removeUndefined, cleanedData fields:')
     console.log('  - academicPeriod:', cleanedData.academicPeriod)
     console.log('  - assignDate:', cleanedData.assignDate)
     console.log('  - dueDate:', cleanedData.dueDate)
     console.log('🔍 DEBUG - Full cleanedData object:', JSON.stringify(cleanedData, null, 2))
-    
+
     const docRef = doc(db, 'assessments', assessmentId)
     console.log('🔍 DEBUG - About to call updateDoc...')
     await updateDoc(docRef, cleanedData)
@@ -343,8 +343,22 @@ export const getAssessmentsByStudent = async (
         const { getCurrentAcademicYear, generateAcademicYear, getCurrentPeriod } = await import(
           '@/types/academicPeriods'
         )
-        const yearString = getCurrentAcademicYear()
-        const academicYear = generateAcademicYear(yearString, 'quarters')
+        const { loadAcademicPeriodSettings } = await import('@/firebase/appSettingsService')
+
+        // Load configured settings from Firestore instead of using hardcoded defaults
+        let academicYear = await loadAcademicPeriodSettings()
+
+        if (!academicYear) {
+          // Fallback to hardcoded defaults if no settings saved
+          console.log('⚠️ No academic period settings found, using default quarters')
+          const yearString = getCurrentAcademicYear()
+          academicYear = generateAcademicYear(yearString, 'quarters')
+        } else {
+          console.log(
+            `✅ Using configured academic period settings: ${academicYear.periodType} for ${academicYear.year}`,
+          )
+        }
+
         const currentPeriod = getCurrentPeriod(academicYear)
         currentPeriodId = currentPeriod?.id || null
 
@@ -878,7 +892,12 @@ export async function regradeAssessmentResults(
               const trimmedUserAnswer = userAnswer.trim()
               const trimmedCorrectAnswer = question.correctAnswer.trim()
 
-              isCorrect = areAnswersEquivalent(trimmedUserAnswer, trimmedCorrectAnswer)
+              // Pass acceptAnyVariable flag to comparison function
+              isCorrect = areAnswersEquivalent(
+                trimmedUserAnswer,
+                trimmedCorrectAnswer,
+                question.acceptAnyVariable,
+              )
 
               // Check acceptable answers if available
               if (
@@ -888,7 +907,13 @@ export async function regradeAssessmentResults(
               ) {
                 for (const acceptableAnswer of question.acceptableAnswers) {
                   const trimmedAcceptableAnswer = acceptableAnswer.trim()
-                  if (areAnswersEquivalent(trimmedUserAnswer, trimmedAcceptableAnswer)) {
+                  if (
+                    areAnswersEquivalent(
+                      trimmedUserAnswer,
+                      trimmedAcceptableAnswer,
+                      question.acceptAnyVariable,
+                    )
+                  ) {
                     isCorrect = true
                     break
                   }

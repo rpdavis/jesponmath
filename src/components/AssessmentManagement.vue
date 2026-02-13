@@ -761,9 +761,15 @@ const assignToStudents = (assessment: Assessment) => {
   showBulkAssignModal.value = true;
 };
 
-const viewResults = (assessment: Assessment) => {
-  // TODO: Create assessment results view
-  router.push(`/assessment/${assessment.id}/results`);
+const viewResults = async (assessment: Assessment) => {
+  try {
+    console.log('📊 Viewing results for assessment:', assessment.title);
+    // Navigate to the new results overview page
+    router.push(`/assessment/${assessment.id}/results`);
+  } catch (error) {
+    console.error('Error viewing results:', error);
+    alert('Failed to view results. Please try again.');
+  }
 };
 
 const duplicateAssessment = async (assessment: Assessment) => {

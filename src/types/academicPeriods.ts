@@ -132,38 +132,47 @@ export function getDefaultPeriod(academicYear: AcademicYear): AcademicPeriod {
 
 export function filterAssessmentsByPeriod(assessments: any[], period: AcademicPeriod): any[] {
   return assessments.filter(assessment => {
-    // Priority 1: Use assignment start/end dates if both are set
+    // Priority 1: Check academicPeriod field first (matches getAssessmentsByStudent logic)
+    // This ensures consistency - assessments are filtered by their assigned quarter
+    const assessmentPeriod = assessment.academicPeriod;
+    
+    if (assessmentPeriod) {
+      // If assessment has academicPeriod set, use it for filtering
+      if (assessmentPeriod === 'all') {
+        // Explicitly marked as "all year" - show in all quarters
+        return true;
+      }
+      
+      // Check if matches current period
+      if (assessmentPeriod === period.id) {
+        return true;
+      }
+      
+      // If academicPeriod is set but doesn't match, don't show
+      return false;
+    }
+    
+    // Priority 2: Fallback to date-based filtering for backwards compatibility
+    // (for assessments without academicPeriod set - old assessments)
     if (assessment.assignDate && assessment.dueDate) {
       const assignStart = assessment.assignDate?.toDate?.() || new Date(assessment.assignDate);
       const assignEnd = assessment.dueDate?.toDate?.() || new Date(assessment.dueDate);
       
-      // Assessment should show in period if:
-      // - Assignment starts before period ends AND
-      // - Assignment ends after period starts (overlaps with period)
+      // Assessment should show in period if it overlaps
       const overlapsWithPeriod = assignStart <= period.endDate && assignEnd >= period.startDate;
-      
-      console.log(`📅 Assessment "${assessment.title}": Assign ${assignStart.toLocaleDateString()} - ${assignEnd.toLocaleDateString()}, Period ${period.startDate.toLocaleDateString()} - ${period.endDate.toLocaleDateString()}, Overlaps: ${overlapsWithPeriod}`);
       
       return overlapsWithPeriod;
     }
     
-    // Priority 2: Use assignment start date if only start is set
+    // Priority 3: Use assignment start date if only start is set
     if (assessment.assignDate) {
       const assignStart = assessment.assignDate?.toDate?.() || new Date(assessment.assignDate);
-      const isInPeriod = assignStart >= period.startDate && assignStart <= period.endDate;
-      
-      console.log(`📅 Assessment "${assessment.title}": Assign start ${assignStart.toLocaleDateString()}, Period ${period.startDate.toLocaleDateString()} - ${period.endDate.toLocaleDateString()}, In period: ${isInPeriod}`);
-      
-      return isInPeriod;
+      return assignStart >= period.startDate && assignStart <= period.endDate;
     }
     
-    // Fallback: Use creation date if no assignment dates are set
+    // Priority 4: Fallback to creation date
     const createdAt = assessment.createdAt?.toDate?.() || new Date(assessment.createdAt);
-    const isInPeriod = createdAt >= period.startDate && createdAt <= period.endDate;
-    
-    console.log(`📅 Assessment "${assessment.title}": Created ${createdAt.toLocaleDateString()} (fallback), Period ${period.startDate.toLocaleDateString()} - ${period.endDate.toLocaleDateString()}, In period: ${isInPeriod}`);
-    
-    return isInPeriod;
+    return createdAt >= period.startDate && createdAt <= period.endDate;
   });
 }
 

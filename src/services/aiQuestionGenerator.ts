@@ -13,6 +13,7 @@
 
 import type { Goal, GoalTemplate } from '@/types/iep'
 import { getAIModel } from '@/config/aiModels'
+import { ensureLatexWrapped } from '@/utils/latexUtils'
 
 export interface QuestionResult {
   question: string
@@ -24,6 +25,19 @@ export interface QuestionResult {
   requiresPhoto?: boolean
   source?: 'template' | 'ai' | 'ai-with-template-reference' | 'fallback' // Track generation source
   aiError?: string // AI error message if generation failed
+  questionType?:
+    | 'multiple-choice'
+    | 'short-answer'
+    | 'essay'
+    | 'true-false'
+    | 'fill-blank'
+    | 'matching'
+    | 'fraction'
+    | 'rank-order'
+    | 'checkbox'
+    | 'horizontal-ordering'
+    | 'algebra-tiles' // Question type
+  options?: string[] // For multiple-choice questions
 }
 
 export interface AIGeneratorConfig {
@@ -209,6 +223,8 @@ async function generateWithOpenAI(
         ? parsed.explanation.trim().replace(/^\n+/, '').replace(/\n+$/, '')
         : undefined,
       requiresPhoto: parsed.requiresPhoto !== false, // Default to true for math
+      questionType: parsed.questionType || 'short-answer',
+      options: parsed.options || undefined, // Include options if present
       source: 'ai',
     }
   } catch (parseError) {
@@ -291,6 +307,8 @@ async function generateWithAnthropic(
         ? parsed.explanation.trim().replace(/^\n+/, '').replace(/\n+$/, '')
         : undefined,
       requiresPhoto: parsed.requiresPhoto !== false,
+      questionType: parsed.questionType || 'short-answer',
+      options: parsed.options || undefined, // Include options if present
       source: 'ai',
     }
   } catch (parseError) {
@@ -421,6 +439,8 @@ async function generateWithGoogle(
         ? parsed.explanation.trim().replace(/^\n+/, '').replace(/\n+$/, '')
         : undefined,
       requiresPhoto: parsed.requiresPhoto !== false,
+      questionType: parsed.questionType || 'short-answer',
+      options: parsed.options || undefined, // Include options if present
       source: 'ai',
     }
   } catch (parseError) {
@@ -801,9 +821,10 @@ $$\\\\begin{array}{r}
 \\\\times \\\\underline{\\\\phantom{00}5} \\\\\\\\
 \\\\end{array}$$
 
-**For DIVISION (2+ digits) - Use LONG DIVISION format**:
-CORRECT: $$5 \\\\overline{)143}$$
-or: $$23 \\\\overline{)143}$$
+**For DIVISION (2+ digits) - Use LONG DIVISION format with \\\\longdiv**:
+CORRECT: $$\\\\longdiv{5}{143}$$ (for 143 ÷ 5)
+or: $$\\\\longdiv{23}{143}$$ (for 143 ÷ 23)
+Alternative (simpler): $$5 \\\\overline{)143}$$ or $$23 \\\\overline{)143}$$
 
 **For single-digit or simple operations** - Use inline format:
 - CORRECT: Calculate: $5 + 3$
@@ -1045,7 +1066,9 @@ ANSWER AFFIXES (Prefix/Suffix):
 Return your response as JSON with this exact format:
 {
   "question": "The full question text here",
-  "answer": "6",  // Simple answer: just the number or simple expression
+  "questionType": "short-answer",  // or "multiple-choice", "essay", etc.
+  "answer": "6",  // Simple answer: just the number or simple expression (for multiple-choice, this is the correct option letter like "A" or "B")
+  "options": ["Option A text", "Option B text", "Option C text", "Option D text"],  // REQUIRED for multiple-choice, omit for other types
   "answerPrefix": "x=",  // Optional: prefix like "x=" or "$" (empty string if none)
   "answerSuffix": " hours",  // Optional: suffix like " hours", " dollars", " feet" (empty string if none)
   "alternativeAnswers": ["6", "6.0", "+6", "x=6"],  // Only CORRECT alternative formats
@@ -1053,19 +1076,41 @@ Return your response as JSON with this exact format:
   "requiresPhoto": true or false
 }
 
+**🔥 MULTIPLE-CHOICE QUESTIONS 🔥**
+If generating a multiple-choice question:
+1. Set "questionType": "multiple-choice"
+2. Include "options" array with EXACTLY 4 choices
+3. Set "answer" to the LETTER of the correct option (e.g., "A", "B", "C", or "D")
+4. Make sure options are varied and plausible (include common mistakes as wrong answers)
+5. Only ONE option should be correct
+6. Options should be in a logical order when possible (e.g., numerical order for numbers)
+
+Example multiple-choice format:
+{
+  "question": "What is $12 \\\\times 3$?",
+  "questionType": "multiple-choice",
+  "answer": "B",
+  "options": ["24", "36", "48", "30"],
+  "explanation": "Multiply 12 by 3 to get 36.",
+  "requiresPhoto": false
+}
+
 IMPORTANT FORMATTING RULES:
 - Do NOT use markdown formatting (no *, -, #, etc.) in the question text
 - Use plain text with line breaks (\\n) for multi-line questions
 - For lists, use numbered items (1), 2), 3)) or plain text, NOT markdown bullets
 - Keep the question text clean and readable without special formatting characters
-- **CRITICAL: ALL LaTeX/KaTeX expressions MUST be wrapped in dollar signs ($...$ or $$...$$)**
+- **🔥 CRITICAL: ALL LaTeX/KaTeX expressions MUST be wrapped in dollar signs ($...$ or $$...$$) 🔥**
 - **NEVER write LaTeX commands without dollar signs - they will NOT render!**
-- Use $...$ for inline math (e.g., $x = 5$) and $$...$$ for standalone equations.
+- Use $...$ for inline math (e.g., $x = 5$) and $$...$$ for standalone equations or stacked operations.
 - **IMPORTANT**: When using LaTeX commands in JSON, you MUST use DOUBLE BACKSLASHES.
 - Example: For fractions, use "$\\\\frac{1}{2}$" (double backslash, WITH dollar signs)
 - Example: For square roots, use "$\\\\sqrt{25}$" (double backslash, WITH dollar signs)
+- Example: For stacked addition: "$$\\\\begin{array}{r} 12 \\\\\\\\ + 3 \\\\\\\\ \\\\hline 15 \\\\end{array}$$"
 - **WRONG**: "Calculate \\\\frac{1}{2}" (no dollar signs - will NOT render!)
 - **CORRECT**: "Calculate $\\\\frac{1}{2}$" (with dollar signs - will render!)
+- **WRONG**: "\\\\times" alone (will not render)
+- **CORRECT**: "$\\\\times$" (will render as ×)
 - This is because JSON strings treat single backslash as an escape character.
 - **CRITICAL FOR MONEY (DOLLAR AMOUNTS)**: Wrap dollar amounts in math mode with escaped dollar sign:
   * CORRECT: "$\\\\$18.25$" (renders as $18.25)
@@ -1133,90 +1178,6 @@ Now generate the question:`
 }
 
 /**
- * Auto-wrap LaTeX expressions in dollar signs if they're not already wrapped
- * Handles both escaped (\\frac) and unescaped (\frac) LaTeX commands
- */
-function wrapLatexInDollars(text: string): string {
-  if (!text) return text
-
-  // Helper to check if a position is already inside dollar signs
-  const isInsideDollars = (str: string, pos: number): boolean => {
-    const before = str.substring(0, pos)
-    const dollarCount = (before.match(/\$/g) || []).length
-    return dollarCount % 2 === 1
-  }
-
-  let result = text
-
-  // Pattern 1: \\frac{}{} or \frac{}{} - most common (handles escaped backslashes from JSON)
-  result = result.replace(
-    /([^$])(\\{1,2}frac\{[^}]+\}\{[^}]+\})([^$])/g,
-    (match, before, latex, after, offset) => {
-      if (isInsideDollars(result, offset)) return match
-      return before + '$' + latex + '$' + after
-    },
-  )
-
-  // Pattern 2: \\sqrt{} or \sqrt{}
-  result = result.replace(
-    /([^$])(\\{1,2}sqrt\{[^}]+\})([^$])/g,
-    (match, before, latex, after, offset) => {
-      if (isInsideDollars(result, offset)) return match
-      return before + '$' + latex + '$' + after
-    },
-  )
-
-  // Pattern 3: \\begin{array}...\\end{array} (multi-line, handles escaped backslashes)
-  result = result.replace(
-    /([^$])(\\{1,2}begin\{array\}[^]*?\\{1,2}end\{array\})([^$])/gs,
-    (match, before, latex, after, offset) => {
-      if (isInsideDollars(result, offset)) return match
-      return before + '$$' + latex + '$$' + after
-    },
-  )
-
-  // Pattern 4: Other common LaTeX commands with braces (\\overline{}, etc.)
-  const singleArgCommands = ['overline', 'underline', 'phantom']
-  singleArgCommands.forEach((cmd) => {
-    result = result.replace(
-      new RegExp(`([^$])(\\\\{1,2}${cmd}\\{[^}]+\\})([^$])`, 'g'),
-      (match, before, latex, after, offset) => {
-        if (isInsideDollars(result, offset)) return match
-        return before + '$' + latex + '$' + after
-      },
-    )
-  })
-
-  // Pattern 5: Standalone LaTeX commands like \\times, \\div, \\pi (handles escaped)
-  const standaloneCommands = [
-    'times',
-    'div',
-    'pm',
-    'mp',
-    'pi',
-    'theta',
-    'alpha',
-    'beta',
-    'cdot',
-    'approx',
-    'neq',
-    'leq',
-    'geq',
-  ]
-  standaloneCommands.forEach((cmd) => {
-    result = result.replace(
-      new RegExp(`([^$\\\\])(\\\\{1,2}${cmd})([^$\\\\{])`, 'g'),
-      (match, before, latex, after, offset) => {
-        if (isInsideDollars(result, offset)) return match
-        return before + '$' + latex + '$' + after
-      },
-    )
-  })
-
-  return result
-}
-
-/**
  * Clean question text by removing leading/trailing newlines and markdown formatting
  */
 function cleanQuestionText(text: string): string {
@@ -1233,8 +1194,8 @@ function cleanQuestionText(text: string): string {
     .replace(/^\*\s+/, '') // Remove any remaining leading markdown bullets
     .trim()
 
-  // Auto-wrap LaTeX expressions in dollar signs
-  cleaned = wrapLatexInDollars(cleaned)
+  // Auto-wrap LaTeX expressions in dollar signs using shared utility
+  cleaned = ensureLatexWrapped(cleaned)
 
   return cleaned
 }

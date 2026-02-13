@@ -1222,7 +1222,7 @@ const loadData = async () => {
 
     // Load all data in parallel
     const [assessmentsList, resultsList, goalsList, fluencyList, studentData, allCustomStandards] = await Promise.all([
-      getAssessmentsByStudent(studentId),
+      getAssessmentsByStudent(studentId, false), // Pass false to load all assessments regardless of period
       getAssessmentResultsByStudent(studentId),
       getGoalsByStudent(studentId),
       getAllFluencyProgress(studentId),

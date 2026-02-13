@@ -41,8 +41,9 @@ const inputValue = computed({
     const cleanedValue = value
       .replace(/&nbsp;/g, ' ')  // Replace &nbsp; with regular spaces
       .replace(/<[^>]*>/g, '')  // Remove any HTML tags
+      .replace(/\\/g, '/')      // Convert backslashes to forward slashes (for fractions: 3\4 → 3/4)
       .trim();                  // Trim leading/trailing spaces
-    
+
     emit('update:modelValue', cleanedValue);
   }
 });

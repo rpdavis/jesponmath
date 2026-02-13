@@ -314,6 +314,7 @@ const editAssessment = (assessmentId: string) => {
 };
 
 const viewResults = (assessmentId: string) => {
+  // Navigate to the results overview page
   router.push(`/assessment/${assessmentId}/results`);
 };
 

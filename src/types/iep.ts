@@ -161,6 +161,7 @@ export interface AssessmentQuestion {
   correctAnswer: string | string[]
   acceptableAnswers?: string[] // Alternative acceptable answers for short-answer
   acceptEquivalentFractions?: boolean // Accept all equivalent fractions (e.g., 1/2 = 2/4 = 3/6)
+  acceptAnyVariable?: boolean // Accept any single-letter variable (e.g., 4x+5=6 same as 4c+5=6)
   correctFractionAnswers?: (FractionAnswer | string)[] // Support multiple equivalent fraction answers
   // Answer prefix/suffix (for standardizing answers)
   answerPrefix?: string // Text to show before answer (e.g., "x=" for "x=10")
@@ -187,7 +188,7 @@ export interface AssessmentQuestion {
   // For fill-blank questions
   blankFormat?: string // Format string with ___ as placeholder (e.g., "___ minutes" or "Answer: ___ dollars")
   blankPosition?: 'before' | 'after' | 'inline' // Position of blank relative to unit/text
-  
+
   // Multi-part/Composite question support (NEW)
   subQuestions?: AssessmentSubQuestion[] // Parts A, B, C, etc. for linked questions
   subQuestionScoringMode?: 'all-or-nothing' | 'proportional' // How to score sub-questions
@@ -242,6 +243,7 @@ export interface AssessmentResponse {
   adjustedBy?: string
   adjustedAt?: Date
   adjustmentReason?: string
+  teacherComment?: string // Teacher's comment/feedback for the student
   regraded?: boolean
   regradedAt?: Date
   regradedBy?: string
@@ -474,19 +476,27 @@ export interface GoalTemplate {
   exampleAnswer?: string // Example correct answer
   exampleAlternativeAnswers?: string // Comma-separated alternative answers
   exampleExplanation?: string // Example explanation
-  
+
   // NEW: Template questions - actual questions that define this template
   templateQuestions?: TemplateQuestion[] // Array of template questions that users can edit
   numberOfQuestions?: number // Number of questions in template (1-20, default 5)
-  
+
   // NEW: Student-facing directions on how to solve this type of problem
   directions?: string // Step-by-step directions for students (e.g., "1. Read the problem carefully. 2. Identify what you need to find...")
-  
+
   // NEW: Khan Academy video link for this problem type
   khanAcademyVideoUrl?: string // URL to Khan Academy video explaining this concept (e.g., "https://www.khanacademy.org/math/...")
-  
+
   // NEW: Word problem frame type (for providing student-friendly solving frameworks)
-  problemFrameType?: 'combine' | 'change' | 'compare' | 'missing-part' | 'equal-groups' | 'comparison' | 'multi-step' | 'other' // The story structure/frame of the word problem
+  problemFrameType?:
+    | 'combine'
+    | 'change'
+    | 'compare'
+    | 'missing-part'
+    | 'equal-groups'
+    | 'comparison'
+    | 'multi-step'
+    | 'other' // The story structure/frame of the word problem
 
   // DEPRECATED: Old structured problem characteristics (kept for backward compatibility)
   problemStructure?: {

@@ -94,15 +94,27 @@
 
                   <!-- Editing mode -->
                   <div v-else class="points-editing">
-                    <input
-                      v-model.number="editingValues[response.questionId]"
-                      type="number"
-                      :min="0"
-                      :max="getQuestionPoints(response.questionId)"
-                      step="0.5"
-                      class="points-input"
-                    />
-                    <span class="points-max">/ {{ getQuestionPoints(response.questionId) }} pts</span>
+                    <div class="points-input-row">
+                      <input
+                        v-model.number="editingValues[response.questionId]"
+                        type="number"
+                        :min="0"
+                        :max="getQuestionPoints(response.questionId)"
+                        step="0.5"
+                        class="points-input"
+                      />
+                      <span class="points-max">/ {{ getQuestionPoints(response.questionId) }} pts</span>
+                    </div>
+
+                    <div class="comment-input-row">
+                      <label for="teacher-comment" class="comment-label">💬 Comment for student (optional):</label>
+                      <textarea
+                        v-model="editingComments[response.questionId]"
+                        class="comment-textarea"
+                        placeholder="Explain why points were adjusted..."
+                        rows="2"
+                      ></textarea>
+                    </div>
 
                     <div class="edit-actions">
                       <button
@@ -132,6 +144,11 @@
                   <span v-if="response.manuallyAdjusted" class="adjustment-note">
                     (Adjusted by teacher)
                   </span>
+                  <!-- Show teacher comment if exists -->
+                  <div v-if="response.teacherComment" class="teacher-comment-display">
+                    <strong>💬 Teacher Comment:</strong>
+                    <p>{{ response.teacherComment }}</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -344,6 +361,7 @@ const assessment = ref<Assessment | null>(null);
 // Point editing state (teachers only)
 const editingPoints = ref<Record<string, boolean>>({});
 const editingValues = ref<Record<string, number>>({});
+const editingComments = ref<Record<string, string>>({});
 const savingPoints = ref<Record<string, boolean>>({});
 
 // Photo replacement state
@@ -647,17 +665,22 @@ const formatFileSize = (bytes: number): string => {
 const startEditingPoints = (questionId: string, currentPoints: number) => {
   editingPoints.value[questionId] = true;
   editingValues.value[questionId] = currentPoints;
+  // Load existing comment if any
+  const response = result.value?.responses?.find(r => r.questionId === questionId);
+  editingComments.value[questionId] = response?.teacherComment || '';
 };
 
 const cancelEditingPoints = (questionId: string) => {
   editingPoints.value[questionId] = false;
   delete editingValues.value[questionId];
+  delete editingComments.value[questionId];
 };
 
 const savePointsEdit = async (questionId: string) => {
   if (!result.value || !assessment.value) return;
 
   const newPoints = editingValues.value[questionId];
+  const newComment = editingComments.value[questionId]?.trim() || '';
   const maxPoints = getQuestionPoints(questionId);
 
   // Validate points
@@ -678,6 +701,14 @@ const savePointsEdit = async (questionId: string) => {
       result.value.responses[responseIndex].adjustedBy = authStore.currentUser?.email || 'Unknown';
       result.value.responses[responseIndex].adjustedAt = new Date();
       result.value.responses[responseIndex].adjustmentReason = newPoints > oldPoints ? 'Partial credit given' : 'Points deducted';
+
+      // Save teacher comment if provided
+      if (newComment) {
+        result.value.responses[responseIndex].teacherComment = newComment;
+      } else {
+        // Remove comment if cleared
+        delete result.value.responses[responseIndex].teacherComment;
+      }
 
       // Update isCorrect based on new points - find the question to get max points
       const question = assessment.value?.questions?.find(q => q.id === questionId);
@@ -1180,9 +1211,50 @@ onMounted(() => {
 
 .points-editing {
   display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.points-input-row {
+  display: flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
+}
+
+.comment-input-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+
+.comment-label {
+  font-size: 0.85rem;
+  color: #4b5563;
+  font-weight: 500;
+}
+
+.comment-textarea {
+  width: 100%;
+  padding: 8px;
+  border: 2px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 60px;
+}
+
+.comment-textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.comment-textarea::placeholder {
+  color: #9ca3af;
+  font-style: italic;
 }
 
 .points-input {
@@ -1202,6 +1274,29 @@ onMounted(() => {
 .edit-actions {
   display: flex;
   gap: 4px;
+}
+
+.teacher-comment-display {
+  margin-top: 8px;
+  padding: 10px;
+  background: #eff6ff;
+  border-left: 3px solid #3b82f6;
+  border-radius: 4px;
+}
+
+.teacher-comment-display strong {
+  color: #1e40af;
+  display: block;
+  margin-bottom: 4px;
+  font-size: 0.9rem;
+}
+
+.teacher-comment-display p {
+  margin: 0;
+  color: #1e3a8a;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
 }
 
 .save-btn, .cancel-btn {

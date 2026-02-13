@@ -40,6 +40,19 @@ export interface QuestionResult {
   source?: 'template' | 'ai' | 'ai-with-template-reference' | 'fallback' // Track generation source
   aiError?: string // AI error message if generation failed
   questionCategory?: 'computation' | 'word-problem' | 'conceptual' | 'application' // NEW: Question type
+  questionType?:
+    | 'multiple-choice'
+    | 'short-answer'
+    | 'essay'
+    | 'true-false'
+    | 'fill-blank'
+    | 'matching'
+    | 'fraction'
+    | 'rank-order'
+    | 'checkbox'
+    | 'horizontal-ordering'
+    | 'algebra-tiles' // Question type
+  options?: string[] // For multiple-choice questions
 }
 
 export interface GoalDetection {

@@ -162,7 +162,7 @@
             </div>
             <div class="modal-body">
               <p class="modal-help-text">
-                Select a question template to use for this goal. When generating assessments, 
+                Select a question template to use for this goal. When generating assessments,
                 the system will use this template first instead of fuzzy matching.
               </p>
 
@@ -175,30 +175,59 @@
                 <p>⚠️ No active templates available. Create templates in the Template Management page.</p>
               </div>
 
-              <div v-else class="templates-list">
-                <div
-                  v-for="template in availableTemplates"
-                  :key="template.id"
-                  class="template-option"
-                  :class="{ selected: selectedTemplateIds.includes(template.id) }"
-                  @click="toggleTemplateSelection(template.id)"
-                >
-                  <div class="template-checkbox">
-                    <input
-                      type="checkbox"
-                      :checked="selectedTemplateIds.includes(template.id)"
-                      @click.stop="toggleTemplateSelection(template.id)"
-                    />
+              <div v-else>
+                <!-- Search Input -->
+                <div class="template-search-box">
+                  <input
+                    v-model="templateSearchQuery"
+                    type="text"
+                    placeholder="🔍 Search templates by name, subject, topic, or area..."
+                    class="template-search-input"
+                  />
+                  <button
+                    v-if="templateSearchQuery"
+                    @click="templateSearchQuery = ''"
+                    class="clear-search-btn"
+                    title="Clear search"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <!-- Results Count -->
+                <div v-if="templateSearchQuery" class="search-results-info">
+                  {{ filteredTemplates.length }} of {{ availableTemplates.length }} templates
+                </div>
+
+                <!-- Templates List -->
+                <div class="templates-list">
+                  <div v-if="filteredTemplates.length === 0" class="no-search-results">
+                    <p>No templates match "{{ templateSearchQuery }}"</p>
                   </div>
-                  <div class="template-info">
-                    <div class="template-name">{{ template.name }}</div>
-                    <div class="template-details">
-                      <span class="template-meta">{{ template.subject }}</span>
-                      <span v-if="template.topic" class="template-meta">{{ template.topic }}</span>
-                      <span class="template-meta">{{ template.areaOfNeed }}</span>
+                  <div
+                    v-for="template in filteredTemplates"
+                    :key="template.id"
+                    class="template-option"
+                    :class="{ selected: selectedTemplateIds.includes(template.id) }"
+                    @click="toggleTemplateSelection(template.id)"
+                  >
+                    <div class="template-checkbox">
+                      <input
+                        type="checkbox"
+                        :checked="selectedTemplateIds.includes(template.id)"
+                        @click.stop="toggleTemplateSelection(template.id)"
+                      />
                     </div>
-                    <div v-if="template.exampleQuestion" class="template-example">
-                      {{ template.exampleQuestion.substring(0, 100) }}{{ template.exampleQuestion.length > 100 ? '...' : '' }}
+                    <div class="template-info">
+                      <div class="template-name">{{ template.name }}</div>
+                      <div class="template-details">
+                        <span class="template-meta">{{ template.subject }}</span>
+                        <span v-if="template.topic" class="template-meta">{{ template.topic }}</span>
+                        <span class="template-meta">{{ template.areaOfNeed }}</span>
+                      </div>
+                      <div v-if="template.exampleQuestion" class="template-example">
+                        {{ template.exampleQuestion.substring(0, 100) }}{{ template.exampleQuestion.length > 100 ? '...' : '' }}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -206,8 +235,8 @@
             </div>
             <div class="modal-footer">
               <button @click="showTemplateAssignmentModal = false" class="btn btn-secondary">Cancel</button>
-              <button 
-                @click="confirmTemplateAssignment" 
+              <button
+                @click="confirmTemplateAssignment"
                 class="btn btn-primary"
                 :disabled="selectedTemplateIds.length === 0"
               >
@@ -343,11 +372,35 @@ const currentGoalForTemplateAssignment = ref<string | null>(null)
 const availableTemplates = ref<any[]>([])
 const selectedTemplateIds = ref<string[]>([])
 const loadingTemplates = ref(false)
+const templateSearchQuery = ref('')
 
 // Computed
 const availableAssessments = computed(() =>
   assessments.value.filter((assessment) => assessment.category === 'PA'),
 )
+
+// Filtered templates based on search query
+const filteredTemplates = computed(() => {
+  if (!templateSearchQuery.value.trim()) {
+    return availableTemplates.value
+  }
+
+  const query = templateSearchQuery.value.toLowerCase().trim()
+  return availableTemplates.value.filter((template) => {
+    const searchableText = [
+      template.name || '',
+      template.subject || '',
+      template.topic || '',
+      template.areaOfNeed || '',
+      template.description || '',
+      template.exampleQuestion || '',
+    ]
+      .join(' ')
+      .toLowerCase()
+
+    return searchableText.includes(query)
+  })
+})
 
 // Event Handlers
 const handleEditGoal = (goal: Goal) => {
@@ -427,14 +480,14 @@ const handleGenerateAssessments = async (goalId: string) => {
     try {
       const { getTemplate } = await import('@/firebase/templateServices')
       const templatePreviews = []
-      
+
       for (const templateId of goal.preferredTemplateIds) {
         const template = await getTemplate(templateId)
         if (template && template.isActive) {
           templatePreviews.push(template)
         }
       }
-      
+
       if (templatePreviews.length > 0) {
         // Show template preview modal
         templatePreviewsForGeneration.value = templatePreviews
@@ -446,26 +499,26 @@ const handleGenerateAssessments = async (goalId: string) => {
       console.error('Error loading templates:', error)
     }
   }
-  
+
   // If no templates or error, proceed directly
   await generateAssessmentsForGoalService(goalId, goals.value)
 }
 
 const confirmGenerateWithTemplates = async () => {
   if (!goalForTemplatePreview.value) return
-  
+
   try {
     console.log('🎯 Proceeding with assessment generation for goal:', goalForTemplatePreview.value.id)
-    
+
     // Set the goal in the composable so proceedWithGeneration can use it
     currentGoalForGeneration.value = goalForTemplatePreview.value
-    
+
     // Close modal first
     showTemplatePreviewBeforeGeneration.value = false
-    
+
     // Call proceedWithGeneration from the composable (bypasses template check)
     await proceedWithGeneration()
-    
+
     console.log('✅ Assessment generation completed')
   } catch (error) {
     console.error('❌ Error generating assessments:', error)
@@ -538,25 +591,25 @@ const handleGenerateTemplate = async (goal: Goal) => {
 
   try {
     console.log('🤖 Generating template draft(s) from goal:', goal.goalTitle)
-    
+
     const { generateTemplateDrafts } = await import('@/services/templateDraftGenerator')
     const { createTemplate } = await import('@/firebase/templateServices')
-    
+
     // Show loading indicator
     alert('🤖 AI is analyzing your goal and generating template draft(s). This may take 15-30 seconds...')
-    
+
     // Generate the draft(s)
     const drafts = await generateTemplateDrafts(
       goal.goalText,
       goal.goalTitle,
       goal.areaOfNeed
     )
-    
+
     console.log(`✅ ${drafts.length} draft(s) generated successfully:`, drafts.map(d => d.name))
-    
+
     // Save each template
     const newTemplateIds: string[] = []
-    
+
     for (const draft of drafts) {
       // Build template data from draft
       const templateData: any = {
@@ -572,7 +625,7 @@ const handleGenerateTemplate = async (goal: Goal) => {
         createdBy: authStore.currentUser?.uid || '',
         isActive: true,
       }
-      
+
       // Add optional fields
       if (draft.description) templateData.description = draft.description
       if (draft.exampleExplanation) templateData.exampleExplanation = draft.exampleExplanation
@@ -582,7 +635,7 @@ const handleGenerateTemplate = async (goal: Goal) => {
       if (draft.allowedOperations && draft.allowedOperations.length > 0) {
         templateData.allowedOperations = draft.allowedOperations
       }
-      
+
       // Add problem structure if provided
       if (draft.problemStructure) {
         const ps = draft.problemStructure
@@ -596,25 +649,25 @@ const handleGenerateTemplate = async (goal: Goal) => {
           ...(ps.forbiddenPatterns && ps.forbiddenPatterns.length > 0 && { forbiddenPatterns: ps.forbiddenPatterns }),
         }
       }
-      
+
       // Add custom AI prompt
       if (draft.customAIPrompt) templateData.customAIPrompt = draft.customAIPrompt
-      
+
       // Save the template
       const newTemplateId = await createTemplate(templateData)
       console.log(`✅ Template "${draft.name}" saved with ID:`, newTemplateId)
       newTemplateIds.push(newTemplateId)
     }
-    
+
     // Auto-assign ALL new templates to this goal
     const { updateGoal } = await import('@/firebase/goalServices')
     const existingTemplateIds = goal.preferredTemplateIds || []
     const allTemplateIds = [...existingTemplateIds, ...newTemplateIds]
     await updateGoal(goal.id, { preferredTemplateIds: allTemplateIds })
-    
+
     // Reload data
     await loadData()
-    
+
     if (drafts.length === 1) {
       alert(`✅ Template "${drafts[0].name}" created and assigned to goal!\n\nYou can edit it in Admin → Goal Template Management if needed.`)
     } else {
@@ -631,7 +684,8 @@ const handleGenerateTemplate = async (goal: Goal) => {
 const handleAssignTemplate = async (goalId: string) => {
   currentGoalForTemplateAssignment.value = goalId
   selectedTemplateIds.value = []
-  
+  templateSearchQuery.value = '' // Clear search when opening modal
+
   // Load available templates
   loadingTemplates.value = true
   try {
@@ -648,15 +702,15 @@ const handleAssignTemplate = async (goalId: string) => {
 
 const handleRemoveTemplate = async (goalId: string, templateId: string) => {
   if (!confirm('Remove this template from the goal?')) return
-  
+
   try {
     const { updateGoal } = await import('@/firebase/goalServices')
     const goal = goals.value.find(g => g.id === goalId)
     if (!goal) return
-    
+
     const updatedTemplateIds = (goal.preferredTemplateIds || []).filter(id => id !== templateId)
     await updateGoal(goalId, { preferredTemplateIds: updatedTemplateIds })
-    
+
     // Reload data
     await loadData()
     alert('✅ Template removed from goal!')
@@ -677,27 +731,27 @@ const toggleTemplateSelection = (templateId: string) => {
 
 const confirmTemplateAssignment = async () => {
   if (!currentGoalForTemplateAssignment.value || selectedTemplateIds.value.length === 0) return
-  
+
   try {
     const { updateGoal } = await import('@/firebase/goalServices')
     const goalId = currentGoalForTemplateAssignment.value
     const goal = goals.value.find(g => g.id === goalId)
     if (!goal) return
-    
+
     // Merge with existing template IDs (if any)
     const existingIds = goal.preferredTemplateIds || []
     const newIds = [...new Set([...existingIds, ...selectedTemplateIds.value])]
-    
+
     await updateGoal(goalId, { preferredTemplateIds: newIds })
-    
+
     const assignedCount = selectedTemplateIds.value.length // Store before clearing
-    
+
     // Close modal and reload
     showTemplateAssignmentModal.value = false
     currentGoalForTemplateAssignment.value = null
     selectedTemplateIds.value = []
     await loadData()
-    
+
     alert(`✅ ${assignedCount} template(s) assigned to goal!`)
   } catch (error) {
     console.error('Error assigning templates:', error)
@@ -714,20 +768,20 @@ const closeImportModal = () => {
 const handleImportedAssessment = async (assessmentData: any) => {
   try {
     const { createAssessment } = await import('@/firebase/iepServices')
-    
+
     // Set createdBy to current user
     assessmentData.createdBy = authStore.currentUser?.uid || ''
-    
+
     // Create the assessment
     const newAssessmentId = await createAssessment(assessmentData)
-    
+
     console.log('✅ Assessment imported successfully:', newAssessmentId)
-    
+
     // Reload data
     await loadData()
-    
+
     alert(`✅ Assessment "${assessmentData.title}" imported successfully!`)
-    
+
     // Close modal
     closeImportModal()
   } catch (error) {
@@ -975,6 +1029,63 @@ onMounted(() => {
   text-align: center;
   padding: 2rem;
   color: #6c757d;
+}
+
+.template-search-box {
+  position: relative;
+  margin-bottom: 1rem;
+}
+
+.template-search-input {
+  width: 100%;
+  padding: 0.75rem 2.5rem 0.75rem 1rem;
+  border: 2px solid #dee2e6;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  transition: border-color 0.2s;
+}
+
+.template-search-input:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.clear-search-btn {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #6c757d;
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  line-height: 1;
+  transition: color 0.2s;
+}
+
+.clear-search-btn:hover {
+  color: #495057;
+}
+
+.search-results-info {
+  font-size: 0.875rem;
+  color: #6c757d;
+  margin-bottom: 0.75rem;
+  padding-left: 0.25rem;
+}
+
+.no-search-results {
+  text-align: center;
+  padding: 2rem;
+  color: #6c757d;
+}
+
+.no-search-results p {
+  margin: 0;
+  font-style: italic;
 }
 
 .templates-list {

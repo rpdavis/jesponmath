@@ -76,6 +76,9 @@
             </div>
           </div>
           <div class="template-actions">
+            <button @click="generateGoalFromTemplate(template)" class="btn-icon" title="Generate Goal from Template">
+              🎯
+            </button>
             <button @click="editTemplate(template)" class="btn-icon" title="Edit">
               ✏️
             </button>
@@ -158,13 +161,30 @@
               <div v-if="template.exampleExplanation"><strong>Explanation:</strong> {{ template.exampleExplanation }}</div>
             </div>
           </div>
-          <div v-if="template.exampleGoal" class="template-field">
-            <strong>Example Goal:</strong>
-            <span class="example-text">{{ template.exampleGoal }}</span>
-          </div>
         </div>
 
         <div class="template-footer">
+          <div class="template-usage-summary">
+            <div
+              v-if="getLinkedGoals(template.id).length > 0"
+              class="usage-stat goals-stat"
+              :title="getLinkedGoals(template.id).map(g => `• ${g.goalTitle} (${getGoalStudents(g)})`).join('\n')"
+            >
+              <span class="usage-count">{{ getLinkedGoals(template.id).length }}</span>
+              <span class="usage-label">Goal{{ getLinkedGoals(template.id).length !== 1 ? 's' : '' }}</span>
+            </div>
+            <div
+              v-if="getTemplateStudentCount(template.id) > 0"
+              class="usage-stat students-stat"
+              :title="getTemplateStudentNames(template.id)"
+            >
+              <span class="usage-count">{{ getTemplateStudentCount(template.id) }}</span>
+              <span class="usage-label">Student{{ getTemplateStudentCount(template.id) !== 1 ? 's' : '' }}</span>
+            </div>
+            <span v-if="getLinkedGoals(template.id).length === 0 && getTemplateStudentCount(template.id) === 0" class="no-usage">
+              Not currently in use
+            </span>
+          </div>
           <div class="template-meta">
             <span v-if="template.usageCount !== undefined">
               Used {{ template.usageCount }} time{{ template.usageCount !== 1 ? 's' : '' }}
@@ -240,6 +260,143 @@ Example: 'Given five one-step word problems involving a percentage read aloud, M
               </button>
               <button type="submit" class="btn btn-primary" :disabled="!draftInput.goalText || draftGenerating">
                 {{ draftGenerating ? 'Generating...' : '🤖 Generate Draft' }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Generate Goal from Template Modal -->
+    <div v-if="showGenerateGoalModal && selectedTemplateForGoal" class="modal-overlay" @click="closeGenerateGoal">
+      <div class="modal-content" @click.stop>
+        <div class="modal-header">
+          <h2>🎯 Generate Goal from Template</h2>
+          <button @click="closeGenerateGoal" class="btn-close">✕</button>
+        </div>
+
+        <div class="modal-body">
+          <p class="info-text">
+            Fill in the variables to generate a goal from the "{{ selectedTemplateForGoal.name }}" template.
+          </p>
+
+          <form @submit.prevent="confirmGenerateGoal" class="generate-goal-form">
+            <!-- Variable Inputs (dynamically generated from template) -->
+            <div v-if="goalVariables.length > 0" class="form-section">
+              <h3>Goal Variables</h3>
+              <div v-for="variable in goalVariables" :key="variable" class="form-group">
+                <label>
+                  {{ formatVariableName(variable) }}
+                  <span v-if="variable === 'gradeLevel'" class="required-indicator">*</span>
+                </label>
+                <input
+                  v-model="goalGenerationData.variables[variable]"
+                  type="text"
+                  :placeholder="getVariablePlaceholder(variable)"
+                  :required="variable === 'gradeLevel'"
+                  :class="{ 'field-error': goalGenerationError && variable === 'gradeLevel' && !goalGenerationData.variables[variable] }"
+                />
+                <small v-if="variable === 'gradeLevel'" class="field-help">
+                  Required field - enter a grade level (e.g., 7, 8, 9)
+                </small>
+              </div>
+            </div>
+
+            <!-- Assign to Teacher (Admins only) -->
+            <div v-if="authStore.isAdmin" class="form-section">
+              <h3>Assign to Teacher *</h3>
+              <div class="form-group">
+                <label for="teacherSelect">Select Teacher</label>
+                <select 
+                  id="teacherSelect"
+                  v-model="goalGenerationData.selectedTeacher"
+                  required
+                  class="form-select"
+                >
+                  <option value="">Select a teacher...</option>
+                  <option 
+                    v-for="teacher in availableTeachers" 
+                    :key="teacher.uid" 
+                    :value="teacher.uid"
+                  >
+                    {{ teacher.displayName || `${teacher.firstName} ${teacher.lastName}` }} ({{ teacher.email }})
+                  </option>
+                </select>
+                <small class="field-help">
+                  Required - The teacher who will manage this goal
+                </small>
+              </div>
+            </div>
+
+            <!-- Optional: Assign Students -->
+            <div class="form-section">
+              <h3>Assign Students (Optional)</h3>
+              <div class="form-group">
+                <div class="student-selector-header">
+                  <label>Select Students</label>
+                  <div class="student-selector-actions">
+                    <button
+                      type="button"
+                      @click="selectAllStudents"
+                      class="btn-link"
+                      :disabled="availableStudents.length === 0"
+                    >
+                      Select All
+                    </button>
+                    <span class="separator">|</span>
+                    <button
+                      type="button"
+                      @click="clearAllStudents"
+                      class="btn-link"
+                      :disabled="goalGenerationData.selectedStudents.length === 0"
+                    >
+                      Clear All
+                    </button>
+                  </div>
+                </div>
+                <div class="student-selection-list">
+                  <div v-if="loadingStudents" class="loading-students">
+                    <div class="spinner-small"></div>
+                    <span>Loading students...</span>
+                  </div>
+                  <div v-else-if="availableStudents.length === 0" class="no-students">
+                    No students available
+                  </div>
+                  <div v-else>
+                    <div
+                      v-for="student in availableStudents"
+                      :key="student.uid"
+                      class="student-option"
+                    >
+                      <label :for="`student-${student.uid}`" class="student-label">
+                        <input
+                          :id="`student-${student.uid}`"
+                          type="checkbox"
+                          :value="student.uid"
+                          :checked="goalGenerationData.selectedStudents.includes(student.uid)"
+                          @change="toggleStudentSelection(student.uid)"
+                        />
+                        <span>{{ student.displayName || student.firstName + ' ' + student.lastName }}</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+                <div v-if="goalGenerationData.selectedStudents.length > 0" class="selected-count">
+                  {{ goalGenerationData.selectedStudents.length }} student(s) selected
+                </div>
+              </div>
+            </div>
+
+            <div v-if="goalGenerationError" class="error-message">
+              ❌ {{ goalGenerationError }}
+            </div>
+
+            <div class="modal-actions">
+              <button type="button" @click="closeGenerateGoal" class="btn btn-secondary">
+                Cancel
+              </button>
+              <button type="submit" class="btn btn-primary" :disabled="generatingGoal">
+                {{ generatingGoal ? 'Creating Goal...' : '✅ Create Goal' }}
               </button>
             </div>
           </form>
@@ -811,11 +968,11 @@ import {
   deleteTemplate as deleteTemplateService,
   activateTemplate,
   deactivateTemplate,
-  generateGoalFromTemplate,
+  generateGoalFromTemplate as generateGoalFromTemplateService,
   getTemplate,
 } from '@/firebase/templateServices'
 import { getActiveRubrics } from '@/firebase/rubricServices'
-import { getAllGoals } from '@/firebase/goalServices'
+import { getAllGoals, createGoal } from '@/firebase/goalServices'
 import { generateTemplateDraft } from '@/services/templateDraftGenerator'
 import TemplateQuestionEditor from './TemplateQuestionEditor.vue'
 import type { GoalTemplate, Rubric, Goal, TemplateQuestion } from '@/types/iep'
@@ -848,6 +1005,20 @@ const draftInput = ref({
   goalTitle: '',
   goalText: '',
   areaOfNeed: '',
+})
+
+// Generate Goal from Template State
+const showGenerateGoalModal = ref(false)
+const selectedTemplateForGoal = ref<GoalTemplate | null>(null)
+const generatingGoal = ref(false)
+const goalGenerationError = ref('')
+const availableStudents = ref<any[]>([])
+const availableTeachers = ref<any[]>([])
+const loadingStudents = ref(false)
+const goalGenerationData = ref({
+  variables: {} as Record<string, string>,
+  selectedStudents: [] as string[],
+  selectedTeacher: '', // For admin to assign goal to a teacher
 })
 
 // Filters
@@ -930,6 +1101,27 @@ const filteredTemplates = computed(() => {
   return filtered
 })
 
+// Extract variables from template for goal generation
+const goalVariables = computed(() => {
+  if (!selectedTemplateForGoal.value) return []
+
+  const variables = new Set<string>()
+  const extractVariables = (text: string) => {
+    const matches = text.match(/\{\{(\w+)\}\}/g)
+    if (matches) {
+      matches.forEach(match => {
+        const varName = match.replace(/\{\{|\}\}/g, '')
+        variables.add(varName)
+      })
+    }
+  }
+
+  extractVariables(selectedTemplateForGoal.value.goalTitleTemplate || '')
+  extractVariables(selectedTemplateForGoal.value.goalTextTemplate || '')
+
+  return Array.from(variables)
+})
+
 const previewGoal = computed(() => {
   if (!previewTemplateData.value) {
     return {
@@ -942,7 +1134,7 @@ const previewGoal = computed(() => {
     }
   }
 
-  return generateGoalFromTemplate(previewTemplateData.value, {
+  return generateGoalFromTemplateService(previewTemplateData.value, {
     topic: previewTemplateData.value.topic || 'word problem',
     threshold: previewTemplateData.value.defaultThreshold || '80%',
     condition: previewTemplateData.value.defaultCondition || 'in 3 out of 4 trials',
@@ -1399,6 +1591,196 @@ const generateDraft = async () => {
   }
 }
 
+// Generate Goal from Template Functions
+const generateGoalFromTemplate = async (template: GoalTemplate) => {
+  selectedTemplateForGoal.value = template
+  goalGenerationData.value = {
+    variables: {},
+    selectedStudents: [],
+    selectedTeacher: authStore.isAdmin ? '' : authStore.currentUser?.uid || '', // Default to current user if teacher
+  }
+
+  // Pre-fill variables with defaults if they exist
+  if (template.defaultGradeLevel) {
+    goalGenerationData.value.variables.gradeLevel = template.defaultGradeLevel.toString()
+  }
+  if (template.defaultStandard) {
+    goalGenerationData.value.variables.standard = template.defaultStandard
+  }
+  if (template.defaultThreshold) {
+    goalGenerationData.value.variables.threshold = template.defaultThreshold
+  }
+  if (template.defaultCondition) {
+    goalGenerationData.value.variables.condition = template.defaultCondition
+  }
+  if (template.topic) {
+    goalGenerationData.value.variables.topic = template.topic
+  }
+
+  // Load teachers (for admins only)
+  if (authStore.isAdmin) {
+    try {
+      const { getAllTeachers } = await import('@/firebase/userServices')
+      const allTeachers = await getAllTeachers()
+      availableTeachers.value = allTeachers.filter(t => t.isActive)
+    } catch (error) {
+      console.error('Error loading teachers:', error)
+    }
+  }
+
+  // Load students
+  loadingStudents.value = true
+  try {
+    const { getAllStudents } = await import('@/firebase/userServices')
+    const allStudents = await getAllStudents()
+    availableStudents.value = allStudents.filter(s => s.isActive)
+  } catch (error) {
+    console.error('Error loading students:', error)
+  } finally {
+    loadingStudents.value = false
+  }
+
+  goalGenerationError.value = ''
+  showGenerateGoalModal.value = true
+}
+
+const closeGenerateGoal = () => {
+  showGenerateGoalModal.value = false
+  selectedTemplateForGoal.value = null
+  goalGenerationData.value = {
+    variables: {},
+    selectedStudents: [],
+    selectedTeacher: '',
+  }
+  goalGenerationError.value = ''
+}
+
+const toggleStudentSelection = (studentId: string) => {
+  const index = goalGenerationData.value.selectedStudents.indexOf(studentId)
+  if (index > -1) {
+    goalGenerationData.value.selectedStudents.splice(index, 1)
+  } else {
+    goalGenerationData.value.selectedStudents.push(studentId)
+  }
+}
+
+const selectAllStudents = () => {
+  goalGenerationData.value.selectedStudents = availableStudents.value.map(s => s.uid)
+}
+
+const clearAllStudents = () => {
+  goalGenerationData.value.selectedStudents = []
+}
+
+const formatVariableName = (variable: string): string => {
+  // Convert camelCase to Title Case with spaces
+  return variable
+    .replace(/([A-Z])/g, ' $1')
+    .replace(/^./, str => str.toUpperCase())
+}
+
+const getVariablePlaceholder = (variable: string): string => {
+  const placeholders: Record<string, string> = {
+    gradeLevel: 'e.g., 7',
+    topic: 'e.g., fractions',
+    threshold: 'e.g., 80%',
+    condition: 'e.g., on 4 out of 5 trials',
+    standard: 'e.g., 7.NS.A.1',
+    date: 'e.g., 05/05/2026',
+  }
+  return placeholders[variable] || `Enter ${formatVariableName(variable).toLowerCase()}`
+}
+
+const confirmGenerateGoal = async () => {
+  if (!selectedTemplateForGoal.value) return
+
+  // Validate required fields
+  goalGenerationError.value = ''
+
+  // Check if gradeLevel is required and missing
+  const gradeLevelValue = goalGenerationData.value.variables.gradeLevel || selectedTemplateForGoal.value.defaultGradeLevel
+  if (!gradeLevelValue) {
+    goalGenerationError.value = '⚠️ Grade Level is required. Please enter a grade level to create the goal.'
+    return
+  }
+
+  // Check if teacher is selected (for admins)
+  if (authStore.isAdmin && !goalGenerationData.value.selectedTeacher) {
+    goalGenerationError.value = '⚠️ Teacher assignment is required. Please select a teacher to assign this goal to.'
+    return
+  }
+
+  try {
+    generatingGoal.value = true
+    goalGenerationError.value = ''
+
+    // Replace variables in templates
+    let goalTitle = selectedTemplateForGoal.value.goalTitleTemplate
+    let goalText = selectedTemplateForGoal.value.goalTextTemplate
+    let baseline = selectedTemplateForGoal.value.baselineTemplate || ''
+
+    Object.entries(goalGenerationData.value.variables).forEach(([key, value]) => {
+      const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g')
+      goalTitle = goalTitle.replace(regex, value)
+      goalText = goalText.replace(regex, value)
+      baseline = baseline.replace(regex, value)
+    })
+
+    // Create goal
+    const goalData = {
+      goalTitle,
+      goalText,
+      areaOfNeed: selectedTemplateForGoal.value.areaOfNeed,
+      baseline,
+      gradeLevel: goalGenerationData.value.variables.gradeLevel
+        ? parseInt(goalGenerationData.value.variables.gradeLevel)
+        : selectedTemplateForGoal.value.defaultGradeLevel,
+      standard: goalGenerationData.value.variables.standard || selectedTemplateForGoal.value.defaultStandard || '',
+      startDate: new Date().toISOString().split('T')[0],
+      endDate: goalGenerationData.value.variables.date || '',
+      assignedStudents: goalGenerationData.value.selectedStudents,
+      preferredTemplateIds: [selectedTemplateForGoal.value.id], // Auto-assign template to goal
+      teacherUid: goalGenerationData.value.selectedTeacher || authStore.currentUser?.uid || '', // Use selected teacher or current user
+      isActive: true,
+      createdBy: authStore.currentUser?.uid || '',
+      assignedAssessments: [],
+      isMet: false,
+      isArchived: false,
+    }
+
+    await createGoal(goalData)
+
+    // Reload templates and goals
+    await loadTemplates()
+    await loadGoals()
+
+    // Close modal
+    const templateName = selectedTemplateForGoal.value?.name || 'Unknown Template'
+    const studentCount = goalGenerationData.value.selectedStudents.length
+    closeGenerateGoal()
+
+    // Show success message with option to navigate
+    const message = `✅ Goal created successfully!\n\n${studentCount > 0 ? `📌 Assigned to ${studentCount} student(s)\n` : ''}🎯 Template "${templateName}" automatically assigned to this goal\n\nWould you like to view the goal in Goal Management?`
+
+    if (confirm(message)) {
+      // Navigate to Goal Management (force refresh if already there)
+      const currentPath = router.currentRoute.value.path
+      if (currentPath === '/goals') {
+        // Already on goals page, reload the page
+        window.location.href = '/goals'
+      } else {
+        // Navigate to goals page
+        router.push('/goals')
+      }
+    }
+  } catch (error) {
+    console.error('Error creating goal:', error)
+    goalGenerationError.value = error instanceof Error ? error.message : 'Failed to create goal'
+  } finally {
+    generatingGoal.value = false
+  }
+}
+
 const truncateText = (text: string, maxLength: number): string => {
   if (!text) return ''
   return text.length > maxLength ? text.substring(0, maxLength) + '...' : text
@@ -1436,6 +1818,47 @@ const getGoalStudents = (goal: Goal): string => {
     return '1 student'
   }
   return 'No students'
+}
+
+// Get total unique student count for a template
+const getTemplateStudentCount = (templateId: string): number => {
+  const linkedGoals = getLinkedGoals(templateId)
+  const uniqueStudents = new Set<string>()
+
+  linkedGoals.forEach(goal => {
+    if (goal.assignedStudents && goal.assignedStudents.length > 0) {
+      goal.assignedStudents.forEach(studentUid => uniqueStudents.add(studentUid))
+    } else if (goal.studentUid) {
+      uniqueStudents.add(goal.studentUid)
+    }
+  })
+
+  return uniqueStudents.size
+}
+
+// Get student names for template tooltip
+const getTemplateStudentNames = (templateId: string): string => {
+  const linkedGoals = getLinkedGoals(templateId)
+  const studentGoalsMap = new Map<string, string[]>()
+
+  linkedGoals.forEach(goal => {
+    const students = goal.assignedStudents || (goal.studentUid ? [goal.studentUid] : [])
+    students.forEach(studentUid => {
+      if (!studentGoalsMap.has(studentUid)) {
+        studentGoalsMap.set(studentUid, [])
+      }
+      studentGoalsMap.get(studentUid)?.push(goal.goalTitle)
+    })
+  })
+
+  // Format as list with student name and their goals
+  const lines: string[] = []
+  studentGoalsMap.forEach((goalTitles, studentUid) => {
+    // Try to get student name (would need to load students, for now use UID)
+    lines.push(`• Student ${studentUid.slice(0, 8)}... (${goalTitles.length} goal${goalTitles.length !== 1 ? 's' : ''})`)
+  })
+
+  return lines.join('\n') || 'No students'
 }
 
 // Load goals
@@ -1739,10 +2162,62 @@ onMounted(async () => {
 
 .template-footer {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  gap: 0.75rem;
   padding-top: 1rem;
   border-top: 1px solid #eee;
+}
+
+.template-usage-summary {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.usage-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  background: #f7fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  cursor: help;
+  transition: all 0.2s;
+}
+
+.usage-stat:hover {
+  background: #edf2f7;
+  border-color: #cbd5e0;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.goals-stat {
+  border-left: 3px solid #3b82f6;
+}
+
+.students-stat {
+  border-left: 3px solid #10b981;
+}
+
+.usage-count {
+  font-weight: 700;
+  font-size: 1.125rem;
+  color: #1f2937;
+}
+
+.usage-label {
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.no-usage {
+  font-size: 0.875rem;
+  color: #9ca3af;
+  font-style: italic;
 }
 
 .template-meta {
@@ -1750,6 +2225,8 @@ onMounted(async () => {
   color: #666;
   display: flex;
   gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .btn-sm {
@@ -1775,7 +2252,7 @@ onMounted(async () => {
 .modal-content {
   background: white;
   border-radius: 8px;
-  max-width: 700px;
+  max-width: 900px;
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;
@@ -1784,6 +2261,10 @@ onMounted(async () => {
 
 .modal-preview {
   max-width: 800px;
+}
+
+.modal-body {
+  padding: 1.5rem;
 }
 
 .modal-header {
@@ -1823,6 +2304,34 @@ onMounted(async () => {
 
 .form-group {
   margin-bottom: 1.5rem;
+}
+
+.required-indicator {
+  color: #e53e3e;
+  font-weight: bold;
+  margin-left: 0.25rem;
+}
+
+.field-help {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.875rem;
+  color: #666;
+}
+
+.field-error {
+  border-color: #e53e3e !important;
+  background-color: #fff5f5;
+}
+
+.error-message {
+  background: #fee;
+  border: 1px solid #e53e3e;
+  border-radius: 6px;
+  padding: 1rem;
+  margin: 1rem 0;
+  color: #c53030;
+  font-weight: 500;
 }
 
 .form-row {
@@ -2066,6 +2575,139 @@ onMounted(async () => {
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
+}
+
+/* Generate Goal Modal Styles */
+.generate-goal-form .form-section {
+  margin-bottom: 2rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid #eee;
+}
+
+.generate-goal-form .form-section:last-of-type {
+  border-bottom: none;
+}
+
+.generate-goal-form h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.student-selector-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.student-selector-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: #1976d2;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.btn-link:hover:not(:disabled) {
+  color: #1565c0;
+  text-decoration: underline;
+}
+
+.btn-link:disabled {
+  color: #999;
+  cursor: not-allowed;
+}
+
+.separator {
+  color: #ddd;
+  font-size: 0.875rem;
+}
+
+.student-selection-list {
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 0.5rem;
+  min-height: 200px;
+}
+
+.selected-count {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: #1976d2;
+  font-weight: 500;
+}
+
+.loading-students {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  color: #666;
+}
+
+.spinner-small {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #f3f3f3;
+  border-top: 2px solid #1976d2;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.no-students {
+  padding: 1rem;
+  text-align: center;
+  color: #999;
+  font-style: italic;
+}
+
+.student-option {
+  padding: 0.5rem;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.student-option:hover {
+  background: #f8f9fa;
+}
+
+.student-label {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  width: 100%;
+  padding: 0.25rem;
+}
+
+.student-option input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.student-label span {
+  flex: 1;
+  user-select: none;
+}
+
+.student-option span {
+  flex: 1;
+  font-size: 0.9rem;
 }
 </style>
 
