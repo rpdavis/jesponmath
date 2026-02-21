@@ -1,0 +1,151 @@
+/* JepsonMath → Aeries Grade Transfer Extension - Content Styles */
+
+#jepsonmath-overlay {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 460px;
+  max-height: 80vh;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(0, 0, 0, 0.05);
+  z-index: 999999;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  overflow: hidden;
+}
+
+.jm-overlay-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #7c3aed, #6d28d9);
+  color: white;
+  cursor: grab;
+  user-select: none;
+}
+
+.jm-overlay-header h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.jm-overlay-controls {
+  display: flex;
+  gap: 6px;
+}
+
+.jm-overlay-controls button {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.jm-overlay-controls button:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.jm-overlay-body {
+  max-height: calc(80vh - 50px);
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.jm-search {
+  margin-bottom: 10px;
+}
+
+.jm-search input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.jm-search input:focus {
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+}
+
+.jm-table-container {
+  overflow-x: auto;
+  max-height: 50vh;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+}
+
+.jm-data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.jm-data-table th {
+  background: #f1f5f9;
+  padding: 6px 8px;
+  text-align: left;
+  font-weight: 600;
+  color: #475569;
+  position: sticky;
+  top: 0;
+  border-bottom: 2px solid #e2e8f0;
+  white-space: nowrap;
+}
+
+.jm-data-table td {
+  padding: 5px 8px;
+  border-bottom: 1px solid #f1f5f9;
+  white-space: nowrap;
+}
+
+.jm-data-table tr:hover td {
+  background: #f8fafc;
+}
+
+.jm-score-cell {
+  cursor: pointer;
+  color: #7c3aed;
+  font-weight: 600;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.jm-score-cell:hover {
+  background: #eef2ff !important;
+  transform: scale(1.05);
+}
+
+.jm-score-cell.jm-copied {
+  background: #d1fae5 !important;
+  color: #059669;
+  animation: jm-flash 0.3s ease;
+}
+
+@keyframes jm-flash {
+  0% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+.jm-hint {
+  margin-top: 10px;
+  padding: 8px 10px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 6px;
+  font-size: 11px;
+  color: #92400e;
+  line-height: 1.4;
+}

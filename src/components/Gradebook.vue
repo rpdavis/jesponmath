@@ -20,6 +20,28 @@
       @periodTypeChanged="onPeriodTypeChanged"
     />
 
+    <!-- Class Selector Tabs -->
+    <div class="class-tabs">
+      <button
+        @click="selectedClass = ''; selectedPeriod = ''"
+        class="class-tab class-tab-all"
+        :class="{ active: selectedClass === '' }"
+      >
+        All Students
+        <span class="class-tab-count">{{ students.length }}</span>
+      </button>
+      <button
+        v-for="(classInfo, index) in uniqueClassTabs"
+        :key="classInfo.className"
+        @click="selectedClass = classInfo.className; selectedPeriod = ''"
+        class="class-tab"
+        :class="[`class-tab-color-${index % 6}`, { active: selectedClass === classInfo.className }]"
+      >
+        {{ classInfo.className }}
+        <span class="class-tab-count">{{ classInfo.studentCount }}</span>
+      </button>
+    </div>
+
     <!-- View Mode and Filters -->
     <div class="filters-section">
       <!-- View Mode Radio Buttons -->
@@ -90,26 +112,6 @@
         </div>
       </div>
 
-      <div class="filter-group">
-        <label for="classFilter">Class:</label>
-        <select id="classFilter" v-model="selectedClass" class="filter-select">
-          <option value="">All Classes</option>
-          <option v-for="className in uniqueClasses" :key="className" :value="className">
-            {{ className }}
-          </option>
-        </select>
-      </div>
-
-      <div class="filter-group">
-        <label for="periodFilter">Period:</label>
-        <select id="periodFilter" v-model="selectedPeriod" class="filter-select">
-          <option value="">All Periods</option>
-          <option v-for="period in uniquePeriods" :key="period" :value="period">
-            Period {{ period }}
-          </option>
-        </select>
-      </div>
-
       <div v-if="viewMode === 'assignments'" class="filter-group">
         <label for="categoryFilter">Category:</label>
         <select id="categoryFilter" v-model="selectedCategory" class="filter-select">
@@ -136,12 +138,30 @@
         </select>
       </div>
 
+      <div v-if="viewMode === 'assignments'" class="filter-group checkbox-group">
+        <label class="checkbox-label">
+          <input type="checkbox" v-model="groupByType" />
+          Group by Type
+        </label>
+      </div>
+
       <div class="export-buttons">
         <button @click="exportGradebook" class="export-btn">
           📤 Export CSV
         </button>
         <button @click="showAeriesExport = true" class="export-btn aeries-btn">
           📊 Export to Aeries
+        </button>
+        <button
+          @click="copyStandardsForAeries"
+          class="export-btn aeries-standards-btn"
+          :disabled="aeriesStandardsCopying"
+          :title="aeriesStandardsCopied ? 'Copied!' : 'Copy standards scores to clipboard for Aeries'"
+        >
+          <span v-if="aeriesStandardsCopying">⏳</span>
+          <span v-else-if="aeriesStandardsCopied">✅</span>
+          <span v-else>📋</span>
+          {{ aeriesStandardsCopying ? 'Copying...' : aeriesStandardsCopied ? 'Copied!' : 'Copy Standards for Aeries' }}
         </button>
       </div>
     </div>
@@ -177,7 +197,12 @@
                 <th class="student-name-col">Student</th>
                 <th v-for="assessment in group.assessments" :key="assessment.id" class="assessment-col" :title="assessment.title">
                   <div class="assessment-header">
-                    <span class="assessment-title">{{ assessment.title }}</span>
+                    <router-link
+                      :to="`/assessment/${assessment.id}/results`"
+                      class="assessment-title-link"
+                    >
+                      <span class="assessment-title">{{ assessment.title }}</span>
+                    </router-link>
                     <span class="assessment-category" :class="assessment.category.toLowerCase()">
                       {{ assessment.category }}
                     </span>
@@ -197,7 +222,12 @@
                     >
                       <strong>{{ student.lastName }}, {{ student.firstName }}</strong>
                     </router-link>
-                    <small>{{ student.email }}</small>
+                    <span
+                      v-if="student.email"
+                      class="email-icon"
+                      :title="student.email"
+                      @click.stop="copyEmail(student.email)"
+                    >✉</span>
                   </div>
                 </td>
 
@@ -254,6 +284,32 @@
 
       <!-- Standards View -->
       <div v-else-if="viewMode === 'standards'">
+
+        <!-- ESA Scorecard Summary -->
+        <div v-if="esaScorecard.length > 0" class="esa-scorecard-section">
+          <div class="esa-scorecard-header" @click="showEsaScorecard = !showEsaScorecard">
+            <h2>📋 ESA Scorecard <span class="esa-count">({{ esaScorecard.length }} standards)</span></h2>
+            <span class="toggle-icon">{{ showEsaScorecard ? '▼' : '▶' }}</span>
+          </div>
+          <div v-if="showEsaScorecard" class="esa-scorecard-grid">
+            <div
+              v-for="card in esaScorecard"
+              :key="card.standard"
+              class="esa-card"
+              :class="getEsaCardClass(card.percentage)"
+            >
+              <div class="esa-card-name">{{ card.displayName }}</div>
+              <div v-if="card.aeriesName" class="esa-card-aeries">{{ card.aeriesName }}</div>
+              <div class="esa-card-score">{{ card.totalCorrect }} / {{ card.totalPossible }}</div>
+              <div class="esa-card-pct">{{ card.percentage }}%</div>
+              <div class="esa-card-bar">
+                <div class="esa-card-bar-fill" :style="{ width: card.percentage + '%' }"></div>
+              </div>
+              <div class="esa-card-students">{{ card.studentsAttempted }}/{{ card.studentCount }} students</div>
+            </div>
+          </div>
+        </div>
+
         <!-- Standards-based Groups -->
         <div v-for="group in filteredGroups" :key="group.key" class="class-group">
           <div class="class-header">
@@ -266,7 +322,7 @@
               <thead class="sticky-header">
                 <tr>
                   <th class="student-name-col">Student</th>
-                  <th v-for="standard in group.standards" :key="standard" class="standard-col" :title="standard">
+                  <th v-for="standard in group.standards" :key="standard" class="standard-col" :title="getStandardDisplayInfo(standard).aeriesName ? `Aeries: ${getStandardDisplayInfo(standard).aeriesName}` : standard">
                     <div class="standard-header">
                       <span
                         class="standard-title"
@@ -276,6 +332,22 @@
                         }"
                       >
                         {{ getCleanStandardName(standard) }}
+                      </span>
+                      <span
+                        v-if="getStandardDisplayInfo(standard).aeriesName"
+                        class="aeries-label aeries-clickable"
+                        @click.stop="openAeriesNameEdit(standard)"
+                        title="Click to edit Aeries assignment name"
+                      >
+                        {{ getStandardDisplayInfo(standard).aeriesName }}
+                      </span>
+                      <span
+                        v-else
+                        class="aeries-label aeries-missing aeries-clickable"
+                        @click.stop="openAeriesNameEdit(standard)"
+                        title="Click to set Aeries assignment name"
+                      >
+                        Set Aeries Name
                       </span>
                       <span class="standard-info">Correct/Total</span>
                     </div>
@@ -293,7 +365,12 @@
                       >
                         <strong>{{ student.lastName }}, {{ student.firstName }}</strong>
                       </router-link>
-                      <small>{{ student.email }}</small>
+                      <span
+                        v-if="student.email"
+                        class="email-icon"
+                        :title="student.email"
+                        @click.stop="copyEmail(student.email)"
+                      >✉</span>
                     </div>
                   </td>
 
@@ -422,6 +499,34 @@
       </div>
     </div>
 
+    <!-- Aeries Name Edit Dialog -->
+    <div v-if="editingAeriesName" class="modal-overlay" @click="cancelAeriesNameEdit">
+      <div class="aeries-name-dialog" @click.stop>
+        <h3>Edit Aeries Assignment Name</h3>
+        <p class="dialog-standard">Standard: <strong>{{ editingStandardCode }}</strong></p>
+        <div class="dialog-field">
+          <label for="aeriesNameInput">Aeries Assignment Name</label>
+          <input
+            id="aeriesNameInput"
+            v-model="editingAeriesNameValue"
+            type="text"
+            class="dialog-input"
+            placeholder="e.g., ESA1"
+            @keyup.enter="saveAeriesName"
+            @keyup.escape="cancelAeriesNameEdit"
+            autofocus
+          />
+          <small class="dialog-help">
+            This name must match the assignment name in the Aeries gradebook exactly.
+          </small>
+        </div>
+        <div class="dialog-actions">
+          <button @click="cancelAeriesNameEdit" class="dialog-btn dialog-btn-cancel">Cancel</button>
+          <button @click="saveAeriesName" class="dialog-btn dialog-btn-save">Save</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Bulk Print Summary Dialog -->
     <BulkPrintSummaryDialog
       :show="showBulkPrintDialog"
@@ -434,7 +539,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import AcademicPeriodSelector from '@/components/AcademicPeriodSelector.vue';
 import AeriesGradeExport from '@/components/admin/AeriesGradeExport.vue';
@@ -445,11 +550,12 @@ import { filterAssessmentsByPeriod, filterResultsByPeriod } from '@/types/academ
 import { useAuthStore } from '@/stores/authStore';
 import { getStudentsByTeacher } from '@/firebase/userServices';
 import { getAssessmentsByTeacher, getAssessmentResults, getAssessmentResultsBulk, createManualAssessmentResult, getAssessmentsByStudent, getAssessmentResultsByStudent } from '@/firebase/iepServices';
-import { getAllCustomStandards } from '@/firebase/standardsServices';
+import { getAllCustomStandards, updateCustomStandard } from '@/firebase/standardsServices';
 import { getGoalsByStudent } from '@/firebase/goalServices';
 import { getAllFluencyProgress } from '@/services/mathFluencyServices';
 import { parseStandards, groupQuestionsByStandards, getAllStandardsFromQuestions, calculateStandardScore } from '@/utils/standardsUtils';
 import { groupStudentsByClassAndPeriod } from '@/utils/studentGroupingUtils';
+import { buildStandardsExportData, buildClipboardData, copyStandardsToClipboard, downloadStandardsCSV } from '@/services/aeriesStandardsExport';
 import type { Student } from '@/types/users';
 import type { Assessment, AssessmentResult } from '@/types/iep';
 import type { CustomStandard } from '@/types/standards';
@@ -465,6 +571,16 @@ const assessments = ref<Assessment[]>([]);
 const assessmentResults = ref<AssessmentResult[]>([]);
 const customStandards = ref<CustomStandard[]>([]);
 
+// Aeries standards export state
+const aeriesStandardsCopying = ref(false);
+const aeriesStandardsCopied = ref(false);
+
+// Aeries name edit state
+const editingAeriesName = ref(false);
+const editingStandardCode = ref('');
+const editingAeriesNameValue = ref('');
+const editingStandardId = ref('');
+
 // View mode and filters
 const viewMode = ref('assignments'); // 'assignments' or 'standards'
 const selectedClass = ref('');
@@ -472,7 +588,8 @@ const selectedPeriod = ref('');
 const selectedCategory = ref('');
 const selectedAppCategory = ref('');
 const selectedAssessmentCategory = ref(''); // NEW: Filter standards by assessment type (ESA, SA, etc.)
-const selectedSort = ref('created-desc'); // Default to newest first
+const selectedSort = ref('created-desc');
+const groupByType = ref(true);
 
 // Manual score dialog state
 const showScoreDialog = ref(false);
@@ -524,6 +641,17 @@ const uniqueClasses = computed(() => {
   return classes.sort();
 });
 
+const uniqueClassTabs = computed(() => {
+  const groupMap = new Map<string, number>();
+  students.value.forEach(s => {
+    const className = s.courseName || s.className || 'Unknown';
+    groupMap.set(className, (groupMap.get(className) || 0) + 1);
+  });
+  return Array.from(groupMap.entries())
+    .map(([className, studentCount]) => ({ className, studentCount }))
+    .sort((a, b) => a.className.localeCompare(b.className));
+});
+
 const uniquePeriods = computed(() => {
   const periods = [...new Set(students.value.map(s => s.section || s.period).filter(Boolean))];
   return periods.sort();
@@ -550,8 +678,16 @@ const filteredAssessments = computed(() => {
     return true;
   });
 
+  const categoryOrder: Record<string, number> = { ESA: 0, SA: 1, HW: 2, Assign: 3 };
+
   // Apply sorting
   filtered.sort((a, b) => {
+    if (groupByType.value) {
+      const aCatOrder = categoryOrder[a.category] ?? 99;
+      const bCatOrder = categoryOrder[b.category] ?? 99;
+      if (aCatOrder !== bCatOrder) return aCatOrder - bCatOrder;
+    }
+
     const [sortField, sortDirection] = selectedSort.value.split('-');
     let comparison = 0;
 
@@ -645,6 +781,73 @@ const uniqueAssessmentCategories = computed(() => {
 
   return Array.from(categories).sort();
 });
+
+// ESA Scorecard: aggregate standard scores across all students
+const esaScorecard = computed(() => {
+  const allStudentsList = filteredStudents.value;
+  if (allStudentsList.length === 0) return [];
+
+  // Get ESA-only assessments
+  const esaAssessments = filterAssessments(assessments.value).filter(
+    a => a.category === 'ESA'
+  );
+  if (esaAssessments.length === 0) return [];
+
+  // Collect all ESA standards
+  const esaStandards = new Set<string>();
+  esaAssessments.forEach(a => {
+    if (a.standard) parseStandards(a.standard).forEach(s => esaStandards.add(s));
+    a.questions?.forEach(q => {
+      if (q.standard) parseStandards(q.standard).forEach(s => esaStandards.add(s));
+    });
+  });
+
+  const cards: Array<{
+    standard: string;
+    displayName: string;
+    aeriesName: string;
+    totalCorrect: number;
+    totalPossible: number;
+    percentage: number;
+    studentCount: number;
+    studentsAttempted: number;
+  }> = [];
+
+  esaStandards.forEach(standard => {
+    let totalCorrect = 0;
+    let totalPossible = 0;
+    let studentsAttempted = 0;
+
+    allStudentsList.forEach(student => {
+      const score = getStandardScore(student.uid, standard);
+      if (score.total > 0) {
+        totalCorrect += score.correct;
+        totalPossible += score.total;
+        studentsAttempted++;
+      }
+    });
+
+    const customStd = getCustomStandardByCode(standard);
+    const displayName = standard.startsWith('CUSTOM:') ? standard.replace('CUSTOM:', '') : standard;
+
+    cards.push({
+      standard,
+      displayName,
+      aeriesName: customStd?.aeriesAssignmentName || '',
+      totalCorrect,
+      totalPossible,
+      percentage: totalPossible > 0 ? Math.round((totalCorrect / totalPossible) * 100) : 0,
+      studentCount: allStudentsList.length,
+      studentsAttempted,
+    });
+  });
+
+  // Sort worst-to-best so struggling standards are first
+  cards.sort((a, b) => a.percentage - b.percentage);
+  return cards;
+});
+
+const showEsaScorecard = ref(true);
 
 // PERFORMANCE OPTIMIZATION: Pre-filter results once instead of filtering on every lookup
 const periodFilteredResults = computed(() => {
@@ -846,6 +1049,14 @@ const viewAssessmentResult = (studentUid: string, assessmentId: string) => {
   }
 };
 
+const copyEmail = async (email: string) => {
+  try {
+    await navigator.clipboard.writeText(email);
+  } catch {
+    // silent fallback
+  }
+};
+
 const clearFilters = () => {
   selectedClass.value = '';
   selectedPeriod.value = '';
@@ -935,6 +1146,13 @@ const getStandardScore = (studentUid: string, standard: string) => {
   }
 
   return result;
+};
+
+const getEsaCardClass = (percentage: number): string => {
+  if (percentage >= 80) return 'esa-mastered';
+  if (percentage >= 60) return 'esa-proficient';
+  if (percentage >= 40) return 'esa-developing';
+  return 'esa-struggling';
 };
 
 const getStandardMasteryClass = (scoreData: { correct: number; total: number; percentage: number }): string => {
@@ -1029,6 +1247,7 @@ const getStandardDisplayInfo = (standardCode: string) => {
       code: customStd.code,
       appCategory: customStd.appCategory,
       maxScore: customStd.maxScore,
+      aeriesName: customStd.aeriesAssignmentName || '',
       isCustom: true
     };
   }
@@ -1038,8 +1257,52 @@ const getStandardDisplayInfo = (standardCode: string) => {
     code: standardCode,
     appCategory: null,
     maxScore: null,
+    aeriesName: '',
     isCustom: false
   };
+};
+
+// Open inline editor for Aeries assignment name
+const openAeriesNameEdit = (standardCode: string) => {
+  const customStd = getCustomStandardByCode(standardCode);
+  if (!customStd) return; // Can only edit custom standards
+
+  editingAeriesName.value = true;
+  editingStandardCode.value = standardCode;
+  editingStandardId.value = customStd.id;
+  editingAeriesNameValue.value = customStd.aeriesAssignmentName || '';
+};
+
+const saveAeriesName = async () => {
+  if (!editingStandardId.value) return;
+
+  try {
+    await updateCustomStandard(editingStandardId.value, {
+      aeriesAssignmentName: editingAeriesNameValue.value.trim() || undefined,
+    });
+
+    // Update local cache
+    const std = customStandards.value.find(s => s.id === editingStandardId.value);
+    if (std) {
+      std.aeriesAssignmentName = editingAeriesNameValue.value.trim() || undefined;
+    }
+
+    // Clear the standards score cache so headers re-render
+    standardScoreCache.value.clear();
+
+    editingAeriesName.value = false;
+    console.log(`✅ Updated Aeries name for ${editingStandardCode.value} → "${editingAeriesNameValue.value}"`);
+  } catch (err) {
+    console.error('❌ Error saving Aeries name:', err);
+    alert('Failed to save Aeries assignment name.');
+  }
+};
+
+const cancelAeriesNameEdit = () => {
+  editingAeriesName.value = false;
+  editingStandardCode.value = '';
+  editingAeriesNameValue.value = '';
+  editingStandardId.value = '';
 };
 
 const exportGradebook = () => {
@@ -1093,6 +1356,56 @@ const exportGradebook = () => {
   } catch (err) {
     console.error('❌ Error exporting gradebook:', err);
     alert('Failed to export gradebook. Please try again.');
+  }
+};
+
+// Copy standards scores for Aeries
+const copyStandardsForAeries = async () => {
+  try {
+    aeriesStandardsCopying.value = true;
+    aeriesStandardsCopied.value = false;
+
+    // Use filtered students from current view
+    const currentStudents = filteredStudents.value;
+
+    // Build export data using filtered assessments
+    const exportData = buildStandardsExportData(
+      currentStudents,
+      filteredAssessments.value,
+      assessmentResults.value,
+      customStandards.value,
+      {
+        includeAllStandards: false,
+        exportFormat: 'clipboard',
+        gradeCalculationMethod: 'average',
+        assessmentCategory: selectedAssessmentCategory.value || undefined,
+      }
+    );
+
+    // Build clipboard-friendly data
+    const clipboardData = buildClipboardData(exportData, {
+      includeAllStandards: false,
+      exportFormat: 'clipboard',
+      gradeCalculationMethod: 'average',
+      assessmentCategory: selectedAssessmentCategory.value || undefined,
+    });
+
+    // Copy to clipboard
+    await copyStandardsToClipboard(clipboardData);
+
+    aeriesStandardsCopied.value = true;
+
+    // Reset the "copied" state after 3 seconds
+    setTimeout(() => {
+      aeriesStandardsCopied.value = false;
+    }, 3000);
+
+    console.log(`📋 Standards data copied for ${exportData.length} students, ${clipboardData.standardCodes.length} standards`);
+  } catch (err) {
+    console.error('❌ Error copying standards for Aeries:', err);
+    alert('Failed to copy standards data. Please try again.');
+  } finally {
+    aeriesStandardsCopying.value = false;
   }
 };
 
@@ -1913,16 +2226,93 @@ const handleBulkPrint = async (studentUids: string[], periodId: string | null) =
 };
 
 onMounted(() => {
+  document.body.classList.add('gradebook-wide-override');
   loadGradebookData();
+});
+
+onBeforeUnmount(() => {
+  document.body.classList.remove('gradebook-wide-override');
 });
 </script>
 
 <style scoped>
 .gradebook {
-  max-width: 1600px;
+  max-width: 2200px;
   margin: 0 auto;
   padding: 20px;
 }
+
+.class-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 16px 0;
+  border-bottom: 2px solid #e5e7eb;
+  margin-bottom: 16px;
+}
+
+.class-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border: 2px solid #e5e7eb;
+  background: white;
+  color: #4b5563;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.class-tab-count {
+  background: rgba(0, 0, 0, 0.08);
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.class-tab.active .class-tab-count {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* All Students tab */
+.class-tab-all { border-color: #6b7280; }
+.class-tab-all:hover { background: #f3f4f6; color: #374151; border-color: #4b5563; }
+.class-tab-all.active { background: #4b5563; color: white; border-color: #4b5563; box-shadow: 0 2px 8px rgba(75, 85, 99, 0.3); }
+
+/* Color 0 - Blue */
+.class-tab-color-0 { border-color: #3b82f6; }
+.class-tab-color-0:hover { background: #eff6ff; color: #2563eb; border-color: #2563eb; }
+.class-tab-color-0.active { background: #2563eb; color: white; border-color: #2563eb; box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3); }
+
+/* Color 1 - Emerald */
+.class-tab-color-1 { border-color: #10b981; }
+.class-tab-color-1:hover { background: #ecfdf5; color: #059669; border-color: #059669; }
+.class-tab-color-1.active { background: #059669; color: white; border-color: #059669; box-shadow: 0 2px 8px rgba(5, 150, 105, 0.3); }
+
+/* Color 2 - Purple */
+.class-tab-color-2 { border-color: #8b5cf6; }
+.class-tab-color-2:hover { background: #f5f3ff; color: #7c3aed; border-color: #7c3aed; }
+.class-tab-color-2.active { background: #7c3aed; color: white; border-color: #7c3aed; box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3); }
+
+/* Color 3 - Amber */
+.class-tab-color-3 { border-color: #f59e0b; }
+.class-tab-color-3:hover { background: #fffbeb; color: #d97706; border-color: #d97706; }
+.class-tab-color-3.active { background: #d97706; color: white; border-color: #d97706; box-shadow: 0 2px 8px rgba(217, 119, 6, 0.3); }
+
+/* Color 4 - Rose */
+.class-tab-color-4 { border-color: #f43f5e; }
+.class-tab-color-4:hover { background: #fff1f2; color: #e11d48; border-color: #e11d48; }
+.class-tab-color-4.active { background: #e11d48; color: white; border-color: #e11d48; box-shadow: 0 2px 8px rgba(225, 29, 72, 0.3); }
+
+/* Color 5 - Teal */
+.class-tab-color-5 { border-color: #14b8a6; }
+.class-tab-color-5:hover { background: #f0fdfa; color: #0d9488; border-color: #0d9488; }
+.class-tab-color-5.active { background: #0d9488; color: white; border-color: #0d9488; box-shadow: 0 2px 8px rgba(13, 148, 136, 0.3); }
 
 .gradebook-header {
   display: flex;
@@ -2070,6 +2460,29 @@ onMounted(() => {
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
+.checkbox-group {
+  display: flex;
+  align-items: center;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  color: #374151;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #3b82f6;
+  cursor: pointer;
+}
+
 .export-buttons {
   display: flex;
   gap: 10px;
@@ -2099,6 +2512,19 @@ onMounted(() => {
 
 .export-btn.aeries-btn:hover {
   box-shadow: 0 6px 20px rgba(37, 99, 235, 0.3);
+}
+
+.export-btn.aeries-standards-btn {
+  background: linear-gradient(135deg, #7c3aed, #6d28d9);
+}
+
+.export-btn.aeries-standards-btn:hover:not(:disabled) {
+  box-shadow: 0 6px 20px rgba(124, 58, 237, 0.3);
+}
+
+.export-btn.aeries-standards-btn:disabled {
+  opacity: 0.7;
+  cursor: wait;
 }
 
 .loading {
@@ -2251,8 +2677,8 @@ onMounted(() => {
 }
 
 .assessment-col {
-  min-width: 140px;
-  max-width: 170px;
+  min-width: 100px;
+  max-width: 140px;
 }
 
 .average-col {
@@ -2268,12 +2694,24 @@ onMounted(() => {
   align-items: center;
 }
 
+.assessment-title-link {
+  text-decoration: none;
+  color: inherit;
+}
+
+.assessment-title-link:hover .assessment-title {
+  color: #2563eb;
+  text-decoration: underline;
+}
+
 .assessment-title {
   font-weight: 600;
   font-size: 0.8rem;
   line-height: 1.2;
-  max-width: 120px;
+  max-width: 110px;
   word-wrap: break-word;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .assessment-category {
@@ -2310,8 +2748,8 @@ onMounted(() => {
 
 .student-info {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  gap: 4px;
 }
 
 .student-name-link {
@@ -2335,9 +2773,16 @@ onMounted(() => {
   font-size: 0.9rem;
 }
 
-.student-info small {
-  color: #6b7280;
-  font-size: 0.75rem;
+.email-icon {
+  cursor: pointer;
+  font-size: 0.85rem;
+  opacity: 0.4;
+  transition: opacity 0.2s;
+  flex-shrink: 0;
+}
+
+.email-icon:hover {
+  opacity: 1;
 }
 
 .score-cell {
@@ -2402,10 +2847,143 @@ onMounted(() => {
   font-size: 0.9rem;
 }
 
+/* ESA Scorecard Styles */
+.esa-scorecard-section {
+  margin-bottom: 2rem;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+.esa-scorecard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  background: linear-gradient(135deg, #1e3a5f, #2563eb);
+  color: white;
+  cursor: pointer;
+  user-select: none;
+}
+
+.esa-scorecard-header h2 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.esa-count {
+  font-weight: 400;
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+
+.toggle-icon {
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+
+.esa-scorecard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+  padding: 20px;
+}
+
+.esa-card {
+  border-radius: 10px;
+  padding: 14px;
+  text-align: center;
+  border: 2px solid transparent;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.esa-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.esa-card.esa-mastered {
+  background: #ecfdf5;
+  border-color: #6ee7b7;
+}
+
+.esa-card.esa-proficient {
+  background: #fffbeb;
+  border-color: #fcd34d;
+}
+
+.esa-card.esa-developing {
+  background: #fff7ed;
+  border-color: #fdba74;
+}
+
+.esa-card.esa-struggling {
+  background: #fef2f2;
+  border-color: #fca5a5;
+}
+
+.esa-card-name {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #1f2937;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.esa-card-aeries {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-bottom: 6px;
+}
+
+.esa-card-score {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.esa-card-pct {
+  font-size: 1.4rem;
+  font-weight: 800;
+  margin: 4px 0;
+}
+
+.esa-mastered .esa-card-pct { color: #059669; }
+.esa-proficient .esa-card-pct { color: #d97706; }
+.esa-developing .esa-card-pct { color: #ea580c; }
+.esa-struggling .esa-card-pct { color: #dc2626; }
+
+.esa-card-bar {
+  height: 6px;
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 3px;
+  overflow: hidden;
+  margin: 6px 0;
+}
+
+.esa-card-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s;
+}
+
+.esa-mastered .esa-card-bar-fill { background: #10b981; }
+.esa-proficient .esa-card-bar-fill { background: #f59e0b; }
+.esa-developing .esa-card-bar-fill { background: #f97316; }
+.esa-struggling .esa-card-bar-fill { background: #ef4444; }
+
+.esa-card-students {
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
 /* Standards View Styles */
 .standards-table .standard-col {
-  min-width: 100px;
-  max-width: 120px;
+  min-width: 90px;
+  max-width: 110px;
 }
 
 .standard-header {
@@ -2434,6 +3012,128 @@ onMounted(() => {
   font-size: 0.7rem;
   color: #6b7280;
   font-style: italic;
+}
+
+.aeries-label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: #7c3aed;
+  background: #ede9fe;
+  padding: 1px 6px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.aeries-label.aeries-missing {
+  color: #dc2626;
+  background: #fef2f2;
+  font-weight: 500;
+  font-style: italic;
+}
+
+.aeries-label.aeries-clickable {
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.aeries-label.aeries-clickable:hover {
+  transform: scale(1.05);
+  box-shadow: 0 1px 4px rgba(124, 58, 237, 0.2);
+}
+
+.aeries-label.aeries-missing.aeries-clickable:hover {
+  box-shadow: 0 1px 4px rgba(220, 38, 38, 0.2);
+}
+
+/* Aeries Name Edit Dialog */
+.aeries-name-dialog {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  width: 380px;
+  max-width: 90vw;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+}
+
+.aeries-name-dialog h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 8px;
+}
+
+.dialog-standard {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0 0 16px;
+}
+
+.dialog-field {
+  margin-bottom: 16px;
+}
+
+.dialog-field label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+  margin-bottom: 6px;
+}
+
+.dialog-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.dialog-input:focus {
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+}
+
+.dialog-help {
+  display: block;
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 6px;
+}
+
+.dialog-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.dialog-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.dialog-btn-cancel {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.dialog-btn-cancel:hover {
+  background: #e2e8f0;
+}
+
+.dialog-btn-save {
+  background: linear-gradient(135deg, #7c3aed, #6d28d9);
+  color: white;
+}
+
+.dialog-btn-save:hover {
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
 }
 
 .standard-cell {
@@ -2608,10 +3308,6 @@ onMounted(() => {
 
   .student-info strong {
     font-size: 0.8rem;
-  }
-
-  .student-info small {
-    font-size: 0.7rem;
   }
 }
 
@@ -3075,7 +3771,7 @@ onMounted(() => {
 }
 
 .student-name-col {
-  min-width: 200px;
+  min-width: 180px;
   text-align: left !important;
   position: sticky;
   left: 0;
@@ -3085,8 +3781,8 @@ onMounted(() => {
 
 .assessment-col,
 .standard-col {
-  min-width: 120px;
-  max-width: 150px;
+  min-width: 100px;
+  max-width: 130px;
 }
 
 .average-col,
@@ -3132,12 +3828,12 @@ onMounted(() => {
 }
 
 .student-info strong {
-  display: block;
   color: #495057;
 }
+</style>
 
-.student-info small {
-  color: #6c757d;
-  font-size: 0.8rem;
+<style>
+.gradebook-wide-override .main-content {
+  max-width: 2200px !important;
 }
 </style>

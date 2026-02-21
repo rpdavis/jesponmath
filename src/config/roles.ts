@@ -265,7 +265,6 @@ export const NAVIGATION_ITEMS: Record<
     },
     { path: '/manage-assessments', label: 'Manage Assessments', icon: '📋' },
     { path: '/gradebook', label: 'Gradebook', icon: '📊' },
-    { path: '/assessments', label: 'My Assessments', icon: '📝' },
     {
       path: '/progress',
       label: 'Student Progress',

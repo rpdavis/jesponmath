@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      width: 400px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f8fafc;
+      color: #1e293b;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #7c3aed, #6d28d9);
+      color: white;
+      padding: 16px 20px;
+    }
+
+    .header h1 {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .header p {
+      font-size: 11px;
+      opacity: 0.85;
+    }
+
+    .content {
+      padding: 16px 20px;
+    }
+
+    .status-card {
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin-bottom: 12px;
+    }
+
+    .status-card.has-data {
+      border-color: #a5b4fc;
+      background: #eef2ff;
+    }
+
+    .status-card.no-data {
+      border-color: #fecaca;
+      background: #fef2f2;
+    }
+
+    .status-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #64748b;
+      margin-bottom: 6px;
+    }
+
+    .status-value {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .status-value.ready { color: #059669; }
+    .status-value.empty { color: #dc2626; }
+
+    .stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .stat {
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 10px 12px;
+      text-align: center;
+    }
+
+    .stat-number {
+      font-size: 20px;
+      font-weight: 700;
+      color: #7c3aed;
+    }
+
+    .stat-label {
+      font-size: 10px;
+      color: #64748b;
+      margin-top: 2px;
+    }
+
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 16px;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #7c3aed, #6d28d9);
+      color: white;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: white;
+      color: #475569;
+      border: 1px solid #cbd5e1;
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: #f1f5f9;
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, #059669, #047857);
+      color: white;
+    }
+
+    .btn-success:hover:not(:disabled) {
+      box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);
+      transform: translateY(-1px);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* Paste Area */
+    .paste-section {
+      margin-top: 12px;
+    }
+
+    .paste-section label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: #475569;
+      margin-bottom: 6px;
+    }
+
+    .paste-area {
+      width: 100%;
+      height: 80px;
+      padding: 8px 10px;
+      border: 2px dashed #cbd5e1;
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 11px;
+      color: #475569;
+      background: #f8fafc;
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .paste-area:focus {
+      border-color: #7c3aed;
+      border-style: solid;
+      background: white;
+    }
+
+    .paste-area::placeholder {
+      color: #94a3b8;
+    }
+
+    .paste-hint {
+      font-size: 10px;
+      color: #94a3b8;
+      margin-top: 4px;
+    }
+
+    .paste-actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .paste-actions .btn {
+      flex: 1;
+      padding: 8px 12px;
+      font-size: 12px;
+    }
+
+    .instructions {
+      margin-top: 14px;
+      padding: 12px 14px;
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      border-radius: 8px;
+      font-size: 11px;
+      color: #92400e;
+      line-height: 1.5;
+    }
+
+    .instructions ol {
+      padding-left: 16px;
+      margin-top: 6px;
+    }
+
+    .instructions li {
+      margin-bottom: 4px;
+    }
+
+    .preview-table {
+      margin-top: 12px;
+      max-height: 200px;
+      overflow: auto;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+    }
+
+    .preview-table table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 10px;
+    }
+
+    .preview-table th {
+      background: #f1f5f9;
+      padding: 6px 8px;
+      text-align: left;
+      font-weight: 600;
+      color: #475569;
+      position: sticky;
+      top: 0;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .preview-table td {
+      padding: 5px 8px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .preview-table tr:hover td {
+      background: #f8fafc;
+    }
+
+    .footer {
+      padding: 10px 20px;
+      text-align: center;
+      font-size: 10px;
+      color: #94a3b8;
+      border-top: 1px solid #e2e8f0;
+    }
+
+    #message {
+      display: none;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      margin-top: 8px;
+    }
+
+    #message.success {
+      display: block;
+      background: #d1fae5;
+      color: #065f46;
+      border: 1px solid #6ee7b7;
+    }
+
+    #message.error {
+      display: block;
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #fca5a5;
+    }
+
+    #message.info {
+      display: block;
+      background: #dbeafe;
+      color: #1e40af;
+      border: 1px solid #93c5fd;
+    }
+
+    .section-divider {
+      border: none;
+      border-top: 1px solid #e2e8f0;
+      margin: 14px 0;
+    }
+
+    .clear-btn {
+      font-size: 11px;
+      color: #dc2626;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 2px 4px;
+      margin-top: 6px;
+    }
+
+    .clear-btn:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>JepsonMath → Aeries</h1>
+    <p>Transfer standards-based grades to Aeries gradebook</p>
+  </div>
+
+  <div class="content">
+    <div id="status-card" class="status-card no-data">
+      <div class="status-label">Export Data Status</div>
+      <div id="status-value" class="status-value empty">No data loaded</div>
+    </div>
+
+    <div id="stats-section" style="display: none;">
+      <div class="stats">
+        <div class="stat">
+          <div id="student-count" class="stat-number">0</div>
+          <div class="stat-label">Students</div>
+        </div>
+        <div class="stat">
+          <div id="standard-count" class="stat-number">0</div>
+          <div class="stat-label">Standards</div>
+        </div>
+      </div>
+
+      <div id="preview-section" class="preview-table" style="display: none;">
+        <table>
+          <thead id="preview-header"></thead>
+          <tbody id="preview-body"></tbody>
+        </table>
+      </div>
+
+      <button id="clear-btn" class="clear-btn">Clear loaded data</button>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="actions">
+      <button id="paste-btn" class="btn btn-success" disabled>
+        📋 Paste Grades into Aeries
+      </button>
+      <button id="preview-btn" class="btn btn-secondary" disabled>
+        👁️ Preview Data
+      </button>
+    </div>
+
+    <hr class="section-divider">
+
+    <!-- Paste from Clipboard Section -->
+    <div class="paste-section">
+      <label>Paste grade data from JepsonMath:</label>
+      <textarea
+        id="paste-area"
+        class="paste-area"
+        placeholder="1. In JepsonMath Gradebook, click 'Copy Standards for Aeries'&#10;2. Click inside this box&#10;3. Press Ctrl+V (or Cmd+V) to paste"
+      ></textarea>
+      <div class="paste-hint">Tab-delimited data from JepsonMath "Copy Standards for Aeries" button</div>
+      <div class="paste-actions">
+        <button id="load-paste-btn" class="btn btn-primary">Load Pasted Data</button>
+        <button id="try-clipboard-btn" class="btn btn-secondary">Auto-Read Clipboard</button>
+      </div>
+    </div>
+
+    <div id="message"></div>
+
+    <div class="instructions">
+      <strong>How to use:</strong>
+      <ol>
+        <li>In JepsonMath Gradebook, click <strong>"Copy Standards for Aeries"</strong></li>
+        <li>Open this extension and <strong>paste (Ctrl+V)</strong> into the box above</li>
+        <li>Click <strong>"Load Pasted Data"</strong></li>
+        <li>Navigate to the Aeries gradebook for the correct class</li>
+        <li>Click <strong>"Paste Grades into Aeries"</strong></li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="footer">
+    JepsonMath Grade Transfer Extension v1.0
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

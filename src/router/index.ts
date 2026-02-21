@@ -458,6 +458,13 @@ const router = createRouter({
       beforeEnter: [authGuard, adminGuard],
     },
 
+    // Public pages (no auth required)
+    {
+      path: '/privacy-extension',
+      name: 'extension-privacy-policy',
+      component: () => import('@/views/ExtensionPrivacyPolicy.vue'),
+    },
+
     // Fallback redirect
     {
       path: '/:pathMatch(.*)*',

@@ -131,9 +131,6 @@ onUnmounted(() => {
                 <router-link v-if="authStore.isTeacher" to="/gradebook" class="nav-link" @click="closeMenu">
                   📊 Gradebook
                 </router-link>
-                <router-link v-if="authStore.isTeacher" to="/assessments" class="nav-link" @click="closeMenu">
-                  📝 My Assessments
-                </router-link>
                 <router-link v-if="authStore.isTeacher" to="/progress" class="nav-link" @click="closeMenu">
                   📈 Student Progress
                 </router-link>

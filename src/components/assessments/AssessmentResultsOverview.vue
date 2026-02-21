@@ -161,16 +161,32 @@
       <!-- Pending Students Section -->
       <div v-if="pendingStudents.length > 0" class="pending-students-section">
         <h3>⏳ Students Assigned But Not Yet Completed ({{ pendingStudents.length }})</h3>
-        <div class="pending-students-grid">
+
+        <div v-if="selectedTab === 'all'" class="pending-by-class">
+          <div v-for="group in pendingByClass" :key="group.label" class="pending-class-group">
+            <h4 class="pending-class-header">{{ group.label }} <span class="pending-class-count">({{ group.students.length }})</span></h4>
+            <div class="pending-students-grid">
+              <div v-for="student in group.students" :key="student.uid" class="pending-student-card">
+                <div class="student-icon">👤</div>
+                <div class="student-details">
+                  <div class="student-name-pending">{{ student.name }}</div>
+                </div>
+                <div class="status-badge pending">Not Started</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div v-else class="pending-students-grid">
           <div v-for="student in pendingStudents" :key="student.uid" class="pending-student-card">
             <div class="student-icon">👤</div>
             <div class="student-details">
               <div class="student-name-pending">{{ student.name }}</div>
-              <div class="student-email">{{ student.email }}</div>
             </div>
             <div class="status-badge pending">Not Started</div>
           </div>
         </div>
+
         <div class="pending-info">
           <p>💡 <strong>Tip:</strong> These students have been assigned the assessment but haven't submitted their work yet.</p>
         </div>
@@ -228,7 +244,7 @@ const router = useRouter()
 
 const assessmentId = route.params.assessmentId as string
 const assessment = ref<Assessment | null>(null)
-const results = ref<(AssessmentResult & { studentName: string })[]>([])
+const results = ref<(AssessmentResult & { studentName: string; className: string; period: string })[]>([])
 const students = ref<any[]>([])
 const assignedStudents = ref<any[]>([])
 const loading = ref(true)
@@ -244,13 +260,34 @@ const totalAssigned = computed(() => assignedStudents.value.length)
 
 const pendingStudents = computed(() => {
   const completedUids = new Set(results.value.map(r => r.studentUid))
-  return assignedStudents.value
+  let pending = assignedStudents.value
     .filter(student => !completedUids.has(student.uid))
     .map(student => ({
       uid: student.uid,
-      name: student.displayName || 'Unknown Student',
-      email: student.email || ''
+      name: student.displayName || (student.lastName ? `${student.lastName}, ${student.firstName}` : 'Unknown Student'),
+      email: student.email || '',
+      className: student.courseName || student.className || 'Unknown',
+      period: student.section || student.period || '?'
     }))
+
+  if (selectedTab.value !== 'all') {
+    const [tabClass, tabPeriod] = selectedTab.value.split('||')
+    pending = pending.filter(s => s.className === tabClass && s.period === tabPeriod)
+  }
+
+  return pending
+})
+
+const pendingByClass = computed(() => {
+  const groups = new Map<string, typeof pendingStudents.value>()
+  pendingStudents.value.forEach(s => {
+    const key = `${s.className} - P${s.period}`
+    if (!groups.has(key)) groups.set(key, [])
+    groups.get(key)!.push(s)
+  })
+  return Array.from(groups.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([label, students]) => ({ label, students }))
 })
 
 const averageScore = computed(() => {
@@ -261,17 +298,41 @@ const averageScore = computed(() => {
 
 const classTabs = computed(() => {
   const tabs: Array<{ classId: string; className: string; studentCount: number }> = []
-  
-  // Add "All Students" tab
+
   tabs.push({
     classId: 'all',
     className: 'All Students',
     studentCount: results.value.length
   })
 
-  // Group by class (if you have class data)
-  // For now, we'll just show "All Students"
-  // You can enhance this to group by actual classes
+  const groupMap = new Map<string, { className: string; period: string; count: number }>()
+  results.value.forEach(r => {
+    const key = `${r.className}||${r.period}`
+    if (!groupMap.has(key)) {
+      groupMap.set(key, { className: r.className, period: r.period, count: 0 })
+    }
+    groupMap.get(key)!.count++
+  })
+
+  // Also count assigned students not in results
+  assignedStudents.value.forEach(s => {
+    const className = s.courseName || s.className || 'Unknown'
+    const period = s.section || s.period || '?'
+    const key = `${className}||${period}`
+    if (!groupMap.has(key)) {
+      groupMap.set(key, { className, period, count: 0 })
+    }
+  })
+
+  Array.from(groupMap.entries())
+    .sort(([, a], [, b]) => a.className.localeCompare(b.className) || a.period.localeCompare(b.period))
+    .forEach(([key, info]) => {
+      tabs.push({
+        classId: key,
+        className: `${info.className} - P${info.period}`,
+        studentCount: info.count
+      })
+    })
 
   return tabs
 })
@@ -280,8 +341,7 @@ const currentTabResults = computed(() => {
   if (selectedTab.value === 'all') {
     return results.value
   }
-  // Filter by class when implemented - using type assertion since we added studentName
-  return results.value.filter((r: any) => r.classId === selectedTab.value)
+  return results.value.filter(r => `${r.className}||${r.period}` === selectedTab.value)
 })
 
 const hardestQuestionNumber = computed(() => {
@@ -327,11 +387,16 @@ const loadData = async () => {
     const assignedUids = assignments.map((a: any) => a.studentUid)
     assignedStudents.value = allStudents.filter((s: any) => assignedUids.includes(s.uid))
 
-    // Enrich results with student names
-    results.value = results.value.map((result: AssessmentResult) => ({
-      ...result,
-      studentName: students.value.find((s: any) => s.uid === result.studentUid)?.displayName || 'Unknown Student'
-    }))
+    // Enrich results with student names and class info
+    results.value = results.value.map((result: AssessmentResult) => {
+      const student = students.value.find((s: any) => s.uid === result.studentUid)
+      return {
+        ...result,
+        studentName: student?.displayName || student?.lastName ? `${student.lastName}, ${student.firstName}` : 'Unknown Student',
+        className: student?.courseName || student?.className || 'Unknown',
+        period: student?.section || student?.period || '?'
+      }
+    })
 
     console.log('✅ Loaded assessment results:', results.value.length)
     console.log('📋 Total assigned:', assignedStudents.value.length)
@@ -344,19 +409,19 @@ const loadData = async () => {
   }
 }
 
-const getAnswerIndicator = (result: AssessmentResult & { studentName: string }, questionIndex: number): string => {
+const getAnswerIndicator = (result: AssessmentResult & { studentName: string; className: string; period: string }, questionIndex: number): string => {
   const response = result.responses?.[questionIndex]
   if (!response) return '—'
   return response.isCorrect ? '✓' : '✗'
 }
 
-const getAnswerClass = (result: AssessmentResult & { studentName: string }, questionIndex: number): string => {
+const getAnswerClass = (result: AssessmentResult & { studentName: string; className: string; period: string }, questionIndex: number): string => {
   const response = result.responses?.[questionIndex]
   if (!response) return 'no-answer'
   return response.isCorrect ? 'correct' : 'incorrect'
 }
 
-const getPointsEarned = (result: AssessmentResult & { studentName: string }, questionIndex: number): number => {
+const getPointsEarned = (result: AssessmentResult & { studentName: string; className: string; period: string }, questionIndex: number): number => {
   const response = result.responses?.[questionIndex]
   return response?.pointsEarned || 0
 }
@@ -397,7 +462,7 @@ const getScoreClass = (percentage: number): string => {
   return 'failing'
 }
 
-const showAnswerDetail = (result: AssessmentResult & { studentName: string }, questionIndex: number) => {
+const showAnswerDetail = (result: AssessmentResult & { studentName: string; className: string; period: string }, questionIndex: number) => {
   const question = assessment.value?.questions[questionIndex]
   const response = result.responses?.[questionIndex]
   
@@ -415,7 +480,7 @@ const showAnswerDetail = (result: AssessmentResult & { studentName: string }, qu
   showAnswerModal.value = true
 }
 
-const viewDetailedResult = (result: AssessmentResult & { studentName: string }) => {
+const viewDetailedResult = (result: AssessmentResult & { studentName: string; className: string; period: string }) => {
   router.push(`/assessment/${assessmentId}/results/${result.id}`)
 }
 
@@ -821,11 +886,37 @@ onMounted(() => {
   color: #f57c00;
 }
 
+.pending-by-class {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.pending-class-group {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1rem 1.5rem;
+  background: #fffbf0;
+}
+
+.pending-class-header {
+  margin: 0 0 0.75rem 0;
+  font-size: 1rem;
+  color: #374151;
+}
+
+.pending-class-count {
+  font-weight: 400;
+  color: #9ca3af;
+  font-size: 0.9rem;
+}
+
 .pending-students-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1rem;
-  margin-bottom: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 0;
 }
 
 .pending-student-card {
